@@ -12,8 +12,23 @@ const PORT = process.env.PORT || 3000;
 
 // Middleware
 // CORS configuration - allow frontend URL from environment
+// Normalize origin by removing trailing slash
+const normalizeOrigin = (origin) => {
+  if (!origin || origin === '*') return origin;
+  return origin.replace(/\/+$/, ''); // Remove trailing slashes
+};
+
 const corsOptions = {
-  origin: process.env.CORS_ORIGIN || process.env.FRONTEND_URL || '*',
+  origin: (origin, callback) => {
+    const allowedOrigin = normalizeOrigin(process.env.CORS_ORIGIN || process.env.FRONTEND_URL || '*');
+    const normalizedRequestOrigin = origin ? normalizeOrigin(origin) : origin;
+    
+    if (allowedOrigin === '*' || normalizedRequestOrigin === allowedOrigin) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
   optionsSuccessStatus: 200
 };

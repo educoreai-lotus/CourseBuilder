@@ -1,12 +1,12 @@
 import { Link } from 'react-router-dom'
 import { useApp } from '../context/AppContext'
+import logoLight from '../assets/logo-light.png'
+import logoDark from '../assets/logo-dark.png'
 
 export default function Header() {
   const { theme, toggleTheme, userRole, setUserRole } = useApp()
   
-  const logo = theme === 'day-mode' 
-    ? '/src/assets/logo-light.png' 
-    : '/src/assets/logo-dark.png'
+  const logo = theme === 'day-mode' ? logoLight : logoDark
 
   return (
     <header className="header">
