@@ -15,6 +15,15 @@ DROP TABLE IF EXISTS modules CASCADE;
 DROP TABLE IF EXISTS versions CASCADE;
 DROP TABLE IF EXISTS courses CASCADE;
 
+-- Drop ENUM types if they exist (must be after tables due to dependencies)
+DROP TYPE IF EXISTS content_type CASCADE;
+DROP TYPE IF EXISTS version_status CASCADE;
+DROP TYPE IF EXISTS assessment_result CASCADE;
+DROP TYPE IF EXISTS registration_status CASCADE;
+DROP TYPE IF EXISTS course_status CASCADE;
+DROP TYPE IF EXISTS course_visibility CASCADE;
+DROP TYPE IF EXISTS course_level CASCADE;
+
 -- Create ENUM types
 CREATE TYPE course_level AS ENUM ('beginner', 'intermediate', 'advanced');
 CREATE TYPE course_visibility AS ENUM ('private', 'public', 'scheduled');

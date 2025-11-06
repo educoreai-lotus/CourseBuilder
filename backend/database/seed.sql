@@ -28,59 +28,59 @@ INSERT INTO versions (version_id, course_id, version_no, status, published_at, c
 -- SEED MODULES
 -- ============================================
 INSERT INTO modules (module_id, course_id, name, "order", metadata, created_at) VALUES
-('m1111111-1111-1111-1111-111111111111', '11111111-1111-1111-1111-111111111111', 'Introduction to AI', 1, '{"tags": ["intro"], "prerequisites": []}', NOW()),
-('m1111111-1111-1111-1111-111111111112', '11111111-1111-1111-1111-111111111111', 'Machine Learning Basics', 2, '{"tags": ["ml"], "prerequisites": ["intro"]}', NOW()),
-('m1111111-1111-1111-1111-111111111113', '11111111-1111-1111-1111-111111111111', 'Neural Networks', 3, '{"tags": ["neural"], "prerequisites": ["ml"]}', NOW()),
-('m2222222-2222-2222-2222-222222222221', '22222222-2222-2222-2222-222222222222', 'Security Fundamentals', 1, '{"tags": ["security"], "prerequisites": []}', NOW()),
-('m2222222-2222-2222-2222-222222222222', '22222222-2222-2222-2222-222222222222', 'Common Vulnerabilities', 2, '{"tags": ["vulnerabilities"], "prerequisites": ["security"]}', NOW()),
-('m3333333-3333-3333-3333-333333333331', '33333333-3333-3333-3333-333333333333', 'React Hooks Deep Dive', 1, '{"tags": ["hooks"], "prerequisites": []}', NOW()),
-('m3333333-3333-3333-3333-333333333332', '33333333-3333-3333-3333-333333333333', 'Context API Patterns', 2, '{"tags": ["context"], "prerequisites": ["hooks"]}', NOW());
+('a1111111-1111-1111-1111-111111111111', '11111111-1111-1111-1111-111111111111', 'Introduction to AI', 1, '{"tags": ["intro"], "prerequisites": []}', NOW()),
+('a1111111-1111-1111-1111-111111111112', '11111111-1111-1111-1111-111111111111', 'Machine Learning Basics', 2, '{"tags": ["ml"], "prerequisites": ["intro"]}', NOW()),
+('a1111111-1111-1111-1111-111111111113', '11111111-1111-1111-1111-111111111111', 'Neural Networks', 3, '{"tags": ["neural"], "prerequisites": ["ml"]}', NOW()),
+('a2222222-2222-2222-2222-222222222221', '22222222-2222-2222-2222-222222222222', 'Security Fundamentals', 1, '{"tags": ["security"], "prerequisites": []}', NOW()),
+('a2222222-2222-2222-2222-222222222222', '22222222-2222-2222-2222-222222222222', 'Common Vulnerabilities', 2, '{"tags": ["vulnerabilities"], "prerequisites": ["security"]}', NOW()),
+('a3333333-3333-3333-3333-333333333331', '33333333-3333-3333-3333-333333333333', 'React Hooks Deep Dive', 1, '{"tags": ["hooks"], "prerequisites": []}', NOW()),
+('a3333333-3333-3333-3333-333333333332', '33333333-3333-3333-3333-333333333333', 'Context API Patterns', 2, '{"tags": ["context"], "prerequisites": ["hooks"]}', NOW());
 
 -- ============================================
 -- SEED TOPICS
 -- ============================================
 INSERT INTO topics (topic_id, module_id, topic_name, topic_description, content_ref, topic_language, created_at) VALUES
-('t1111111-1111-1111-1111-111111111111', 'm1111111-1111-1111-1111-111111111111', 'What is AI?', 'Introduction to artificial intelligence concepts', 'content://ai-intro-1', 'English', NOW()),
-('t1111111-1111-1111-1111-111111111112', 'm1111111-1111-1111-1111-111111111111', 'History of AI', 'Historical overview of AI development', 'content://ai-history-1', 'English', NOW()),
-('t1111111-1111-1111-1111-111111111113', 'm1111111-1111-1111-1111-111111111112', 'Supervised Learning', 'Introduction to supervised learning algorithms', 'content://ml-supervised-1', 'English', NOW()),
-('t2222222-2222-2222-2222-222222222221', 'm2222222-2222-2222-2222-222222222221', 'SQL Injection', 'Understanding and preventing SQL injection attacks', 'content://sec-sql-injection-1', 'English', NOW()),
-('t3333333-3333-3333-3333-333333333331', 'm3333333-3333-3333-3333-333333333331', 'useState Hook', 'Deep dive into useState hook patterns', 'content://react-usestate-1', 'JavaScript', NOW()),
-('t3333333-3333-3333-3333-333333333332', 'm3333333-3333-3333-3333-333333333331', 'useEffect Hook', 'Understanding useEffect and side effects', 'content://react-useeffect-1', 'JavaScript', NOW());
+('b1111111-1111-1111-1111-111111111111', 'a1111111-1111-1111-1111-111111111111', 'What is AI?', 'Introduction to artificial intelligence concepts', 'content://ai-intro-1', 'English', NOW()),
+('b1111111-1111-1111-1111-111111111112', 'a1111111-1111-1111-1111-111111111111', 'History of AI', 'Historical overview of AI development', 'content://ai-history-1', 'English', NOW()),
+('b1111111-1111-1111-1111-111111111113', 'a1111111-1111-1111-1111-111111111112', 'Supervised Learning', 'Introduction to supervised learning algorithms', 'content://ml-supervised-1', 'English', NOW()),
+('b2222222-2222-2222-2222-222222222221', 'a2222222-2222-2222-2222-222222222221', 'SQL Injection', 'Understanding and preventing SQL injection attacks', 'content://sec-sql-injection-1', 'English', NOW()),
+('b3333333-3333-3333-3333-333333333331', 'a3333333-3333-3333-3333-333333333331', 'useState Hook', 'Deep dive into useState hook patterns', 'content://react-usestate-1', 'JavaScript', NOW()),
+('b3333333-3333-3333-3333-333333333332', 'a3333333-3333-3333-3333-333333333331', 'useEffect Hook', 'Understanding useEffect and side effects', 'content://react-useeffect-1', 'JavaScript', NOW());
 
 -- ============================================
 -- SEED LESSONS
 -- ============================================
 INSERT INTO lessons (lesson_id, module_id, topic_id, lesson_name, content_type, content_data, micro_skills, nano_skills, enrichment_data, "order", created_at) VALUES
-('l1111111-1111-1111-1111-111111111111', 'm1111111-1111-1111-1111-111111111111', 't1111111-1111-1111-1111-111111111111', 'AI Basics Lesson 1', 'text', '{"content": "Introduction to AI concepts...", "exercises": []}', '["ai-basics"]', '["understanding-ai"]', '{"youtube_links": ["https://youtube.com/watch?v=example1"], "github_links": []}', 1, NOW()),
-('l1111111-1111-1111-1111-111111111112', 'm1111111-1111-1111-1111-111111111111', 't1111111-1111-1111-1111-111111111112', 'History of AI Video', 'video', '{"video_url": "https://example.com/video", "transcript": "..."}', '["ai-history"]', '["ai-timeline"]', '{}', 2, NOW()),
-('l2222222-2222-2222-2222-222222222221', 'm2222222-2222-2222-2222-222222222221', 't2222222-2222-2222-2222-222222222221', 'SQL Injection Exercise', 'exercise', '{"instructions": "Prevent SQL injection...", "test_cases": []}', '["security"]', '["sql-injection"]', '{"github_links": ["https://github.com/example/sec-demo"]}', 1, NOW()),
-('l3333333-3333-3333-3333-333333333331', 'm3333333-3333-3333-3333-333333333331', 't3333333-3333-3333-3333-333333333331', 'useState Tutorial', 'text', '{"content": "useState hook tutorial...", "examples": []}', '["react-hooks"]', '["useState"]', '{"youtube_links": ["https://youtube.com/watch?v=react1"]}', 1, NOW());
+('c1111111-1111-1111-1111-111111111111', 'a1111111-1111-1111-1111-111111111111', 'b1111111-1111-1111-1111-111111111111', 'AI Basics Lesson 1', 'text', '{"content": "Introduction to AI concepts...", "exercises": []}', '["ai-basics"]', '["understanding-ai"]', '{"youtube_links": ["https://youtube.com/watch?v=example1"], "github_links": []}', 1, NOW()),
+('c1111111-1111-1111-1111-111111111112', 'a1111111-1111-1111-1111-111111111111', 'b1111111-1111-1111-1111-111111111112', 'History of AI Video', 'video', '{"video_url": "https://example.com/video", "transcript": "..."}', '["ai-history"]', '["ai-timeline"]', '{}', 2, NOW()),
+('c2222222-2222-2222-2222-222222222221', 'a2222222-2222-2222-2222-222222222221', 'b2222222-2222-2222-2222-222222222221', 'SQL Injection Exercise', 'exercise', '{"instructions": "Prevent SQL injection...", "test_cases": []}', '["security"]', '["sql-injection"]', '{"github_links": ["https://github.com/example/sec-demo"]}', 1, NOW()),
+('c3333333-3333-3333-3333-333333333331', 'a3333333-3333-3333-3333-333333333331', 'b3333333-3333-3333-3333-333333333331', 'useState Tutorial', 'text', '{"content": "useState hook tutorial...", "examples": []}', '["react-hooks"]', '["useState"]', '{"youtube_links": ["https://youtube.com/watch?v=react1"]}', 1, NOW());
 
 -- ============================================
 -- SEED REGISTRATIONS
 -- ============================================
 INSERT INTO registrations (registration_id, course_id, learner_id, learner_name, learner_company, progress, status, created_at) VALUES
-('r1111111-1111-1111-1111-111111111111', '11111111-1111-1111-1111-111111111111', 'learner-001', 'Alice Learner', 'Company A', 75.5, 'in_progress', NOW() - INTERVAL '20 days'),
-('r1111111-1111-1111-1111-111111111112', '11111111-1111-1111-1111-111111111111', 'learner-002', 'Bob Student', 'Company A', 100.0, 'completed', NOW() - INTERVAL '25 days'),
-('r1111111-1111-1111-1111-111111111113', '11111111-1111-1111-1111-111111111111', 'learner-003', 'Charlie Developer', 'Company B', 45.0, 'in_progress', NOW() - INTERVAL '10 days'),
-('r2222222-2222-2222-2222-222222222221', '22222222-2222-2222-2222-222222222222', 'learner-001', 'Alice Learner', 'Company A', 90.0, 'in_progress', NOW() - INTERVAL '12 days'),
-('r3333333-3333-3333-3333-333333333331', '33333333-3333-3333-3333-333333333333', 'learner-004', 'Diana Engineer', 'Company C', 60.0, 'in_progress', NOW() - INTERVAL '5 days');
+('d1111111-1111-1111-1111-111111111111', '11111111-1111-1111-1111-111111111111', '10000000-0000-0000-0000-000000000001', 'Alice Learner', 'Company A', 75.5, 'in_progress', NOW() - INTERVAL '20 days'),
+('d1111111-1111-1111-1111-111111111112', '11111111-1111-1111-1111-111111111111', '10000000-0000-0000-0000-000000000002', 'Bob Student', 'Company A', 100.0, 'completed', NOW() - INTERVAL '25 days'),
+('d1111111-1111-1111-1111-111111111113', '11111111-1111-1111-1111-111111111111', '10000000-0000-0000-0000-000000000003', 'Charlie Developer', 'Company B', 45.0, 'in_progress', NOW() - INTERVAL '10 days'),
+('d2222222-2222-2222-2222-222222222221', '22222222-2222-2222-2222-222222222222', '10000000-0000-0000-0000-000000000001', 'Alice Learner', 'Company A', 90.0, 'in_progress', NOW() - INTERVAL '12 days'),
+('d3333333-3333-3333-3333-333333333331', '33333333-3333-3333-3333-333333333333', '10000000-0000-0000-0000-000000000004', 'Diana Engineer', 'Company C', 60.0, 'in_progress', NOW() - INTERVAL '5 days');
 
 -- ============================================
 -- SEED FEEDBACK
 -- ============================================
 INSERT INTO feedback (feedback_id, course_id, learner_id, rating, tags, comment, created_at) VALUES
-('f1111111-1111-1111-1111-111111111111', '11111111-1111-1111-1111-111111111111', 'learner-002', 5.0, '["Clarity", "Usefulness"]', 'Very clear lessons and excellent explanations!', NOW() - INTERVAL '5 days'),
-('f1111111-1111-1111-1111-111111111112', '11111111-1111-1111-1111-111111111111', 'learner-001', 4.5, '["Clarity", "Difficulty"]', 'Good content but some parts were challenging.', NOW() - INTERVAL '3 days'),
-('f2222222-2222-2222-2222-222222222221', '22222222-2222-2222-2222-222222222222', 'learner-001', 4.8, '["Usefulness", "Clarity"]', 'Highly practical and well-structured.', NOW() - INTERVAL '2 days'),
-('f3333333-3333-3333-3333-333333333331', '33333333-3333-3333-3333-333333333333', 'learner-004', 4.0, '["Difficulty"]', 'Advanced concepts but worth the effort.', NOW() - INTERVAL '1 day');
+('e1111111-1111-1111-1111-111111111111', '11111111-1111-1111-1111-111111111111', '10000000-0000-0000-0000-000000000002', 5.0, '["Clarity", "Usefulness"]', 'Very clear lessons and excellent explanations!', NOW() - INTERVAL '5 days'),
+('e1111111-1111-1111-1111-111111111112', '11111111-1111-1111-1111-111111111111', '10000000-0000-0000-0000-000000000001', 4.5, '["Clarity", "Difficulty"]', 'Good content but some parts were challenging.', NOW() - INTERVAL '3 days'),
+('e2222222-2222-2222-2222-222222222221', '22222222-2222-2222-2222-222222222222', '10000000-0000-0000-0000-000000000001', 4.8, '["Usefulness", "Clarity"]', 'Highly practical and well-structured.', NOW() - INTERVAL '2 days'),
+('e3333333-3333-3333-3333-333333333331', '33333333-3333-3333-3333-333333333333', '10000000-0000-0000-0000-000000000004', 4.0, '["Difficulty"]', 'Advanced concepts but worth the effort.', NOW() - INTERVAL '1 day');
 
 -- ============================================
 -- SEED ASSESSMENTS
 -- ============================================
 INSERT INTO assessments (assessment_id, course_id, learner_id, coverage_map, grade, test_result, completion_date) VALUES
-('a1111111-1111-1111-1111-111111111111', '11111111-1111-1111-1111-111111111111', 'learner-002', '{"topics": ["t1111111-1111-1111-1111-111111111111", "t1111111-1111-1111-1111-111111111112"], "modules": ["m1111111-1111-1111-1111-111111111111"]}', 92.5, 'pass', NOW() - INTERVAL '5 days'),
-('a2222222-2222-2222-2222-222222222221', '22222222-2222-2222-2222-222222222222', 'learner-001', '{"topics": ["t2222222-2222-2222-2222-222222222221"], "modules": ["m2222222-2222-2222-2222-222222222221"]}', 88.0, 'pass', NOW() - INTERVAL '2 days'),
-('a3333333-3333-3333-3333-333333333331', '33333333-3333-3333-3333-333333333333', 'learner-004', '{"topics": ["t3333333-3333-3333-3333-333333333331"], "modules": ["m3333333-3333-3333-3333-333333333331"]}', 75.0, 'pass', NOW() - INTERVAL '1 day');
+('90000000-0000-0000-0000-000000000001', '11111111-1111-1111-1111-111111111111', '10000000-0000-0000-0000-000000000002', '{"topics": ["b1111111-1111-1111-1111-111111111111", "b1111111-1111-1111-1111-111111111112"], "modules": ["a1111111-1111-1111-1111-111111111111"]}', 92.5, 'pass', NOW() - INTERVAL '5 days'),
+('90000000-0000-0000-0000-000000000002', '22222222-2222-2222-2222-222222222222', '10000000-0000-0000-0000-000000000001', '{"topics": ["b2222222-2222-2222-2222-222222222221"], "modules": ["a2222222-2222-2222-2222-222222222221"]}', 88.0, 'pass', NOW() - INTERVAL '2 days'),
+('90000000-0000-0000-0000-000000000003', '33333333-3333-3333-3333-333333333333', '10000000-0000-0000-0000-000000000004', '{"topics": ["b3333333-3333-3333-3333-333333333331"], "modules": ["a3333333-3333-3333-3333-333333333331"]}', 75.0, 'pass', NOW() - INTERVAL '1 day');
 
 

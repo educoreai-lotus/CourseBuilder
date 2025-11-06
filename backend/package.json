@@ -14,7 +14,8 @@
     "migrate": "node scripts/migrate.js",
     "seed": "node scripts/seed.js",
     "db:reset": "npm run migrate && npm run seed",
-    "db:init": "npm run db:setup && npm run migrate && npm run seed"
+    "db:init": "npm run db:setup && npm run migrate && npm run seed",
+    "generate-secrets": "node scripts/generate-secrets.js"
   },
   "keywords": [
     "course-builder",
