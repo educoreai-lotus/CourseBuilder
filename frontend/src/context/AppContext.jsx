@@ -1,10 +1,22 @@
-import React, { createContext, useContext, useMemo, useState, useEffect } from 'react'
+import React, { createContext, useContext, useMemo, useState, useEffect, useCallback } from 'react'
 
 const AppContext = createContext(null)
 
+const ROLE_STORAGE_KEY = 'coursebuilder:userRole'
+const allowedRoles = ['learner', 'trainer']
+
 export function AppProvider({ children }) {
   const [theme, setTheme] = useState('day-mode') // 'day-mode' or 'night-mode'
-  const [userRole, setUserRole] = useState('learner') // 'learner', 'trainer', 'admin', 'public'
+  const [userRole, setUserRoleState] = useState(() => {
+    if (typeof window === 'undefined') {
+      return 'learner'
+    }
+    const storedRole = window.localStorage.getItem(ROLE_STORAGE_KEY)
+    if (storedRole && allowedRoles.includes(storedRole)) {
+      return storedRole
+    }
+    return 'learner'
+  })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [toast, setToast] = useState(null) // { message, type: 'success' | 'error' | 'info' }
@@ -44,6 +56,21 @@ export function AppProvider({ children }) {
   const toggleTheme = () => {
     setTheme(prev => prev === 'day-mode' ? 'night-mode' : 'day-mode')
   }
+
+  const setUserRole = useCallback((role) => {
+    const normalizedRole = allowedRoles.includes(role) ? role : 'learner'
+    setUserRoleState(normalizedRole)
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(ROLE_STORAGE_KEY, normalizedRole)
+    }
+  }, [])
+
+  useEffect(() => {
+    // Normalize any legacy roles to supported ones
+    if (!allowedRoles.includes(userRole)) {
+      setUserRole('learner')
+    }
+  }, [userRole, setUserRole])
 
   const showToast = (message, type = 'success') => {
     setToast({ message, type })
