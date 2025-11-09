@@ -279,10 +279,23 @@ export const sendHRReport = async (courseIds = null) => {
   }
 };
 
+export const handleLearningAnalytics = async (payload = {}) => {
+  return {
+    status: 'accepted',
+    type: 'analytics',
+    receivedAt: new Date().toISOString(),
+    metrics: payload.metrics || null,
+    cohortSize: Array.isArray(payload.learners) ? payload.learners.length : null
+  };
+};
+
 export const analyticsService = {
   prepareLearningAnalyticsPayload,
   sendLearningAnalytics,
   prepareHRReportPayload,
-  sendHRReport
+  sendHRReport,
+  handleLearningAnalytics
 };
+
+export default analyticsService;
 

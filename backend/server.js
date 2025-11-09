@@ -5,6 +5,7 @@ import coursesRoutes from './routes/courses.routes.js';
 import feedbackRoutes from './routes/feedback.routes.js';
 import inputRoutes from './routes/input.routes.js';
 import lessonsRoutes from './routes/lessons.routes.js';
+import integrationRoutes from './routes/integration.routes.js';
 
 dotenv.config();
 
@@ -22,7 +23,13 @@ const normalizeOrigin = (origin) => {
 const corsOptions = {
   origin: (origin, callback) => {
     const allowedOrigin = normalizeOrigin(process.env.CORS_ORIGIN || process.env.FRONTEND_URL || '*');
-    const normalizedRequestOrigin = origin ? normalizeOrigin(origin) : origin;
+
+    if (!origin) {
+      callback(null, true);
+      return;
+    }
+
+    const normalizedRequestOrigin = normalizeOrigin(origin);
     
     if (allowedOrigin === '*' || normalizedRequestOrigin === allowedOrigin) {
       callback(null, true);
@@ -57,6 +64,7 @@ app.use('/api/v1/courses', coursesRoutes);
 app.use('/api/v1', feedbackRoutes);
 app.use('/api/v1', inputRoutes);
 app.use('/api/v1/lessons', lessonsRoutes);
+app.use('/api/v1/integrations', integrationRoutes);
 
 // 404 handler
 app.use((req, res) => {
