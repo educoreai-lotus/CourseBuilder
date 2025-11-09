@@ -84,12 +84,17 @@ app.use((err, req, res, next) => {
 });
 
 // Start server
-app.listen(PORT, () => {
-  console.log(`🚀 Course Builder API server running on port ${PORT}`);
-  console.log(`📝 Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`🔗 Health check: http://localhost:${PORT}/health`);
-});
+let serverInstance;
 
+if (process.env.NODE_ENV !== 'test') {
+  serverInstance = app.listen(PORT, () => {
+    console.log(`🚀 Course Builder API server running on port ${PORT}`);
+    console.log(`📝 Environment: ${process.env.NODE_ENV || 'development'}`);
+    console.log(`🔗 Health check: http://localhost:${PORT}/health`);
+  });
+}
+
+export const server = serverInstance;
 export default app;
 
 

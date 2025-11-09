@@ -43,7 +43,6 @@ jobs:
         id: npm-cache
         with:
           path: |
-            backend/node_modules
             ~/.npm
           key: ${{ runner.os }}-npm-${{ hashFiles('backend/package-lock.json') }}
           restore-keys: |
@@ -61,6 +60,16 @@ jobs:
           DB_USER: postgres
           DB_PASSWORD: postgres
         run: npm run migrate
+
+      - name: Seed database
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/coursebuilder_test
+          DB_HOST: localhost
+          DB_PORT: 5432
+          DB_NAME: coursebuilder_test
+          DB_USER: postgres
+          DB_PASSWORD: postgres
+        run: npm run seed
 
       - name: Run tests with coverage
         env:

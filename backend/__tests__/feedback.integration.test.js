@@ -1,11 +1,12 @@
 import request from 'supertest';
+import { v4 as uuidv4 } from 'uuid';
 import app from '../server.js';
 import db from '../config/database.js';
 import { pgp } from '../config/database.js';
 
 describe('Feedback Integration Tests', () => {
   let testCourseId;
-  let testLearnerId = 'test-learner-feedback-001';
+  const testLearnerId = '00000000-0000-0000-0000-000000000201';
   let testFeedbackId;
 
   beforeAll(async () => {
@@ -81,8 +82,8 @@ describe('Feedback Integration Tests', () => {
           const response = await request(app)
             .post(`/api/v1/courses/${testCourseId}/feedback`)
             .send({
-              learner_id: `test-learner-${Date.now()}`,
-              rating: rating
+              learner_id: uuidv4(),
+              rating
             })
             .expect(400);
 
@@ -96,7 +97,7 @@ describe('Feedback Integration Tests', () => {
         await request(app)
           .post(`/api/v1/courses/${testCourseId}/feedback`)
           .send({
-            learner_id: 'test-learner-duplicate',
+            learner_id: '00000000-0000-0000-0000-000000000202',
             rating: 4,
             comment: 'First feedback'
           })
@@ -106,7 +107,7 @@ describe('Feedback Integration Tests', () => {
         const response = await request(app)
           .post(`/api/v1/courses/${testCourseId}/feedback`)
           .send({
-            learner_id: 'test-learner-duplicate',
+            learner_id: '00000000-0000-0000-0000-000000000202',
             rating: 5,
             comment: 'Second feedback'
           })
@@ -145,7 +146,7 @@ describe('Feedback Integration Tests', () => {
     describe('GET /api/v1/feedback/:courseId', () => {
       beforeAll(async () => {
         // Add multiple feedback entries for aggregation
-        const learners = ['learner-1', 'learner-2', 'learner-3'];
+        const learners = [uuidv4(), uuidv4(), uuidv4()];
         for (const learnerId of learners) {
           await db.none(
             `INSERT INTO feedback (feedback_id, course_id, learner_id, rating, tags, comment, created_at)
@@ -155,7 +156,7 @@ describe('Feedback Integration Tests', () => {
               learnerId,
               4 + Math.random(), // Random rating between 4-5
               JSON.stringify(['Clarity', 'Usefulness']),
-              `Feedback from ${learnerId}`
+              'Automated feedback entry'
             ]
           );
         }

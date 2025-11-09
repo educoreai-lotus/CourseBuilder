@@ -5,7 +5,7 @@ import { pgp } from '../config/database.js';
 
 describe('Courses Integration Tests', () => {
   let testCourseId;
-  let testLearnerId = 'test-learner-001';
+  const testLearnerId = '00000000-0000-0000-0000-000000000101';
 
   beforeAll(async () => {
     // Ensure database connection
