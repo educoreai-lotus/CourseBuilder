@@ -12,7 +12,6 @@
   --accent-gold: #d97706;
   --accent-green: #047857;
   --accent-orange: #f59e0b;
-  --accent-purple: #6d28d9;
 
   /* Neutral Colors - Bright & Modern */
   --bg-primary: #f8fafc;
@@ -170,7 +169,7 @@
   .floating-card,
   .xp-fill,
   .chatbot-toggle::before {
-    animation: none !important;
+    animation: none;
   }
 }
 
@@ -243,6 +242,120 @@
   }
 }
 
+.personalized-dashboard {
+  padding: var(--spacing-2xl) var(--spacing-lg);
+  background: var(--bg-secondary);
+}
+
+.dashboard-container {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: var(--spacing-lg);
+  margin-top: var(--spacing-xl);
+}
+
+.dashboard-card {
+  background: var(--gradient-card);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: var(--spacing-xl);
+  text-align: center;
+  transition: all 0.3s ease;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+}
+
+.dashboard-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.05), transparent);
+  transition: left 0.5s ease;
+}
+
+.dashboard-card:hover::before {
+  left: 100%;
+}
+
+.dashboard-card:hover {
+  transform: translateY(-5px);
+  border-color: var(--primary-cyan);
+  box-shadow: 0 15px 30px rgba(8, 145, 178, 0.2);
+}
+
+.dashboard-icon {
+  width: 60px;
+  height: 60px;
+  margin: 0 auto var(--spacing-md);
+  background: var(--gradient-primary);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  color: white;
+}
+
+.dashboard-card h3 {
+  font-size: 1.2rem;
+  font-weight: 600;
+  margin-bottom: var(--spacing-sm);
+  color: var(--text-primary);
+}
+
+.dashboard-card p {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+.user-info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  margin-right: var(--spacing-md);
+}
+
+.user-name {
+  font-weight: 600;
+  color: var(--text-primary);
+  font-size: 0.9rem;
+}
+
+.user-role {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+@media (max-width: 768px) {
+  .user-info {
+    align-items: center;
+    margin-right: var(--spacing-sm);
+  }
+
+  .user-name {
+    font-size: 0.8rem;
+  }
+
+  .user-role {
+    font-size: 0.7rem;
+  }
+
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 * {
   margin: 0;
   padding: 0;
@@ -265,14 +378,18 @@ body {
   height: 100%;
   z-index: -1;
   background: radial-gradient(circle at 20% 50%, rgba(30, 64, 175, 0.05) 0%, transparent 50%),
-              radial-gradient(circle at 80% 20%, rgba(109, 40, 217, 0.05) 0%, transparent 50%),
-              radial-gradient(circle at 40% 80%, rgba(8, 145, 178, 0.05) 0%, transparent 50%);
+    radial-gradient(circle at 80% 20%, rgba(109, 40, 217, 0.05) 0%, transparent 50%),
+    radial-gradient(circle at 40% 80%, rgba(8, 145, 178, 0.05) 0%, transparent 50%);
   animation: backgroundShift 30s ease-in-out infinite;
 }
 
 @keyframes backgroundShift {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.7; }
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
 }
 
 .particles {
@@ -356,7 +473,6 @@ body {
   height: 40px;
   display: flex;
   align-items: center;
-  justify-items: center;
   justify-content: center;
   cursor: pointer;
   transition: all 0.3s ease;
@@ -486,9 +602,10 @@ body {
 }
 
 .user-role {
-  color: var(--text-secondary);
   font-size: 0.8rem;
-  text-transform: capitalize;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .btn {
@@ -532,19 +649,26 @@ body {
   align-items: center;
   padding: var(--spacing-2xl) var(--spacing-lg);
   position: relative;
-  background: linear-gradient(135deg,
-      rgba(30, 64, 175, 0.1) 0%,
-      rgba(139, 69, 19, 0.1) 25%,
-      rgba(30, 64, 175, 0.1) 50%,
-      rgba(139, 69, 19, 0.1) 75%,
-      rgba(30, 64, 175, 0.1) 100%);
+  background: linear-gradient(
+    135deg,
+    rgba(30, 64, 175, 0.1) 0%,
+    rgba(139, 69, 19, 0.1) 25%,
+    rgba(30, 64, 175, 0.1) 50%,
+    rgba(139, 69, 19, 0.1) 75%,
+    rgba(30, 64, 175, 0.1) 100%
+  );
   background-size: 400% 400%;
   animation: gradientShift 8s ease-in-out infinite;
 }
 
 @keyframes gradientShift {
-  0%, 100% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
 }
 
 .hero-container {
