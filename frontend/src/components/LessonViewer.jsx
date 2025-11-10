@@ -139,7 +139,7 @@ export default function LessonViewer({ lesson, onNext, onPrevious, onComplete, i
     setProcessing(true)
     try {
       if (onComplete) {
-        const result = await onComplete()
+        const result = await onComplete(lesson)
         if (result === false) {
           setProcessing(false)
           return

@@ -9,8 +9,8 @@ import { useApp } from '../context/AppContext'
 export default function CourseDetailsPage() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { showToast, userRole } = useApp()
-  const learnerId = userRole === 'learner' ? 'a1b2c3d4-e5f6-7890-1234-567890abcdef' : null
+  const { showToast, userRole, userProfile } = useApp()
+  const learnerId = userRole === 'learner' ? userProfile?.id : null
   const [course, setCourse] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -53,10 +53,17 @@ export default function CourseDetailsPage() {
       return
     }
 
+    if (!learnerId) {
+      showToast('Switch to the learner workspace to enrol.', 'info')
+      return
+    }
+
     setSubmitting(true)
     try {
       const response = await registerLearner(id, {
-        learner_id: learnerId
+        learner_id: learnerId,
+        learner_name: userProfile?.name,
+        learner_company: userProfile?.company
       })
       setLearnerProgress({
         is_enrolled: true,
@@ -69,9 +76,22 @@ export default function CourseDetailsPage() {
       setModalOpen(false)
       navigate(`/course/${id}/structure`)
     } catch (err) {
-      const errorMsg = err.response?.data?.message || err.message || 'Registration failed'
-      setError(errorMsg)
-      showToast(errorMsg, 'error')
+      if (err.response?.status === 409) {
+        showToast('You are already enrolled in this course.', 'info')
+        setLearnerProgress((prev) => prev || {
+          is_enrolled: true,
+          registration_id: null,
+          progress: 0,
+          status: 'in_progress',
+          completed_lessons: []
+        })
+        setModalOpen(false)
+        navigate(`/course/${id}/structure`)
+      } else {
+        const errorMsg = err.response?.data?.message || err.message || 'Registration failed'
+        setError(errorMsg)
+        showToast(errorMsg, 'error')
+      }
     } finally {
       setSubmitting(false)
     }
@@ -97,7 +117,7 @@ export default function CourseDetailsPage() {
     )
   }
 
-  const learnerName = userRole === 'learner' ? 'Learner' : null
+  const learnerName = userRole === 'learner' ? userProfile?.name : null
 
   return (
     <>
@@ -107,6 +127,8 @@ export default function CourseDetailsPage() {
         onEnrollClick={() => setModalOpen(true)}
         onContinue={() => navigate(`/course/${id}/structure`)}
         showStructureCta={userRole === 'learner'}
+        learnerProfile={userProfile}
+        progressSummary={learnerProgress}
       />
 
       <EnrollModal

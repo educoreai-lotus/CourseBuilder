@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react'
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { useApp } from '../context/AppContext'
+import logoLight from '../assets/logo-light.png'
+import logoDark from '../assets/logo-dark.png'
 import { useRole } from '../hooks/useRole.js'
 
 export default function Header() {
   const navigate = useNavigate()
   const location = useLocation()
-  const { theme, toggleTheme } = useApp()
+  const { theme, toggleTheme, userProfile } = useApp()
   const { userRole, switchRole, isLearner, isTrainer, availableRoles } = useRole()
   const [isMenuOpen, setMenuOpen] = useState(false)
 
@@ -42,12 +44,19 @@ export default function Header() {
           className="logo"
           onClick={() => setMenuOpen(false)}
         >
-          <span className="logo-text">Course Builder</span>
+          <img
+            src={theme === 'day-mode' ? logoLight : logoDark}
+            alt="Course Builder logo"
+            style={{ height: '34px', width: 'auto' }}
+          />
         </Link>
 
         <div className="user-info">
-          <span className="user-name">{isLearner ? 'Learner mode' : 'Trainer mode'}</span>
-          <span className="user-role">{isLearner ? 'Personalized learning' : 'Course operations'}</span>
+          <span className="user-name">{userProfile?.name || (isLearner ? 'Learner mode' : 'Trainer mode')}</span>
+          <span className="user-role">
+            {isLearner ? 'Personalized learning' : 'Course operations'}
+            {userProfile?.company ? ` · ${userProfile.company}` : ''}
+          </span>
         </div>
 
         <button
@@ -84,11 +93,15 @@ export default function Header() {
         <div className={`header-controls ${isMenuOpen ? 'nav-open' : ''}`}>
           <div className="user-profile">
             <div className={`user-avatar ${isTrainer ? 'trainer' : 'learner'}`}>
-              <i className={`fa-solid ${isTrainer ? 'fa-user-tie' : 'fa-user-graduate'}`} />
+              {userProfile?.avatar ? (
+                <span style={{ fontWeight: 700, fontSize: '0.9rem' }}>{userProfile.avatar}</span>
+              ) : (
+                <i className={`fa-solid ${isTrainer ? 'fa-user-tie' : 'fa-user-graduate'}`} />
+              )}
             </div>
             <div className="user-details">
-              <span className="user-name">Active mode</span>
-              <span className="user-role">{userRole}</span>
+              <span className="user-name">{userProfile?.name || 'Active mode'}</span>
+              <span className="user-role" style={{ textTransform: 'capitalize' }}>{userRole}</span>
             </div>
           </div>
 

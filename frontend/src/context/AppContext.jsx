@@ -1,22 +1,48 @@
-import React, { createContext, useContext, useMemo, useState, useEffect, useCallback } from 'react'
+import React, {
+  createContext,
+  useContext,
+  useMemo,
+  useState,
+  useEffect,
+  useCallback
+} from 'react'
 
 const AppContext = createContext(null)
 
 const ROLE_STORAGE_KEY = 'coursebuilder:userRole'
 const allowedRoles = ['learner', 'trainer']
 
+const roleProfiles = {
+  learner: {
+    id: '10000000-0000-0000-0000-000000000001',
+    name: 'Alice Learner',
+    email: 'alice.learner@example.com',
+    company: 'Emerald Learning',
+    avatar: 'AL'
+  },
+  trainer: {
+    id: '20000000-0000-0000-0000-000000000001',
+    name: 'Tristan Trainer',
+    email: 'tristan.trainer@example.com',
+    company: 'Emerald Learning',
+    avatar: 'TT'
+  }
+}
+
+const getStoredRole = () => {
+  if (typeof window === 'undefined') {
+    return 'learner'
+  }
+  const storedRole = window.localStorage.getItem(ROLE_STORAGE_KEY)
+  return storedRole && allowedRoles.includes(storedRole) ? storedRole : 'learner'
+}
+
+const getProfileForRole = (role) => roleProfiles[role] || roleProfiles.learner
+
 export function AppProvider({ children }) {
   const [theme, setTheme] = useState('day-mode') // 'day-mode' or 'night-mode'
-  const [userRole, setUserRoleState] = useState(() => {
-    if (typeof window === 'undefined') {
-      return 'learner'
-    }
-    const storedRole = window.localStorage.getItem(ROLE_STORAGE_KEY)
-    if (storedRole && allowedRoles.includes(storedRole)) {
-      return storedRole
-    }
-    return 'learner'
-  })
+  const [userRole, setUserRoleState] = useState(getStoredRole)
+  const [userProfile, setUserProfileState] = useState(() => getProfileForRole(getStoredRole()))
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [toast, setToast] = useState(null) // { message, type: 'success' | 'error' | 'info' }
@@ -57,9 +83,14 @@ export function AppProvider({ children }) {
     setTheme(prev => prev === 'day-mode' ? 'night-mode' : 'day-mode')
   }
 
+  const setUserProfile = useCallback((profile) => {
+    setUserProfileState(profile)
+  }, [])
+
   const setUserRole = useCallback((role) => {
     const normalizedRole = allowedRoles.includes(role) ? role : 'learner'
     setUserRoleState(normalizedRole)
+    setUserProfileState(roleProfiles[normalizedRole])
     if (typeof window !== 'undefined') {
       window.localStorage.setItem(ROLE_STORAGE_KEY, normalizedRole)
     }
@@ -71,6 +102,11 @@ export function AppProvider({ children }) {
       setUserRole('learner')
     }
   }, [userRole, setUserRole])
+
+  useEffect(() => {
+    const fallbackRole = allowedRoles.includes(userRole) ? userRole : 'learner'
+    setUserProfileState(getProfileForRole(fallbackRole))
+  }, [userRole])
 
   const showToast = (message, type = 'success') => {
     setToast({ message, type })
@@ -93,9 +129,11 @@ export function AppProvider({ children }) {
     setError,
     toast,
     showToast,
+    userProfile,
+    setUserProfile,
     accessibility,
     updateAccessibility
-  }), [theme, userRole, loading, error, toast, accessibility])
+  }), [theme, userRole, loading, error, toast, userProfile, accessibility, setUserProfile])
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>
 }

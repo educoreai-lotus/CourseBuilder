@@ -9,7 +9,7 @@ export default function FeedbackPage() {
   const { courseId, id } = useParams()
   const navigate = useNavigate()
   const actualCourseId = courseId || id
-  const { showToast } = useApp()
+  const { showToast, userProfile, userRole } = useApp()
   const [rating, setRating] = useState(5)
   const [comment, setComment] = useState('')
   const [tags, setTags] = useState([])
@@ -58,9 +58,16 @@ export default function FeedbackPage() {
     }
 
     setLoading(true)
+    const learnerId = userRole === 'learner' ? userProfile?.id : null
+    if (!learnerId) {
+      showToast('Switch to the learner workspace to share feedback.', 'info')
+      return
+    }
+
     try {
       await submitFeedback(actualCourseId, {
-        learner_id: 'a1b2c3d4-e5f6-7890-1234-567890abcdef',
+        learner_id: learnerId,
+        learner_name: userProfile?.name,
         rating: numericRating,
         tags: tags.length > 0 ? tags : ['General'],
         comment: comment.trim()

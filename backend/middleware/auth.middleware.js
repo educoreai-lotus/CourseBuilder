@@ -5,8 +5,18 @@ const DEFAULT_PUBLIC_ROUTES = [
   { method: 'OPTIONS', pattern: /.*/ }
 ];
 
-const isSecurityDisabled = () =>
-  process.env.AUTH_DISABLED === 'true' || process.env.NODE_ENV === 'test';
+const isSecurityDisabled = () => {
+  if (process.env.AUTH_DISABLED === 'true') {
+    return true;
+  }
+
+  const env = process.env.NODE_ENV;
+  if (!env || env === 'development' || env === 'test') {
+    return true;
+  }
+
+  return false;
+};
 
 const isPublicRoute = (req) => {
   return DEFAULT_PUBLIC_ROUTES.some(

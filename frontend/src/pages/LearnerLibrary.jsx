@@ -131,19 +131,30 @@ function LibraryCourseCard({ course }) {
 }
 
 export default function LearnerLibrary() {
-  const { showToast } = useApp()
+  const { showToast, userProfile, userRole } = useApp()
   const [courses, setCourses] = useState([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState('all')
 
   useEffect(() => {
-    loadProgress()
-  }, [])
+    if (userRole !== 'learner') {
+      setCourses([])
+      setLoading(false)
+      return
+    }
+    if (userProfile?.id) {
+      loadProgress(userProfile.id)
+    }
+  }, [userProfile?.id, userRole])
 
-  const loadProgress = async () => {
+  const loadProgress = async (learnerId = userProfile?.id) => {
+    if (!learnerId) {
+      showToast('Select a learner profile to view your library.', 'info')
+      return
+    }
+
     setLoading(true)
     try {
-      const learnerId = 'a1b2c3d4-e5f6-7890-1234-567890abcdef'
       const progressData = await getLearnerProgress(learnerId)
       const enhancedCourses = progressData.map(course => ({
         id: course.course_id,
@@ -169,6 +180,20 @@ export default function LearnerLibrary() {
     return true
   })
 
+  if (userRole !== 'learner') {
+    return (
+      <div className="section-panel" style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', gap: 'var(--spacing-md)' }}>
+        <i className="fa-solid fa-user-graduate" style={{ fontSize: '2.5rem', color: 'var(--primary-cyan)' }} />
+        <div>
+          <h2 style={{ fontSize: '1.8rem', fontWeight: 600 }}>Learner library unavailable</h2>
+          <p style={{ color: 'var(--text-muted)', marginTop: 'var(--spacing-sm)' }}>
+            Switch to the learner workspace to review active enrolments and progress.
+          </p>
+        </div>
+      </div>
+    )
+  }
+
   if (loading) {
     return (
       <div className="section-panel" style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -182,7 +207,7 @@ export default function LearnerLibrary() {
       <section className="hero">
         <div className="hero-container">
           <div className="hero-content">
-            <p className="subtitle">My library</p>
+            <p className="subtitle">Welcome back{userProfile?.name ? `, ${userProfile.name}` : ''}</p>
             <h1>Continue where you left off</h1>
             <p className="subtitle">
               Access enrolled courses, monitor progress, and complete pending assessments to unlock certificates.
@@ -191,7 +216,12 @@ export default function LearnerLibrary() {
               <Link to="/learner/marketplace" className="btn btn-primary">
                 Enrol in new course
               </Link>
-              <button type="button" className="btn btn-secondary" onClick={loadProgress}>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => loadProgress(userProfile?.id)}
+                disabled={!userProfile?.id}
+              >
                 Refresh progress
               </button>
             </div>

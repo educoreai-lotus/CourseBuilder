@@ -183,47 +183,58 @@ export default function CourseStructure({
 
                     {expandedModules.has(module.id) && (
                       <ul style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-sm)', marginTop: 'var(--spacing-md)' }}>
-                        {(module.lessons || []).map((lesson) => (
-                          <li
-                            key={lesson.id}
-                            className="lesson-card"
-                            style={{
-                              display: 'flex',
-                              justifyContent: 'space-between',
-                              gap: 'var(--spacing-md)',
-                              alignItems: 'center',
-                              padding: 'var(--spacing-md)',
-                              borderRadius: 'var(--radius-md)',
-                              background: 'var(--bg-secondary)',
-                              border: '1px solid rgba(15,118,110,0.12)'
-                            }}
-                          >
-                            <div style={{ display: 'flex', gap: 'var(--spacing-md)', alignItems: 'center' }}>
-                              <span className="card-icon" style={{ width: '40px', height: '40px' }}>
-                                <i className={`fa-solid ${lesson.icon}`} />
-                              </span>
-                              <div>
-                                <h5 style={{ marginBottom: '4px', fontWeight: 600 }}>{lesson.title}</h5>
-                                <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-                                  <i className="fa-solid fa-clock" style={{ marginRight: '6px' }} />
-                                  {lesson.duration} mins · Lesson #{lesson.id.toString().slice(-2)}
-                                </p>
+                        {(module.lessons || []).map((lesson) => {
+                          const isCompleted = completedLessonIds.includes(lesson.id)
+                          const isAccessible = unlocked || lesson.status === 'unlocked' || isCompleted
+                          const isLocked = !isAccessible && lesson.status === 'locked'
+                          const label = isCompleted
+                            ? 'Review'
+                            : completedLessonIds.length > 0
+                              ? 'Resume'
+                              : 'Start'
+
+                          return (
+                            <li
+                              key={lesson.id}
+                              className="lesson-card"
+                              style={{
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                gap: 'var(--spacing-md)',
+                                alignItems: 'center',
+                                padding: 'var(--spacing-md)',
+                                borderRadius: 'var(--radius-md)',
+                                background: 'var(--bg-secondary)',
+                                border: '1px solid rgba(15,118,110,0.12)'
+                              }}
+                            >
+                              <div style={{ display: 'flex', gap: 'var(--spacing-md)', alignItems: 'center' }}>
+                                <span className="card-icon" style={{ width: '40px', height: '40px' }}>
+                                  <i className={`fa-solid ${lesson.icon}`} />
+                                </span>
+                                <div>
+                                  <h5 style={{ marginBottom: '4px', fontWeight: 600 }}>{lesson.title}</h5>
+                                  <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                                    <i className="fa-solid fa-clock" style={{ marginRight: '6px' }} />
+                                    {lesson.duration} mins · Lesson #{lesson.id.toString().slice(-2)}
+                                  </p>
+                                </div>
                               </div>
-                            </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)' }}>
-                              {renderLessonStatus(lesson.id, lesson.status)}
-                              <button
-                                type="button"
-                                className="btn btn-secondary"
-                                onClick={() => onSelectLesson?.(lesson.id)}
-                                disabled={!unlocked && lesson.status === 'locked' && !completedLessonIds.includes(lesson.id)}
-                              >
-                                <i className="fa-solid fa-play" />
-                                Start
-                              </button>
-                            </div>
-                          </li>
-                        ))}
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)' }}>
+                                {renderLessonStatus(lesson.id, lesson.status)}
+                                <button
+                                  type="button"
+                                  className="btn btn-secondary"
+                                  onClick={() => onSelectLesson?.(lesson.id)}
+                                  disabled={isLocked}
+                                >
+                                  <i className="fa-solid fa-play" />
+                                  {label}
+                                </button>
+                              </div>
+                            </li>
+                          )
+                        })}
                       </ul>
                     )}
                   </section>

@@ -8,8 +8,8 @@ import { useApp } from '../context/AppContext'
 export default function CourseStructurePage() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { showToast, userRole } = useApp()
-  const learnerId = userRole === 'learner' ? 'a1b2c3d4-e5f6-7890-1234-567890abcdef' : null
+  const { showToast, userRole, userProfile } = useApp()
+  const learnerId = userRole === 'learner' ? userProfile?.id : null
 
   const [course, setCourse] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -51,7 +51,20 @@ export default function CourseStructurePage() {
   }, [id, learnerProgress, loading, navigate, userRole])
 
   if (userRole === 'learner' && !learnerProgress?.is_enrolled && !loading) {
-    return null
+    return (
+      <div className="section-panel" style={{ minHeight: '60vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', gap: 'var(--spacing-md)' }}>
+        <i className="fa-solid fa-circle-info" style={{ fontSize: '2.5rem', color: 'var(--primary-cyan)' }} />
+        <div>
+          <h2 style={{ fontSize: '1.9rem', fontWeight: 600 }}>Enrol to view the structure</h2>
+          <p style={{ color: 'var(--text-muted)', marginTop: 'var(--spacing-sm)', maxWidth: '420px' }}>
+            Secure your spot in this course to unlock the module and lesson outline.
+          </p>
+        </div>
+        <button type="button" className="btn btn-primary" onClick={() => navigate(`/course/${id}/overview`)}>
+          Back to overview
+        </button>
+      </div>
+    )
   }
 
   const handleSelectLesson = (lessonId) => {
@@ -63,12 +76,14 @@ export default function CourseStructurePage() {
     return total + (module.lessons?.length || 0)
   }, 0) || 0
 
+  const progressPercent = Math.round(learnerProgress?.progress ?? ((completedLessons.length / (totalLessons || 1)) * 100))
+
   const completionBadge = (
     <div className="floating-card" style={{ padding: 'var(--spacing-md)', fontSize: '0.95rem', background: 'rgba(16,185,129,0.08)' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)' }}>
         <i className="fa-solid fa-chart-simple" style={{ color: '#047857' }} />
         <span>
-          Progress {completedLessons.length}/{totalLessons} lessons complete
+          Progress {progressPercent}% · {completedLessons.length}/{totalLessons} lessons complete
         </span>
       </div>
     </div>
@@ -110,6 +125,14 @@ export default function CourseStructurePage() {
               Explore the adaptive journey, track your milestones, and jump into the next lesson when ready.
             </p>
             {completionBadge}
+            {learnerProgress?.status && (
+              <p style={{ marginTop: 'var(--spacing-md)', fontSize: '0.9rem', color: 'var(--text-muted)' }}>
+                Status:&nbsp;
+                <span style={{ textTransform: 'capitalize', color: 'var(--text-primary)', fontWeight: 600 }}>
+                  {learnerProgress.status.replace('_', ' ')}
+                </span>
+              </p>
+            )}
           </div>
         </div>
       </header>

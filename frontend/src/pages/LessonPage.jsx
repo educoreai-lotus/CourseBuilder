@@ -8,8 +8,8 @@ import { useApp } from '../context/AppContext'
 export default function LessonPage() {
   const { id: courseId, lessonId } = useParams()
   const navigate = useNavigate()
-  const { showToast, userRole } = useApp()
-  const learnerId = userRole === 'learner' ? 'a1b2c3d4-e5f6-7890-1234-567890abcdef' : null
+  const { showToast, userRole, userProfile } = useApp()
+  const learnerId = userRole === 'learner' ? userProfile?.id : null
 
   const [loading, setLoading] = useState(true)
   const [lesson, setLesson] = useState(null)

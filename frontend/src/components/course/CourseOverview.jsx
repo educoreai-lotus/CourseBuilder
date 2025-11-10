@@ -37,14 +37,17 @@ export default function CourseOverview({
   isEnrolled,
   onEnrollClick,
   onContinue,
-  showStructureCta = true
+  showStructureCta = true,
+  learnerProfile,
+  progressSummary
 }) {
   if (!course) {
     return null
   }
 
   const metadata = getMetadataItems(course)
-  const tags = course?.tags || course?.skills || []
+  const metadataTags = course?.metadata?.tags || course?.metadata?.skills || []
+  const tags = course?.tags || course?.skills || metadataTags
   const summary = course?.summary || course?.description || course?.course_description
 
   return (
@@ -97,7 +100,7 @@ export default function CourseOverview({
           </div>
 
           <div className="hero-visual">
-            <div className="floating-card" aria-label="Course summary metrics">
+            <div className="floating-card" aria-label="Course summary metrics" style={{ gap: 'var(--spacing-md)' }}>
               <div className="card-header">
                 <div className="card-icon">
                   <i className="fa-solid fa-graduation-cap" />
@@ -117,6 +120,35 @@ export default function CourseOverview({
                 </li>
               </ul>
             </div>
+
+            {isEnrolled && progressSummary && (
+              <div className="floating-card" aria-label="Your enrollment status">
+                <div className="card-header">
+                  <div className="card-icon">
+                    <i className="fa-solid fa-circle-check" />
+                  </div>
+                  <span className="card-title">You&apos;re enrolled</span>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-sm)', fontSize: '0.9rem' }}>
+                  <div>
+                    <span style={{ fontWeight: 600 }}>Learner:</span>{' '}
+                    <span>{learnerProfile?.name || 'You'}</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)' }}>
+                    <span className="status-chip" style={{ background: 'rgba(14,165,233,0.12)', color: '#0f766e' }}>
+                      <i className="fa-solid fa-chart-line" /> {Math.round(progressSummary.progress ?? 0)}%
+                    </span>
+                    <span style={{ color: 'var(--text-muted)' }}>
+                      {progressSummary.status?.replace('_', ' ') || 'in progress'}
+                    </span>
+                  </div>
+                  <p style={{ color: 'var(--text-muted)' }}>
+                    {progressSummary.completed_lessons?.length || 0} lesson
+                    {progressSummary.completed_lessons?.length === 1 ? '' : 's'} completed so far.
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </section>
