@@ -30,17 +30,9 @@
   --gradient-card: linear-gradient(145deg, #ffffff, #f0fdfa);
 
   /* Shadows - Dark Emerald Glow Effects */
-  --shadow-glow: 0 14px 38px rgba(6, 95, 70, 0.22);
-  --shadow-card: 0 18px 45px rgba(15, 23, 42, 0.12);
-  --shadow-hover: 0 26px 60px rgba(6, 95, 70, 0.18);
-
-  /* Radii */
-  --radius-xs: 8px;
-  --radius-sm: 12px;
-  --radius-md: 18px;
-  --radius-lg: 24px;
-  --radius-xl: 32px;
-  --radius-pill: 999px;
+  --shadow-glow: 0 0 30px rgba(6, 95, 70, 0.3);
+  --shadow-card: 0 10px 40px rgba(0, 0, 0, 0.1);
+  --shadow-hover: 0 20px 60px rgba(6, 95, 70, 0.2);
 
   /* Spacing */
   --spacing-xs: 0.5rem;
@@ -269,15 +261,14 @@
 
 .dashboard-card {
   background: var(--gradient-card);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: var(--radius-lg);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
   padding: var(--spacing-xl);
   text-align: center;
   transition: all 0.3s ease;
   cursor: pointer;
   position: relative;
   overflow: hidden;
-  box-shadow: var(--shadow-card);
 }
 
 .dashboard-card::before {
@@ -296,9 +287,9 @@
 }
 
 .dashboard-card:hover {
-  transform: translateY(-4px);
+  transform: translateY(-5px);
   border-color: var(--primary-cyan);
-  box-shadow: var(--shadow-hover);
+  box-shadow: 0 15px 30px rgba(8, 145, 178, 0.2);
 }
 
 .dashboard-icon {
@@ -306,7 +297,7 @@
   height: 60px;
   margin: 0 auto var(--spacing-md);
   background: var(--gradient-primary);
-  border-radius: var(--radius-md);
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -413,8 +404,8 @@ body {
 
 .section-panel {
   background: var(--bg-card);
-  border: 1px solid rgba(148, 163, 184, 0.22);
-  border-radius: var(--radius-xl);
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  border-radius: 24px;
   padding: var(--spacing-xl);
   box-shadow: var(--shadow-card);
   backdrop-filter: blur(16px);
@@ -528,12 +519,11 @@ body {
   align-items: flex-start;
   gap: 8px;
   padding: var(--spacing-md);
-  border-radius: var(--radius-md);
-  border: 1px solid rgba(148, 163, 184, 0.3);
+  border-radius: 18px;
+  border: 1px solid rgba(148, 163, 184, 0.35);
   background: var(--bg-card);
   font-size: 0.9rem;
   transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
-  box-shadow: var(--shadow-card);
 }
 
 .stage-button span {
@@ -579,8 +569,8 @@ body {
   flex-direction: column;
   gap: var(--spacing-md);
   background: var(--bg-card);
-  border: 1px solid rgba(148, 163, 184, 0.22);
-  border-radius: var(--radius-lg);
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  border-radius: 24px;
   padding: var(--spacing-lg);
   box-shadow: var(--shadow-card);
   transition: transform 0.25s ease, box-shadow 0.25s ease;
@@ -598,7 +588,7 @@ body {
   border: 1px solid rgba(148, 163, 184, 0.35);
   background: var(--bg-card);
   color: var(--text-primary);
-  border-radius: var(--radius-md);
+  border-radius: 12px;
   width: 44px;
   height: 44px;
   box-shadow: var(--shadow-card);
@@ -611,14 +601,13 @@ body {
 }
 
 .role-selector {
-  border: 1px solid rgba(148, 163, 184, 0.32);
+  border: 1px solid rgba(148, 163, 184, 0.35);
   background: rgba(255, 255, 255, 0.85);
   color: var(--text-secondary);
-  border-radius: var(--radius-md);
+  border-radius: 16px;
   padding: 10px 16px;
   font-weight: 600;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
-  box-shadow: var(--shadow-card);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .role-selector:focus {
@@ -762,31 +751,93 @@ body {
 }
 
 .logo {
+  display: flex;
+  align-items: center;
+  text-decoration: none;
+  transition: all 0.3s ease;
+  height: 80px;
+  gap: 16px;
+  color: var(--text-primary);
+}
+
+.logo:hover {
+  transform: scale(1.02);
+}
+
+.logo img {
+  height: 80px;
+  width: auto;
+  max-width: 400px;
+  transition: all 0.3s ease;
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+  border-radius: 8px;
+  padding: 4px;
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.1));
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+}
+
+.logo .text-container {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+}
+
+.logo .brand-name {
   font-family: 'Space Grotesk', sans-serif;
   font-size: 1.5rem;
-  font-weight: 700;
-  background: var(--gradient-primary);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  font-weight: 800;
+  color: var(--text-primary);
+  letter-spacing: 0.5px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
-.brand-logo {
-  height: 48px;
-  width: auto;
-  display: block;
-  filter: drop-shadow(0 6px 18px rgba(6, 95, 70, 0.35));
-  transition: transform 0.3s ease, filter 0.3s ease;
+.logo .brand-subtitle {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  opacity: 0.75;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  margin-top: 2px;
 }
 
-.brand-logo:hover {
-  transform: translateY(-2px) scale(1.02);
-  filter: drop-shadow(0 12px 24px rgba(12, 148, 106, 0.45));
+@media (max-width: 768px) {
+  .logo {
+    height: 65px;
+    gap: 12px;
+  }
+
+  .logo img {
+    height: 50px;
+  }
+
+  .logo .brand-name {
+    font-size: 1.25rem;
+  }
+
+  .logo .brand-subtitle {
+    font-size: 0.7rem;
+  }
 }
 
-@media (max-width: 720px) {
-  .brand-logo {
-    height: 40px;
+@media (max-width: 480px) {
+  .logo {
+    height: 55px;
+    gap: 10px;
+  }
+
+  .logo img {
+    height: 42px;
+  }
+
+  .logo .brand-name {
+    font-size: 1.1rem;
+  }
+
+  .logo .brand-subtitle {
+    font-size: 0.65rem;
   }
 }
 
@@ -930,7 +981,7 @@ body {
 .btn {
   padding: var(--spacing-sm) var(--spacing-lg);
   border: none;
-  border-radius: var(--radius-md);
+  border-radius: 8px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s ease;
@@ -938,7 +989,6 @@ body {
   display: inline-flex;
   align-items: center;
   gap: var(--spacing-xs);
-  box-shadow: var(--shadow-card);
 }
 
 .btn-primary {
@@ -949,7 +999,7 @@ body {
 
 .btn-primary:hover {
   transform: translateY(-2px);
-  box-shadow: var(--shadow-hover);
+  box-shadow: 0 10px 25px rgba(37, 99, 235, 0.4);
 }
 
 .btn-secondary {
@@ -971,14 +1021,16 @@ body {
   position: relative;
   background: linear-gradient(
     135deg,
-    rgba(6, 95, 70, 0.08) 0%,
-    rgba(15, 118, 110, 0.06) 50%,
-    rgba(4, 120, 87, 0.08) 100%
+    rgba(30, 64, 175, 0.1) 0%,
+    rgba(139, 69, 19, 0.1) 25%,
+    rgba(30, 64, 175, 0.1) 50%,
+    rgba(139, 69, 19, 0.1) 75%,
+    rgba(30, 64, 175, 0.1) 100%
   );
-  background-size: 280% 280%;
-  border-radius: 0 0 var(--radius-xl) var(--radius-xl);
+  background-size: 400% 400%;
+  border-radius: 0;
   overflow: hidden;
-  animation: gradientShift 16s ease-in-out infinite;
+  animation: gradientShift 8s ease-in-out infinite;
 }
 
 @keyframes gradientShift {
@@ -1064,12 +1116,11 @@ body {
 
 .gamification-preview {
   background: var(--gradient-card);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: var(--radius-lg);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
   padding: var(--spacing-lg);
   margin: var(--spacing-lg) 0;
   backdrop-filter: blur(10px);
-  box-shadow: var(--shadow-card);
 }
 
 .xp-bar {
@@ -1088,14 +1139,14 @@ body {
   width: 100%;
   height: 12px;
   background: rgba(255, 255, 255, 0.1);
-  border-radius: var(--radius-xs);
+  border-radius: 6px;
   overflow: hidden;
 }
 
 .xp-fill {
   height: 100%;
   background: linear-gradient(90deg, var(--xp-color), var(--accent-orange));
-  border-radius: var(--radius-xs);
+  border-radius: 6px;
   position: relative;
   animation: xpGlow 2s ease-in-out infinite;
 }
@@ -2089,8 +2140,8 @@ body {
 
 .modal-card {
   background: var(--app-surface);
-  border-radius: var(--radius-xl);
-  box-shadow: var(--shadow-xl);
+  border-radius: 24px;
+  box-shadow: var(--shadow-card);
   max-width: 520px;
   width: 100%;
   padding: var(--spacing-xl);

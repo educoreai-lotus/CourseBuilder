@@ -19,3 +19,8 @@
 - Linked the assessment placeholder to jump directly into the feedback page after the simulated exam and routed all back/cancel buttons to the course structure view for consistency.
 - Aligned the feedback screen navigation (back, cancel, success states) with the course structure route so the four-step loop remains linear.
 
+## 2025-11-10 – Align With Vite Reference Styling
+- Mirrored the visual language from `course-builder-vite/frontend`: restored the original emerald shadow set, hero gradients, and card geometry, and rewired the header layout to include the brand lockup plus themed toggle behaviour.
+- Updated navigation and mobile drawers to follow the reference pattern while keeping role switching and route separation intact.
+- Synced global button, card, modal, and dashboard treatments so the current app now renders with the same look and feel as the reference implementation.
+
