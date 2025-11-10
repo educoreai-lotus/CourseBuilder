@@ -17,8 +17,8 @@ export default function Header() {
   const learnerNav = [
     { to: '/learner/dashboard', label: 'Dashboard', icon: 'fa-solid fa-house' },
     { to: '/learner/marketplace', label: 'Marketplace', icon: 'fa-solid fa-store' },
-    { to: '/learner/for-you', label: 'For You', icon: 'fa-solid fa-wand-magic-sparkles' },
-    { to: '/learner/library', label: 'My Library', icon: 'fa-solid fa-book-open-reader' }
+    { to: '/learner/personalized', label: 'Personalized', icon: 'fa-solid fa-wand-magic-sparkles' },
+    { to: '/learner/enrolled', label: 'Enrolled', icon: 'fa-solid fa-book-open-reader' }
   ]
 
   const trainerNav = [

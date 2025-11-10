@@ -1,16 +1,6 @@
 import db from '../config/database.js';
 import { v4 as uuidv4 } from 'uuid';
-
-// Simulate Content Studio response for a given skill list
-function simulateContentStudioLessons(skills) {
-  // Build a simple deterministic set of lessons per skill
-  return skills.map((skill, index) => ({
-    lesson_name: `${skill} Basics`,
-    content_type: 'text',
-    content_data: { content_ref: `doc://${skill.toLowerCase()}_basics` },
-    order_index: index + 1
-  }));
-}
+import { requestLessonsFromContentStudio } from './contentDelegation.service.js';
 
 export const generateStructure = async (courseInputDTO) => {
   const { learningPath, skills, level, duration, metadata } = courseInputDTO;
@@ -53,29 +43,66 @@ export const generateStructure = async (courseInputDTO) => {
     for (const topic of learningPath) {
       const moduleId = uuidv4();
       await t.none(
-        `INSERT INTO modules (module_id, course_id, module_name, order_index, metadata)
-         VALUES ($1,$2,$3,$4,'{}')`,
+        `INSERT INTO modules (module_id, course_id, name, "order", metadata)
+         VALUES ($1,$2,$3,$4,'{}'::jsonb)`,
         [moduleId, courseId, topic.topicName, moduleOrder]
       );
 
       // Each topic becomes one topic row under the module
       const topicId = uuidv4();
       await t.none(
-        `INSERT INTO topics (topic_id, module_id, topic_name, topic_description, topic_language, order_index)
+        `INSERT INTO topics (topic_id, module_id, topic_name, topic_description, content_ref, topic_language)
          VALUES ($1,$2,$3,$4,$5,$6)`,
-        [topicId, moduleId, topic.topicName, topic.topicDescription || '', topic.topicLanguage || 'English', 1]
+        [topicId, moduleId, topic.topicName, topic.topicDescription || '', null, topic.topicLanguage || 'English']
       );
 
-      // Simulate lessons from Content Studio
-      const lessons = simulateContentStudioLessons(skills);
+      // Fetch lessons from Content Studio (gRPC) with graceful fallback
+      const { lessons } = await requestLessonsFromContentStudio({
+        courseId,
+        moduleId,
+        topic: {
+          topicId,
+          topicName: topic.topicName,
+          topicDescription: topic.topicDescription,
+          topicLanguage: topic.topicLanguage
+        },
+        skills,
+        learnerContext: {
+          learnerId: metadata?.learner_id || null,
+          metadata
+        }
+      });
+
       let lessonOrder = 1;
       for (const lesson of lessons) {
+        const lessonId = lesson.lessonId || uuidv4();
+        const lessonName = lesson.lessonName || lesson.title || `Lesson ${lessonOrder}`;
+        const lessonType = lesson.contentType || lesson.type || 'text';
+        const lessonOrderIndex = lesson.order || lesson.order_index || lessonOrder;
+        const contentRef =
+          lesson.contentRef ||
+          lesson.content_data?.content_ref ||
+          `doc://${lessonName.toLowerCase().replace(/\s+/g, '_')}`;
+
         await t.none(
-          `INSERT INTO lessons (lesson_id, topic_id, lesson_name, content_type, content_data, order_index)
-           VALUES ($1,$2,$3,$4,$5,$6)`,
-          [uuidv4(), topicId, lesson.lesson_name, lesson.content_type, JSON.stringify(lesson.content_data), lessonOrder]
+          `INSERT INTO lessons (lesson_id, module_id, topic_id, lesson_name, content_type, content_data, "order")
+           VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+          [
+            lessonId,
+            moduleId,
+            topicId,
+            lessonName,
+            lessonType,
+            JSON.stringify(
+              lesson.content_data || {
+                content_ref: contentRef,
+                source: lesson.source || 'content-studio'
+              }
+            ),
+            lessonOrderIndex
+          ]
         );
-        lessonOrder += 1;
+        lessonOrder = lessonOrderIndex + 1;
         totalLessons += 1;
       }
 

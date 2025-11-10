@@ -69,8 +69,10 @@ function AppShell() {
             <>
               <Route path="/learner/dashboard" element={<LearnerDashboard />} />
               <Route path="/learner/marketplace" element={<LearnerMarketplace />} />
-              <Route path="/learner/for-you" element={<LearnerForYou />} />
-              <Route path="/learner/library" element={<LearnerLibrary />} />
+              <Route path="/learner/personalized" element={<LearnerForYou />} />
+              <Route path="/learner/enrolled" element={<LearnerLibrary />} />
+              <Route path="/learner/for-you" element={<Navigate to="/learner/personalized" replace />} />
+              <Route path="/learner/library" element={<Navigate to="/learner/enrolled" replace />} />
               <Route path="/courses" element={<CoursesPage />} />
             </>
           )}

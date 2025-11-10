@@ -12,16 +12,16 @@ const quickActions = [
     to: '/learner/marketplace'
   },
   {
-    title: 'For You',
+    title: 'Personalized',
     description: 'AI-personalised recommendations to stay ahead.',
     icon: 'fa-solid fa-wand-magic-sparkles',
-    to: '/learner/for-you'
+    to: '/learner/personalized'
   },
   {
-    title: 'My Library',
+    title: 'Enrolled',
     description: 'Resume courses and track certificates in progress.',
     icon: 'fa-solid fa-book-open-reader',
-    to: '/learner/library'
+    to: '/learner/enrolled'
   }
 ]
 
@@ -105,7 +105,7 @@ export default function LearnerDashboard() {
               <Link to="/learner/marketplace" className="btn btn-primary">
                 Browse marketplace
               </Link>
-              <Link to="/learner/for-you" className="btn btn-secondary">
+              <Link to="/learner/personalized" className="btn btn-secondary">
                 View recommendations
               </Link>
             </div>
@@ -155,7 +155,7 @@ export default function LearnerDashboard() {
             <Link to="/learner/marketplace" className="btn btn-primary">
               Browse Marketplace
             </Link>
-            <Link to="/learner/for-you" className="btn btn-secondary">
+            <Link to="/learner/personalized" className="btn btn-secondary">
               Get Recommendations
             </Link>
           </div>
@@ -168,7 +168,7 @@ export default function LearnerDashboard() {
                 <h2>Recommended for you</h2>
                 <p>Curated from your interests and recent activity.</p>
               </div>
-              <Link to="/learner/for-you" className="action-link">
+              <Link to="/learner/personalized" className="action-link">
                 View personalised hub <i className="fa-solid fa-chevron-right text-xs" />
               </Link>
             </div>
@@ -211,7 +211,7 @@ export default function LearnerDashboard() {
                   <h2>Continue learning</h2>
                   <p>Pick up where you left off last session.</p>
                 </div>
-                <Link to="/learner/library" className="action-link">
+                <Link to="/learner/enrolled" className="action-link">
                   View all <i className="fa-solid fa-arrow-right" />
                 </Link>
               </div>

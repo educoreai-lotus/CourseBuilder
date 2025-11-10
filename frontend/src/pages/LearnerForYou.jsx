@@ -196,7 +196,7 @@ export default function LearnerForYou() {
               These learning paths adapt to your progress. Complete lessons, unlock exercises, then take the exam before sharing feedback for deeper insights.
             </p>
             <div className="hero-actions">
-              <Link to="/learner/library" className="btn btn-primary">
+              <Link to="/learner/enrolled" className="btn btn-primary">
                 View my library
               </Link>
               <Link to="/learner/marketplace" className="btn btn-secondary">

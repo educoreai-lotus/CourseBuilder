@@ -12,7 +12,6 @@ export default {
   globalSetup: path.join(__dirname, 'jest.global-setup.js'),
   globalTeardown: path.join(__dirname, 'jest.global-teardown.js'),
   transform: {},
-  extensionsToTreatAsEsm: ['.js'],
   coverageThreshold: {
     global: {
       branches: 80,

@@ -1,6 +1,7 @@
 import express from 'express';
 import { coursesController } from '../controllers/courses.controller.js';
 import { feedbackController } from '../controllers/feedback.controller.js';
+import { authorizeRoles } from '../middleware/auth.middleware.js';
 
 const router = express.Router();
 
@@ -22,7 +23,7 @@ router.get('/learners/:learnerId/progress', coursesController.getLearnerProgress
  * POST /api/v1/courses
  * Create a new course draft (Trainer/Admin)
  */
-router.post('/', coursesController.createCourse);
+router.post('/', authorizeRoles('trainer', 'admin'), coursesController.createCourse);
 
 /**
  * GET /api/v1/courses
@@ -41,31 +42,31 @@ router.get('/:id', coursesController.getCourseDetails);
  * PUT /api/v1/courses/:id
  * Update course metadata (Trainer/Admin)
  */
-router.put('/:id', coursesController.updateCourse);
+router.put('/:id', authorizeRoles('trainer', 'admin'), coursesController.updateCourse);
 
 /**
  * POST /api/v1/courses/:id/register
  * Register a learner for a course
  */
-router.post('/:id/register', coursesController.registerForCourse);
+router.post('/:id/register', authorizeRoles('learner'), coursesController.registerForCourse);
 
 /**
  * POST /api/v1/courses/:id/publish
  * Publish course immediately (Trainer/Admin)
  */
-router.post('/:id/publish', coursesController.publishCourse);
+router.post('/:id/publish', authorizeRoles('trainer', 'admin'), coursesController.publishCourse);
 
 /**
  * POST /api/v1/courses/:id/schedule
  * Schedule course publishing (Trainer/Admin)
  */
-router.post('/:id/schedule', coursesController.schedulePublishing);
+router.post('/:id/schedule', authorizeRoles('trainer', 'admin'), coursesController.schedulePublishing);
 
 /**
  * POST /api/v1/courses/:id/unpublish
  * Unpublish/archive course (Admin)
  */
-router.post('/:id/unpublish', coursesController.unpublishCourse);
+router.post('/:id/unpublish', authorizeRoles('trainer', 'admin'), coursesController.unpublishCourse);
 
 /**
  * GET /api/v1/courses/:id/versions

@@ -15,7 +15,7 @@ Implementation tracker for Course Builder v1 MVP. Use this table during developm
 | 2 | Database Schema | Create tables (courses, modules, topics, lessons, feedback, versions, registrations, assessments) with relations | ✅ Complete | PostgreSQL schema.sql with all tables, ENUMs, foreign keys, constraints, indexes, triggers. Migration runner (migrate.js) and seed script (seed.sql) created. Database tests added. |
 | 3 | InputService | Receive and validate triggers from Learner AI / Marketplace | ✅ Complete | Input validation (Joi), DTO normalization, POST /api/v1/courses/input route, integration tests |
 | 4 | CourseStructureService | Expand skills → topics / modules / lessons | ✅ Complete | Generates structure from skills, simulates Content Studio JSON, persists to DB, integration tests |
-| 5 | ContentDelegationService (gRPC) | Send data → Content Studio and handle responses | ⬜ Not Started | |
+| 5 | ContentDelegationService (gRPC) | Send data → Content Studio and handle responses | 🟡 In Progress | gRPC client stub with mock fallback implemented; orchestration wiring pending |
 | 6 | PublishingService | Implement publishNow() & schedulePublishing() | ⬜ Not Started | |
 | 7 | AssessmentService (gRPC) | Start assessment + handle report callbacks | ⬜ Not Started | |
 | 8 | FeedbackService | Collect feedback & share with Directory Service | ✅ Complete | Full CRUD with 1-5 rating validation, duplicate check, aggregation, and course rating updates (Directory sync pending) |

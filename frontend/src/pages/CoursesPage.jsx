@@ -67,7 +67,7 @@ export default function CoursesPage() {
               Filter by level, sort by popularity, and explore expert-designed programmes across the emerald learning ecosystem.
             </p>
             <div className="hero-actions">
-              <Link to="/learner/for-you" className="btn btn-primary">
+              <Link to="/learner/personalized" className="btn btn-primary">
                 See personalised picks
               </Link>
             </div>

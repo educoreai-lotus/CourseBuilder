@@ -6,6 +6,7 @@ import feedbackRoutes from './routes/feedback.routes.js';
 import inputRoutes from './routes/input.routes.js';
 import lessonsRoutes from './routes/lessons.routes.js';
 import integrationRoutes from './routes/integration.routes.js';
+import { authenticateRequest } from './middleware/auth.middleware.js';
 
 dotenv.config();
 
@@ -43,6 +44,9 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Authentication middleware
+app.use(authenticateRequest);
 
 // Request logging middleware
 app.use((req, res, next) => {

@@ -5,6 +5,7 @@ const inputSchema = Joi.object({
   learner_id: Joi.string().optional(),
   learner_name: Joi.string().optional(),
   learner_company: Joi.string().optional(),
+  sourceService: Joi.string().optional(),
   learning_path: Joi.array().items(
     Joi.object({
       topic_id: Joi.string().optional(),
@@ -17,10 +18,10 @@ const inputSchema = Joi.object({
   level: Joi.string().valid('beginner','intermediate','advanced').optional(),
   duration: Joi.number().integer().min(1).optional(),
   metadata: Joi.object().optional()
-});
+}).unknown(true);
 
 export const validateInput = (data) => {
-  const { error, value } = inputSchema.validate(data, { abortEarly: false, stripUnknown: true });
+  const { error, value } = inputSchema.validate(data, { abortEarly: false });
   if (error) {
     const err = new Error(`Invalid input payload: ${error.details.map(d => d.message).join('; ')}`);
     err.status = 400;
