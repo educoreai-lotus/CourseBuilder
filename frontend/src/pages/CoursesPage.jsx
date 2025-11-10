@@ -50,8 +50,12 @@ export default function CoursesPage() {
 
   if (loading && courses.length === 0) {
     return (
-      <div className="section-panel" style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <LoadingSpinner />
+      <div className="personalized-dashboard">
+        <Container>
+          <div className="section-panel" style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <LoadingSpinner />
+          </div>
+        </Container>
       </div>
     )
   }
@@ -75,105 +79,113 @@ export default function CoursesPage() {
         </div>
       </section>
 
-      <section className="section-panel" style={{ marginTop: 'var(--spacing-xl)' }}>
-        <form style={{ display: 'grid', gap: 'var(--spacing-md)', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))' }}>
-          <div style={{ position: 'relative' }}>
-            <i className="fa-solid fa-magnifying-glass" style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-            <input
-              type="text"
-              value={filters.search}
-              onChange={(e) => handleFilterChange('search', e.target.value)}
-              placeholder="Search courses..."
-              style={{ width: '100%', borderRadius: 'var(--radius-lg)', border: '1px solid rgba(148,163,184,0.35)', padding: '12px 16px 12px 44px' }}
-            />
-          </div>
-          <select
-            value={filters.level}
-            onChange={(e) => handleFilterChange('level', e.target.value)}
-            style={{ width: '100%', borderRadius: 'var(--radius-lg)', border: '1px solid rgba(148,163,184,0.35)', padding: '12px 16px' }}
-          >
-            <option value="">All levels</option>
-            <option value="beginner">Beginner</option>
-            <option value="intermediate">Intermediate</option>
-            <option value="advanced">Advanced</option>
-          </select>
-          <select
-            value={filters.sort}
-            onChange={(e) => handleFilterChange('sort', e.target.value)}
-            style={{ width: '100%', borderRadius: 'var(--radius-lg)', border: '1px solid rgba(148,163,184,0.35)', padding: '12px 16px' }}
-          >
-            <option value="rating">Highest rated</option>
-            <option value="newest">Newest first</option>
-            <option value="popular">Most popular</option>
-          </select>
-        </form>
-        <div style={{ marginTop: 'var(--spacing-md)', fontSize: '0.9rem', color: 'var(--text-muted)' }}>
-          {error ? error : `Found ${total} course${total === 1 ? '' : 's'}`}
-        </div>
-      </section>
-
-      {courses.length === 0 && !loading ? (
-        <section className="section-panel" style={{ marginTop: 'var(--spacing-xl)', textAlign: 'center' }}>
-          <i className="fas fa-book-open" style={{ fontSize: '2.5rem', color: 'var(--primary-cyan)' }} />
-          <h2 style={{ marginTop: 'var(--spacing-md)', fontSize: '1.75rem', fontWeight: 600 }}>No courses match your filters</h2>
-          <p style={{ marginTop: 'var(--spacing-sm)', color: 'var(--text-muted)' }}>
-            Try adjusting the level or keyword search to explore more options.
-          </p>
-        </section>
-      ) : (
-        <section className="course-grid" style={{ marginTop: 'var(--spacing-xl)' }}>
-          {courses.map(course => (
-            <Link
-              key={course.id || course.course_id}
-              to={`/course/${course.id || course.course_id}/overview`}
-              className="course-card"
-              style={{ textDecoration: 'none' }}
+      <Container>
+        <section className="section-panel">
+          <form style={{ display: 'grid', gap: 'var(--spacing-md)', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))' }}>
+            <div style={{ position: 'relative' }}>
+              <i className="fa-solid fa-magnifying-glass" style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+              <input
+                type="text"
+                value={filters.search}
+                onChange={(e) => handleFilterChange('search', e.target.value)}
+                placeholder="Search courses..."
+                style={{ width: '100%', borderRadius: 'var(--radius-lg)', border: '1px solid rgba(148,163,184,0.35)', padding: '12px 16px 12px 44px' }}
+              />
+            </div>
+            <select
+              value={filters.level}
+              onChange={(e) => handleFilterChange('level', e.target.value)}
+              style={{ width: '100%', borderRadius: 'var(--radius-lg)', border: '1px solid rgba(148,163,184,0.35)', padding: '12px 16px' }}
             >
-              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 'var(--spacing-sm)', alignItems: 'flex-start' }}>
-                <span className="tag-chip" style={{ background: 'rgba(99,102,241,0.12)', color: '#4338ca' }}>
-                  <i className="fa-solid fa-graduation-cap" />
-                  {course.level || 'All levels'}
-                </span>
-                <span className="status-chip" style={{ background: 'rgba(234,179,8,0.12)', color: '#b45309' }}>
-                  <i className="fa-solid fa-star" />
-                  {(course.rating || course.average_rating || 4.5).toFixed(1)}
-                </span>
-              </div>
-              <h3 style={{ fontSize: '1.3rem', fontWeight: 600 }}>{course.title || course.course_name}</h3>
-              <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-                {course.description || course.course_description || 'No description available.'}
-              </p>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                <span><i className="fas fa-clock" style={{ marginRight: '6px' }} />{course.duration ? `${course.duration} min` : 'Approx. 45 min / lesson'}</span>
-                <span><i className="fas fa-users" style={{ marginRight: '6px' }} />{course.total_enrollments ? `${course.total_enrollments}+ learners` : 'Popular'}</span>
-              </div>
-            </Link>
-          ))}
+              <option value="">All levels</option>
+              <option value="beginner">Beginner</option>
+              <option value="intermediate">Intermediate</option>
+              <option value="advanced">Advanced</option>
+            </select>
+            <select
+              value={filters.sort}
+              onChange={(e) => handleFilterChange('sort', e.target.value)}
+              style={{ width: '100%', borderRadius: 'var(--radius-lg)', border: '1px solid rgba(148,163,184,0.35)', padding: '12px 16px' }}
+            >
+              <option value="rating">Highest rated</option>
+              <option value="newest">Newest first</option>
+              <option value="popular">Most popular</option>
+            </select>
+          </form>
+          <div style={{ marginTop: 'var(--spacing-md)', fontSize: '0.9rem', color: 'var(--text-muted)' }}>
+            {error ? error : `Found ${total} course${total === 1 ? '' : 's'}`}
+          </div>
         </section>
-      )}
+      </Container>
+
+      <Container>
+        {courses.length === 0 && !loading ? (
+          <section className="section-panel" style={{ textAlign: 'center' }}>
+            <i className="fas fa-book-open" style={{ fontSize: '2.5rem', color: 'var(--primary-cyan)' }} />
+            <h2 style={{ marginTop: 'var(--spacing-md)', fontSize: '1.75rem', fontWeight: 600 }}>No courses match your filters</h2>
+            <p style={{ marginTop: 'var(--spacing-sm)', color: 'var(--text-muted)' }}>
+              Try adjusting the level or keyword search to explore more options.
+            </p>
+          </section>
+        ) : (
+          <section className="section-panel" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-lg)' }}>
+            <div className="course-grid">
+              {courses.map(course => (
+                <Link
+                  key={course.id || course.course_id}
+                  to={`/course/${course.id || course.course_id}/overview`}
+                  className="course-card"
+                  style={{ textDecoration: 'none' }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 'var(--spacing-sm)', alignItems: 'flex-start' }}>
+                    <span className="tag-chip" style={{ background: 'rgba(99,102,241,0.12)', color: '#4338ca' }}>
+                      <i className="fa-solid fa-graduation-cap" />
+                      {course.level || 'All levels'}
+                    </span>
+                    <span className="status-chip" style={{ background: 'rgba(234,179,8,0.12)', color: '#b45309' }}>
+                      <i className="fa-solid fa-star" />
+                      {(course.rating || course.average_rating || 4.5).toFixed(1)}
+                    </span>
+                  </div>
+                  <h3 style={{ fontSize: '1.3rem', fontWeight: 600 }}>{course.title || course.course_name}</h3>
+                  <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+                    {course.description || course.course_description || 'No description available.'}
+                  </p>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                    <span><i className="fas fa-clock" style={{ marginRight: '6px' }} />{course.duration ? `${course.duration} min` : 'Approx. 45 min / lesson'}</span>
+                    <span><i className="fas fa-users" style={{ marginRight: '6px' }} />{course.total_enrollments ? `${course.total_enrollments}+ learners` : 'Popular'}</span>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
+      </Container>
 
       {paginationTotal > 1 && (
-        <section className="section-panel" style={{ marginTop: 'var(--spacing-xl)', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 'var(--spacing-md)' }}>
-          <button
-            type="button"
-            onClick={() => setFilters(prev => ({ ...prev, page: prev.page - 1 }))}
-            disabled={filters.page === 1}
-            className="btn btn-secondary"
-          >
-            <i className="fas fa-chevron-left" /> Previous
-          </button>
-          <span style={{ fontWeight: 600 }}>
-            Page {filters.page} of {paginationTotal}
-          </span>
-          <button
-            type="button"
-            onClick={() => setFilters(prev => ({ ...prev, page: prev.page + 1 }))}
-            disabled={filters.page >= paginationTotal}
-            className="btn btn-secondary"
-          >
-            Next <i className="fas fa-chevron-right" />
-          </button>
-        </section>
+        <Container>
+          <section className="section-panel" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 'var(--spacing-md)' }}>
+            <button
+              type="button"
+              onClick={() => setFilters(prev => ({ ...prev, page: prev.page - 1 }))}
+              disabled={filters.page === 1}
+              className="btn btn-secondary"
+            >
+              <i className="fas fa-chevron-left" /> Previous
+            </button>
+            <span style={{ fontWeight: 600 }}>
+              Page {filters.page} of {paginationTotal}
+            </span>
+            <button
+              type="button"
+              onClick={() => setFilters(prev => ({ ...prev, page: prev.page + 1 }))}
+              disabled={filters.page >= paginationTotal}
+              className="btn btn-secondary"
+            >
+              Next <i className="fas fa-chevron-right" />
+            </button>
+          </section>
+        </Container>
       )}
     </div>
   )

@@ -4,6 +4,7 @@ import { getLearnerProgress } from '../services/apiService.js'
 import LoadingSpinner from '../components/LoadingSpinner.jsx'
 import { useApp } from '../context/AppContext.jsx'
 import { useCourseProgress } from '../hooks/useCourseProgress.js'
+import Container from '../components/Container.jsx'
 
 const FALLBACK_LESSON_COUNT = 8
 
@@ -182,22 +183,30 @@ export default function LearnerLibrary() {
 
   if (userRole !== 'learner') {
     return (
-      <div className="section-panel" style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', gap: 'var(--spacing-md)' }}>
-        <i className="fa-solid fa-user-graduate" style={{ fontSize: '2.5rem', color: 'var(--primary-cyan)' }} />
-        <div>
-          <h2 style={{ fontSize: '1.8rem', fontWeight: 600 }}>Learner library unavailable</h2>
-          <p style={{ color: 'var(--text-muted)', marginTop: 'var(--spacing-sm)' }}>
-            Switch to the learner workspace to review active enrolments and progress.
-          </p>
-        </div>
+      <div className="personalized-dashboard">
+        <Container>
+          <div className="section-panel" style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', gap: 'var(--spacing-md)' }}>
+            <i className="fa-solid fa-user-graduate" style={{ fontSize: '2.5rem', color: 'var(--primary-cyan)' }} />
+            <div>
+              <h2 style={{ fontSize: '1.8rem', fontWeight: 600 }}>Learner library unavailable</h2>
+              <p style={{ color: 'var(--text-muted)', marginTop: 'var(--spacing-sm)' }}>
+                Switch to the learner workspace to review active enrolments and progress.
+              </p>
+            </div>
+          </div>
+        </Container>
       </div>
     )
   }
 
   if (loading) {
     return (
-      <div className="section-panel" style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <LoadingSpinner message="Loading your learning library..." />
+      <div className="personalized-dashboard">
+        <Container>
+          <div className="section-panel" style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <LoadingSpinner message="Loading your learning library..." />
+          </div>
+        </Container>
       </div>
     )
   }
@@ -229,47 +238,51 @@ export default function LearnerLibrary() {
         </div>
       </section>
 
-      <section className="section-panel" style={{ marginTop: 'var(--spacing-xl)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 'var(--spacing-md)', flexWrap: 'wrap' }}>
-        <div style={{ display: 'flex', gap: 'var(--spacing-sm)', flexWrap: 'wrap' }}>
-          {['all', 'in_progress', 'completed'].map(option => (
-            <button
-              key={option}
-              type="button"
-              onClick={() => setFilter(option)}
-              className="stage-button"
-              style={
-                filter === option
-                  ? { background: 'rgba(6,95,70,0.12)', borderColor: 'rgba(6,95,70,0.45)' }
-                  : { background: 'var(--bg-card)' }
-              }
-            >
-              <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <i className="fa-solid fa-circle" style={{ fontSize: '0.6rem' }} />
-                {option === 'all' ? 'All' : option === 'in_progress' ? 'In progress' : 'Completed'}
-              </span>
-            </button>
-          ))}
-        </div>
-        <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-          {filtered.length} course{filtered.length === 1 ? '' : 's'} visible
-        </span>
-      </section>
+      <Container>
+        <section className="section-panel" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 'var(--spacing-md)', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: 'var(--spacing-sm)', flexWrap: 'wrap' }}>
+            {['all', 'in_progress', 'completed'].map(option => (
+              <button
+                key={option}
+                type="button"
+                onClick={() => setFilter(option)}
+                className="stage-button"
+                style={
+                  filter === option
+                    ? { background: 'rgba(6,95,70,0.12)', borderColor: 'rgba(6,95,70,0.45)' }
+                    : { background: 'var(--bg-card)' }
+                }
+              >
+                <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <i className="fa-solid fa-circle" style={{ fontSize: '0.6rem' }} />
+                  {option === 'all' ? 'All' : option === 'in_progress' ? 'In progress' : 'Completed'}
+                </span>
+              </button>
+            ))}
+          </div>
+          <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+            {filtered.length} course{filtered.length === 1 ? '' : 's'} visible
+          </span>
+        </section>
+      </Container>
 
-      {filtered.length === 0 ? (
-        <section className="section-panel" style={{ marginTop: 'var(--spacing-xl)', textAlign: 'center' }}>
-          <i className="fa-solid fa-books" style={{ fontSize: '2rem', color: 'var(--primary-cyan)' }} />
-          <h2 style={{ marginTop: 'var(--spacing-md)', fontSize: '1.75rem', fontWeight: 600 }}>No courses found for this filter</h2>
-          <p style={{ marginTop: 'var(--spacing-sm)', color: 'var(--text-muted)' }}>
-            Browse the marketplace to add new courses to your learning library.
-          </p>
-        </section>
-      ) : (
-        <section className="section-panel" style={{ marginTop: 'var(--spacing-xl)', display: 'flex', flexDirection: 'column', gap: 'var(--spacing-lg)' }}>
-          {filtered.map(course => (
-            <LibraryCourseCard key={course.id} course={course} />
-          ))}
-        </section>
-      )}
+      <Container>
+        {filtered.length === 0 ? (
+          <section className="section-panel" style={{ textAlign: 'center' }}>
+            <i className="fa-solid fa-books" style={{ fontSize: '2rem', color: 'var(--primary-cyan)' }} />
+            <h2 style={{ marginTop: 'var(--spacing-md)', fontSize: '1.75rem', fontWeight: 600 }}>No courses found for this filter</h2>
+            <p style={{ marginTop: 'var(--spacing-sm)', color: 'var(--text-muted)' }}>
+              Browse the marketplace to add new courses to your learning library.
+            </p>
+          </section>
+        ) : (
+          <section className="section-panel" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-lg)' }}>
+            {filtered.map(course => (
+              <LibraryCourseCard key={course.id} course={course} />
+            ))}
+          </section>
+        )}
+      </Container>
     </div>
   )
 }

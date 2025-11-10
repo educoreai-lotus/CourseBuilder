@@ -4,6 +4,7 @@ import { getCourses } from '../services/apiService.js'
 import LoadingSpinner from '../components/LoadingSpinner.jsx'
 import { useApp } from '../context/AppContext.jsx'
 import { useCourseProgress } from '../hooks/useCourseProgress.js'
+import Container from '../components/Container.jsx'
 
 const defaultCourseState = {
   completedStages: [],
@@ -224,27 +225,29 @@ export default function LearnerForYou() {
         </div>
       </section>
 
-      {courses.length === 0 ? (
-        <section className="section-panel" style={{ marginTop: 'var(--spacing-xl)', textAlign: 'center' }}>
-          <i className="fa-solid fa-sparkles" style={{ fontSize: '2rem', color: 'var(--primary-cyan)' }} />
-          <h2 style={{ marginTop: 'var(--spacing-md)', fontSize: '1.75rem', fontWeight: 600 }}>No personalised courses yet</h2>
-          <p style={{ marginTop: 'var(--spacing-sm)', color: 'var(--text-muted)' }}>
-            Interact with marketplace courses and complete feedback to unlock tailored recommendations.
-          </p>
-        </section>
-      ) : (
-        <section className="section-panel" style={{ marginTop: 'var(--spacing-xl)', display: 'flex', flexDirection: 'column', gap: 'var(--spacing-lg)' }}>
-          {courses.map((course) => (
-            <PersonalizedCourseCard
-              key={course.id || course.course_id}
-              course={course}
-              state={getCourseState(course.id || course.course_id)}
-              onCompleteStage={handleStageCompletion}
-              notify={showToast}
-            />
-          ))}
-        </section>
-      )}
+      <Container>
+        {courses.length === 0 ? (
+          <section className="section-panel" style={{ textAlign: 'center' }}>
+            <i className="fa-solid fa-sparkles" style={{ fontSize: '2rem', color: 'var(--primary-cyan)' }} />
+            <h2 style={{ marginTop: 'var(--spacing-md)', fontSize: '1.75rem', fontWeight: 600 }}>No personalised courses yet</h2>
+            <p style={{ marginTop: 'var(--spacing-sm)', color: 'var(--text-muted)' }}>
+              Interact with marketplace courses and complete feedback to unlock tailored recommendations.
+            </p>
+          </section>
+        ) : (
+          <section className="section-panel" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-lg)' }}>
+            {courses.map((course) => (
+              <PersonalizedCourseCard
+                key={course.id || course.course_id}
+                course={course}
+                state={getCourseState(course.id || course.course_id)}
+                onCompleteStage={handleStageCompletion}
+                notify={showToast}
+              />
+            ))}
+          </section>
+        )}
+      </Container>
     </div>
   )
 }

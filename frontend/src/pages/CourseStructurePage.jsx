@@ -4,6 +4,7 @@ import { getCourseById } from '../services/apiService.js'
 import LoadingSpinner from '../components/LoadingSpinner.jsx'
 import CourseStructure from '../components/course/CourseStructure.jsx'
 import { useApp } from '../context/AppContext'
+import Container from '../components/Container.jsx'
 
 export default function CourseStructurePage() {
   const { id } = useParams()
@@ -91,21 +92,29 @@ export default function CourseStructurePage() {
 
   if (loading) {
     return (
-      <div className="section-panel" style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <LoadingSpinner />
+      <div className="personalized-dashboard">
+        <Container>
+          <div className="section-panel" style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <LoadingSpinner />
+          </div>
+        </Container>
       </div>
     )
   }
 
   if (!course || error) {
     return (
-      <section className="section-panel" style={{ minHeight: '60vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', gap: 'var(--spacing-md)' }}>
-        <i className="fa-solid fa-triangle-exclamation" style={{ fontSize: '2.5rem', color: '#f97316' }} />
-        <h2 style={{ fontSize: '1.8rem', fontWeight: 600 }}>{error || 'Course not found'}</h2>
-        <button type="button" className="btn btn-primary" onClick={() => navigate(`/course/${id}/overview`)}>
-          Back to overview
-        </button>
-      </section>
+      <div className="personalized-dashboard">
+        <Container>
+          <section className="section-panel" style={{ minHeight: '60vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', gap: 'var(--spacing-md)' }}>
+            <i className="fa-solid fa-triangle-exclamation" style={{ fontSize: '2.5rem', color: '#f97316' }} />
+            <h2 style={{ fontSize: '1.8rem', fontWeight: 600 }}>{error || 'Course not found'}</h2>
+            <button type="button" className="btn btn-primary" onClick={() => navigate(`/course/${id}/overview`)}>
+              Back to overview
+            </button>
+          </section>
+        </Container>
+      </div>
     )
   }
 
@@ -137,12 +146,14 @@ export default function CourseStructurePage() {
         </div>
       </header>
 
-      <CourseStructure
-        course={course}
-        onSelectLesson={handleSelectLesson}
-        completedLessonIds={completedLessons}
-        unlocked
-      />
+      <Container>
+        <CourseStructure
+          course={course}
+          onSelectLesson={handleSelectLesson}
+          completedLessonIds={completedLessons}
+          unlocked
+        />
+      </Container>
     </div>
   )
 }

@@ -4,6 +4,7 @@ import { getCourseById, getFeedbackAnalytics } from '../services/apiService.js'
 import Button from '../components/Button.jsx'
 import LoadingSpinner from '../components/LoadingSpinner.jsx'
 import { useApp } from '../context/AppContext'
+import Container from '../components/Container.jsx'
 
 export default function TrainerFeedbackAnalytics() {
   const { id } = useParams()
@@ -35,8 +36,12 @@ export default function TrainerFeedbackAnalytics() {
 
   if (loading) {
     return (
-      <div className="section-panel" style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <LoadingSpinner message="Loading feedback analytics..." />
+      <div className="personalized-dashboard">
+        <Container>
+          <div className="section-panel" style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <LoadingSpinner message="Loading feedback analytics..." />
+          </div>
+        </Container>
       </div>
     )
   }
@@ -51,7 +56,8 @@ export default function TrainerFeedbackAnalytics() {
 
   return (
     <div className="personalized-dashboard">
-      <section className="section-panel" style={{ maxWidth: '1200px', margin: '0 auto', marginTop: 'var(--spacing-xl)', display: 'flex', flexDirection: 'column', gap: 'var(--spacing-xl)' }}>
+      <Container>
+        <section className="section-panel" style={{ maxWidth: '1200px', width: '100%', display: 'flex', flexDirection: 'column', gap: 'var(--spacing-xl)' }}>
         <div>
           <Button variant="secondary" onClick={() => navigate('/trainer/dashboard')}>
             <i className="fas fa-arrow-left" style={{ marginRight: '8px' }} /> Back to dashboard
@@ -123,7 +129,8 @@ export default function TrainerFeedbackAnalytics() {
             </div>
           </section>
         )}
-      </section>
+        </section>
+      </Container>
     </div>
   )
 }

@@ -59,6 +59,25 @@
   --streak-color: #ef4444;
 }
 
+.container {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 var(--spacing-lg);
+}
+
+@media (max-width: 768px) {
+  .container {
+    padding: 0 var(--spacing-md);
+  }
+}
+
+@media (max-width: 480px) {
+  .container {
+    padding: 0 var(--spacing-sm);
+  }
+}
+
 /* Night Mode Theme */
 .night-mode {
   /* Night Mode Colors - Dark & Elegant */
@@ -255,8 +274,10 @@
 }
 
 .personalized-dashboard {
-  padding: var(--spacing-2xl) var(--spacing-lg);
+  padding: var(--spacing-2xl) 0 var(--spacing-2xl);
   background: var(--bg-secondary);
+  display: flex;
+  flex-direction: column;
 }
 
 .dashboard-container {
@@ -422,6 +443,9 @@ body {
   box-shadow: var(--shadow-card);
   backdrop-filter: blur(16px);
   position: relative;
+  width: 100%;
+  max-width: 1100px;
+  margin: var(--spacing-xl) auto;
 }
 
 .section-heading {

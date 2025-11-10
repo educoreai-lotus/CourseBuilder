@@ -5,6 +5,7 @@ import LoadingSpinner from '../components/LoadingSpinner.jsx'
 import CourseOverview from '../components/course/CourseOverview.jsx'
 import EnrollModal from '../components/course/EnrollModal.jsx'
 import { useApp } from '../context/AppContext'
+import Container from '../components/Container.jsx'
 
 export default function CourseDetailsPage() {
   const { id } = useParams()
@@ -93,21 +94,29 @@ export default function CourseDetailsPage() {
 
   if (loading) {
     return (
-      <div className="section-panel" style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <LoadingSpinner />
+      <div className="personalized-dashboard">
+        <Container>
+          <div className="section-panel" style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <LoadingSpinner />
+          </div>
+        </Container>
       </div>
     )
   }
 
   if (!course || error) {
     return (
-      <section className="section-panel" style={{ minHeight: '60vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', gap: 'var(--spacing-md)' }}>
-        <i className="fa-solid fa-triangle-exclamation" style={{ fontSize: '2.5rem', color: '#f97316' }} />
-        <h2 style={{ fontSize: '1.8rem', fontWeight: 600 }}>{error || 'Course not found'}</h2>
-        <button type="button" className="btn btn-primary" onClick={() => navigate('/learner/marketplace')}>
-          Browse courses
-        </button>
-      </section>
+      <div className="personalized-dashboard">
+        <Container>
+          <section className="section-panel" style={{ minHeight: '60vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', gap: 'var(--spacing-md)' }}>
+            <i className="fa-solid fa-triangle-exclamation" style={{ fontSize: '2.5rem', color: '#f97316' }} />
+            <h2 style={{ fontSize: '1.8rem', fontWeight: 600 }}>{error || 'Course not found'}</h2>
+            <button type="button" className="btn btn-primary" onClick={() => navigate('/learner/marketplace')}>
+              Browse courses
+            </button>
+          </section>
+        </Container>
+      </div>
     )
   }
 

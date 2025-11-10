@@ -5,6 +5,7 @@ import PublishControls from '../components/PublishControls.jsx'
 import Button from '../components/Button.jsx'
 import LoadingSpinner from '../components/LoadingSpinner.jsx'
 import { useApp } from '../context/AppContext'
+import Container from '../components/Container.jsx'
 
 export default function TrainerPublish() {
   const { id } = useParams()
@@ -58,15 +59,20 @@ export default function TrainerPublish() {
 
   if (loading) {
     return (
-      <div className="section-panel" style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <LoadingSpinner message="Loading course..." />
+      <div className="personalized-dashboard">
+        <Container>
+          <div className="section-panel" style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <LoadingSpinner message="Loading course..." />
+          </div>
+        </Container>
       </div>
     )
   }
 
   return (
     <div className="personalized-dashboard">
-      <section className="section-panel" style={{ maxWidth: '820px', margin: '0 auto', marginTop: 'var(--spacing-xl)', display: 'flex', flexDirection: 'column', gap: 'var(--spacing-xl)' }}>
+      <Container>
+        <section className="section-panel" style={{ maxWidth: '820px', width: '100%', display: 'flex', flexDirection: 'column', gap: 'var(--spacing-xl)' }}>
         <div>
           <Button variant="secondary" onClick={() => navigate(`/trainer/course/${id}`)}>
             <i className="fas fa-arrow-left" style={{ marginRight: '8px' }} /> Back to validation
@@ -112,7 +118,8 @@ export default function TrainerPublish() {
           <i className="fas fa-info-circle" style={{ marginRight: '8px', color: 'var(--primary-cyan)' }} />
           Once published, the course will be visible in the internal marketplace and learners can register.
         </div>
-      </section>
+        </section>
+      </Container>
     </div>
   )
 }
