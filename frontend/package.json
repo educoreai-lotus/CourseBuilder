@@ -29,6 +29,7 @@
     "babel-jest": "^29.7.0",
     "eslint": "^9.12.0",
     "jest": "^29.7.0",
+    "jest-environment-jsdom": "^30.2.0",
     "jsdom": "^25.0.1",
     "postcss": "^8.4.47",
     "tailwindcss": "^3.4.13",
@@ -36,14 +37,28 @@
   },
   "jest": {
     "testEnvironment": "jsdom",
-    "setupFilesAfterEnv": ["<rootDir>/src/setupTests.js"],
+    "setupFilesAfterEnv": [
+      "<rootDir>/src/setupTests.js"
+    ],
     "transform": {
-      "^.+\\.(js|jsx)$": ["babel-jest", { "presets": ["@babel/preset-env", ["@babel/preset-react", { "runtime": "automatic" }]] }]
+      "^.+\\.(js|jsx)$": [
+        "babel-jest",
+        {
+          "presets": [
+            "@babel/preset-env",
+            [
+              "@babel/preset-react",
+              {
+                "runtime": "automatic"
+              }
+            ]
+          ]
+        }
+      ]
     },
     "moduleNameMapper": {
-      "\\.(css|less|scss)$": "identity-obj-proxy"
+      "\\.(css|less|scss)$": "identity-obj-proxy",
+      "\\.(png|jpg|jpeg|gif|svg)$": "<rootDir>/src/__mocks__/fileMock.js"
     }
   }
 }
-
-

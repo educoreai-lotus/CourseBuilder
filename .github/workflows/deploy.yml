@@ -10,6 +10,20 @@ jobs:
   test-backend:
     name: Test Backend
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: coursebuilder_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     defaults:
       run:
         working-directory: ./backend
@@ -28,10 +42,41 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Run migrations
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/coursebuilder_test
+          DB_HOST: localhost
+          DB_PORT: 5432
+          DB_NAME: coursebuilder_test
+          DB_USER: postgres
+          DB_PASSWORD: postgres
+        run: npm run migrate
+
+      - name: Seed database
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/coursebuilder_test
+          DB_HOST: localhost
+          DB_PORT: 5432
+          DB_NAME: coursebuilder_test
+          DB_USER: postgres
+          DB_PASSWORD: postgres
+        run: npm run seed
+
       - name: Run tests
         run: npm test
         env:
           NODE_ENV: test
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/coursebuilder_test
+          DB_HOST: localhost
+          DB_PORT: 5432
+          DB_NAME: coursebuilder_test
+          DB_USER: postgres
+          DB_PASSWORD: postgres
+          PG_HOST: localhost
+          PG_PORT: 5432
+          PG_DATABASE: coursebuilder_test
+          PG_USER: postgres
+          PG_PASSWORD: postgres
 
   test-frontend:
     name: Test Frontend
@@ -59,7 +104,7 @@ jobs:
 
   deploy-backend:
     name: Deploy Backend to Railway
-    needs: test-backend
+    needs: [test-backend, test-frontend]
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     
@@ -76,7 +121,7 @@ jobs:
 
   deploy-frontend:
     name: Deploy Frontend to Vercel
-    needs: test-frontend
+    needs: [test-backend, test-frontend]
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     

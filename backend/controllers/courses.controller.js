@@ -15,13 +15,20 @@ export const browseCourses = async (req, res, next) => {
       limit = 10
     } = req.query;
 
+    const requesterRole =
+      req.user?.role ||
+      req.headers['x-user-role'] ||
+      req.headers['x-role'] ||
+      null;
+
     const result = await coursesService.browseCourses({
       search,
       category,
       level,
       sort,
       page: parseInt(page, 10),
-      limit: parseInt(limit, 10)
+      limit: parseInt(limit, 10),
+      role: requesterRole
     });
 
     res.status(200).json(result);
@@ -38,6 +45,11 @@ export const getCourseDetails = async (req, res, next) => {
   try {
     const { id } = req.params;
     const { learner_id: learnerId } = req.query;
+    const requesterRole =
+      req.user?.role ||
+      req.headers['x-user-role'] ||
+      req.headers['x-role'] ||
+      null;
     
     if (!id) {
       return res.status(400).json({
@@ -47,7 +59,8 @@ export const getCourseDetails = async (req, res, next) => {
     }
 
     const course = await coursesService.getCourseDetails(id, {
-      learnerId
+      learnerId,
+      role: requesterRole
     });
 
     if (!course) {

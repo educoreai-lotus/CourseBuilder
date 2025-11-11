@@ -12,7 +12,7 @@ test('renders header and navigation', () => {
     </AppProvider>
   )
   expect(screen.getByText(/Course Builder/i)).toBeInTheDocument()
-  expect(screen.getByText(/Courses/i)).toBeInTheDocument()
+  expect(screen.getByText(/Marketplace/i)).toBeInTheDocument()
 })
 
 

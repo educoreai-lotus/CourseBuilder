@@ -14,7 +14,11 @@ router.post('/courses/input', authorizeRoles('trainer', 'service'), acceptCourse
  * POST /api/v1/ai/trigger-personalized-course
  * Learner AI trigger for personalized course generation
  */
-router.post('/ai/trigger-personalized-course', authorizeRoles('service'), acceptCourseInput);
+router.post(
+  '/ai/trigger-personalized-course',
+  authorizeRoles('learner', 'trainer', 'service', 'admin'),
+  acceptCourseInput
+);
 
 export default router;
 

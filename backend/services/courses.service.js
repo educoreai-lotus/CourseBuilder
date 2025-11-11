@@ -4,9 +4,52 @@ import { v4 as uuidv4 } from 'uuid';
 /**
  * Browse courses with filters
  */
-export const browseCourses = async ({ search, category, level, sort, page, limit }) => {
+export const browseCourses = async ({ search, category, level, sort, page, limit, role }) => {
   try {
-    let query = `
+    const normalizedRole = typeof role === 'string' ? role.toLowerCase() : null;
+    const isPrivilegedViewer = normalizedRole === 'trainer' || normalizedRole === 'admin';
+
+    const filters = [];
+    const params = [];
+
+    if (!isPrivilegedViewer) {
+      filters.push(`(c.visibility = 'public' OR c.visibility = 'scheduled')`);
+      filters.push(`c.status = 'live'`);
+    }
+
+    if (search) {
+      params.push(`%${search}%`);
+      const idx = params.length;
+      filters.push(`(c.course_name ILIKE $${idx} OR c.course_description ILIKE $${idx})`);
+    }
+
+    if (level) {
+      params.push(level);
+      const idx = params.length;
+      filters.push(`c.level = $${idx}`);
+    }
+
+    if (category) {
+      params.push(category);
+      const idx = params.length;
+      filters.push(`c.metadata->>'category' = $${idx}`);
+    }
+
+    const whereClause = filters.length ? `WHERE ${filters.join(' AND ')}` : '';
+
+    const sortMap = {
+      newest: 'c.created_at DESC',
+      rating: 'c.average_rating DESC',
+      popular: 'c.total_enrollments DESC'
+    };
+    const sortOrder = sortMap[sort] || sortMap.newest;
+
+    const paginationLimit = parseInt(limit, 10);
+    const paginationOffset = (parseInt(page, 10) - 1) * paginationLimit;
+
+    const selectParams = [...params, paginationLimit, paginationOffset];
+
+    const query = `
       SELECT 
         c.course_id as id,
         c.course_name as title,
@@ -14,67 +57,32 @@ export const browseCourses = async ({ search, category, level, sort, page, limit
         c.level,
         COALESCE(c.average_rating, 0) as rating,
         c.metadata->'tags' as tags,
+        c.metadata->>'category' as category,
         c.duration,
-        c.metadata->'thumbnail_url' as thumbnail_url,
-        c.created_at
+        c.metadata->>'thumbnail_url' as thumbnail_url,
+        c.created_at,
+        c.updated_at,
+        c.status,
+        c.visibility,
+        c.total_enrollments,
+        c.active_enrollments,
+        c.trainer_id,
+        c.trainer_name
       FROM courses c
-      WHERE c.visibility = 'public' AND c.status = 'live'
+      ${whereClause}
+      ORDER BY ${sortOrder}
+      LIMIT $${selectParams.length - 1} OFFSET $${selectParams.length}
     `;
-    const params = [];
 
-    // Apply filters
-    if (search) {
-      query += ` AND (c.course_name ILIKE $${params.length + 1} OR c.course_description ILIKE $${params.length + 1})`;
-      params.push(`%${search}%`);
-    }
-
-    if (level) {
-      query += ` AND c.level = $${params.length + 1}`;
-      params.push(level);
-    }
-
-    if (category) {
-      query += ` AND c.metadata->'category' = $${params.length + 1}`;
-      params.push(`"${category}"`);
-    }
-
-    // Sorting
-    const sortMap = {
-      newest: 'c.created_at DESC',
-      rating: 'c.average_rating DESC',
-      popular: 'c.total_enrollments DESC'
-    };
-    query += ` ORDER BY ${sortMap[sort] || sortMap.newest}`;
-
-    // Pagination
-    const offset = (page - 1) * limit;
-    query += ` LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
-    params.push(limit, offset);
-
-    // Get total count
-    let countQuery = `
+    const countQuery = `
       SELECT COUNT(*) as total
-      FROM courses
-      WHERE visibility = 'public' AND status = 'live'
+      FROM courses c
+      ${whereClause}
     `;
-    const countParams = [];
-
-    if (search) {
-      countQuery += ` AND (course_name ILIKE $${countParams.length + 1} OR course_description ILIKE $${countParams.length + 1})`;
-      countParams.push(`%${search}%`);
-    }
-    if (level) {
-      countQuery += ` AND level = $${countParams.length + 1}`;
-      countParams.push(level);
-    }
-    if (category) {
-      countQuery += ` AND metadata->'category' = $${countParams.length + 1}`;
-      countParams.push(`"${category}"`);
-    }
 
     const [courses, totalResult] = await Promise.all([
-      db.any(query, params),
-      db.one(countQuery, countParams)
+      db.any(query, selectParams),
+      db.one(countQuery, params)
     ]);
 
     return {
@@ -87,9 +95,17 @@ export const browseCourses = async ({ search, category, level, sort, page, limit
         level: course.level,
         rating: parseFloat(course.rating) || 0,
         tags: course.tags || [],
+        category: course.category || null,
         duration: course.duration,
         thumbnail_url: course.thumbnail_url,
-        created_at: course.created_at.toISOString()
+        created_at: course.created_at?.toISOString?.() || null,
+        updated_at: course.updated_at?.toISOString?.() || null,
+        status: course.status,
+        visibility: course.visibility,
+        total_enrollments: course.total_enrollments,
+        active_enrollments: course.active_enrollments,
+        trainer_id: course.trainer_id,
+        trainer_name: course.trainer_name
       }))
     };
   } catch (error) {
@@ -103,20 +119,43 @@ export const browseCourses = async ({ search, category, level, sort, page, limit
  */
 export const getCourseDetails = async (courseId, options = {}) => {
   try {
-    const { learnerId } = options;
+    const { learnerId, role } = options;
+    const normalizedRole = typeof role === 'string' ? role.toLowerCase() : null;
+    const isPrivilegedViewer = normalizedRole === 'trainer' || normalizedRole === 'admin';
 
-    // Get course
+    const visibilityFilters = [];
+
+    if (!isPrivilegedViewer) {
+      visibilityFilters.push(`(c.visibility = 'public' OR c.visibility = 'scheduled')`);
+      visibilityFilters.push(`c.status = 'live'`);
+    }
+
+    const visibilityClause = visibilityFilters.length ? `AND ${visibilityFilters.join(' AND ')}` : '';
+
     const course = await db.oneOrNone(
       `SELECT 
-        course_id as id,
-        course_name as title,
-        course_description as description,
-        level,
-        COALESCE(average_rating, 0) as rating,
-        metadata->'skills' as skills,
+        c.course_id as id,
+        c.course_name as title,
+        c.course_description as description,
+        c.level,
+        COALESCE(c.average_rating, 0) as rating,
+        c.metadata->'skills' as skills,
+        c.metadata->>'category' as category,
+        c.metadata,
+        c.duration,
+        c.status,
+        c.visibility,
+        c.total_enrollments,
+        c.active_enrollments,
+        c.completion_rate,
+        c.trainer_id,
+        c.trainer_name,
+        c.created_at,
+        c.updated_at,
         (SELECT version_no FROM versions WHERE course_id = $1 ORDER BY created_at DESC LIMIT 1) as version
-      FROM courses
-      WHERE course_id = $1 AND (visibility = 'public' OR visibility = 'scheduled')`,
+      FROM courses c
+      WHERE c.course_id = $1
+      ${visibilityClause}`,
       [courseId]
     );
 
@@ -184,13 +223,26 @@ export const getCourseDetails = async (courseId, options = {}) => {
       title: course.title,
       description: course.description,
       level: course.level,
+      status: course.status,
+      visibility: course.visibility,
+      category: course.category || null,
+      duration: course.duration,
+      total_enrollments: course.total_enrollments,
+      active_enrollments: course.active_enrollments,
+      completion_rate: course.completion_rate ? parseFloat(course.completion_rate) : 0,
+      trainer: course.trainer_id ? {
+        id: course.trainer_id,
+        name: course.trainer_name
+      } : null,
+      created_at: course.created_at?.toISOString?.() || null,
+      updated_at: course.updated_at?.toISOString?.() || null,
       modules: modules.map(m => ({
         id: m.id,
         title: m.title,
         order: m.order,
         lessons: m.lessons.filter(l => l.id !== null) // Remove null lessons
       })),
-      skills: course.skills || [],
+      skills: Array.isArray(course.skills) ? course.skills : (course.skills ? [course.skills] : []),
       rating: parseFloat(course.rating) || 0,
       version: course.version?.toString() || '1',
       ...(learnerProgress && { learner_progress: learnerProgress })

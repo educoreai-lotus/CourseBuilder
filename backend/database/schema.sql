@@ -35,6 +35,17 @@ CREATE TYPE version_status AS ENUM ('draft', 'validated', 'published', 'archived
 CREATE TYPE content_type AS ENUM ('text', 'video', 'exercise', 'presentation');
 
 -- ============================================
+-- COMMON TRIGGER FUNCTIONS
+-- ============================================
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = CURRENT_TIMESTAMP;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- ============================================
 -- COURSES TABLE
 -- ============================================
 CREATE TABLE courses (
@@ -218,14 +229,6 @@ CREATE INDEX idx_versions_course_id ON versions(course_id);
 -- TRIGGERS
 -- ============================================
 -- Auto-update updated_at timestamp
-CREATE OR REPLACE FUNCTION update_updated_at_column()
-RETURNS TRIGGER AS $$
-BEGIN
-    NEW.updated_at = CURRENT_TIMESTAMP;
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
 CREATE TRIGGER update_courses_updated_at
     BEFORE UPDATE ON courses
     FOR EACH ROW
