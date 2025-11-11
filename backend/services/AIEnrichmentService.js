@@ -60,7 +60,7 @@ export async function enrichLesson({
   const prompt = buildPrompt({ topicName, lessonName, description, skills });
 
   try {
-    const model = client.getGenerativeModel({ model: 'gemini-pro' });
+    const model = client.getGenerativeModel({ model: "gemini-1.5-flash" });
     const result = await model.generateContent(prompt);
     const text = result?.response?.text?.();
 
