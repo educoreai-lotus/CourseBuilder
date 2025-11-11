@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { getCourseById, registerLearner } from '../services/apiService.js'
 import LoadingSpinner from '../components/LoadingSpinner.jsx'
 import CourseOverview from '../components/course/CourseOverview.jsx'
@@ -10,6 +10,7 @@ import Container from '../components/Container.jsx'
 export default function CourseDetailsPage() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const location = useLocation()
   const { showToast, userRole, userProfile } = useApp()
   const learnerId = userRole === 'learner' ? userProfile?.id : null
   const [course, setCourse] = useState(null)
@@ -19,14 +20,44 @@ export default function CourseDetailsPage() {
   const [isSubmitting, setSubmitting] = useState(false)
   const [learnerProgress, setLearnerProgress] = useState(null)
 
+  const isPersonalizedFlow = useMemo(() => {
+    const params = new URLSearchParams(location.search)
+    return params.get('personalized') === 'true'
+  }, [location.search])
+
   const loadCourse = useCallback(async () => {
     setLoading(true)
     setError(null)
     try {
       const params = learnerId ? { learner_id: learnerId } : undefined
       const data = await getCourseById(id, params)
-      setCourse(data)
-      setLearnerProgress(data.learner_progress || null)
+      const enrichedCourse = isPersonalizedFlow
+        ? {
+            ...data,
+            metadata: {
+              ...(data.metadata || {}),
+              personalized: true
+            }
+          }
+        : data
+
+      const personalizedProgress = () => {
+        if (!isPersonalizedFlow) {
+          return enrichedCourse.learner_progress || null
+        }
+
+        const existing = enrichedCourse.learner_progress || {}
+        return {
+          ...existing,
+          is_enrolled: true,
+          status: existing.status || 'in_progress',
+          progress: existing.progress ?? 0,
+          completed_lessons: existing.completed_lessons || []
+        }
+      }
+
+      setCourse(enrichedCourse)
+      setLearnerProgress(personalizedProgress())
     } catch (err) {
       const message = err.message || 'Failed to load course'
       setError(message)
@@ -34,15 +65,20 @@ export default function CourseDetailsPage() {
     } finally {
       setLoading(false)
     }
-  }, [id, learnerId, showToast])
+  }, [id, learnerId, showToast, isPersonalizedFlow])
 
   useEffect(() => {
     loadCourse()
   }, [id, loadCourse])
 
-  const isEnrolled = learnerProgress?.is_enrolled
+  const isEnrolled = isPersonalizedFlow || learnerProgress?.is_enrolled
 
   const handleEnrollment = async () => {
+    if (isPersonalizedFlow) {
+      navigate(`/course/${id}/structure`)
+      return
+    }
+
     if (isEnrolled) {
       navigate(`/course/${id}/structure`)
       return
@@ -140,13 +176,15 @@ export default function CourseDetailsPage() {
         progressSummary={learnerProgress}
       />
 
-      <EnrollModal
-        isOpen={isModalOpen}
-        learnerName={learnerName}
-        onConfirm={handleEnrollment}
-        onClose={() => setModalOpen(false)}
-        isSubmitting={isSubmitting}
-      />
+      {!isPersonalizedFlow && (
+        <EnrollModal
+          isOpen={isModalOpen}
+          learnerName={learnerName}
+          onConfirm={handleEnrollment}
+          onClose={() => setModalOpen(false)}
+          isSubmitting={isSubmitting}
+        />
+      )}
     </>
   )
 }

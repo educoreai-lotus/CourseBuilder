@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 
-export default function CourseCard({ course, showProgress = false, progress = 0 }) {
+export default function CourseCard({ course, showProgress = false, progress = 0, to }) {
   const courseId = course.id || course.course_id
   const title = course.title || course.course_name
   const description = course.description || course.course_description
@@ -9,10 +9,11 @@ export default function CourseCard({ course, showProgress = false, progress = 0 
   const status = (course.status || 'live').toString()
   const duration = course.duration ? `${course.duration} mins` : 'Approx. 45 mins'
   const displayProgress = showProgress && progress > 0
+  const destination = to ?? `/courses/${courseId}`
 
   return (
     <Link
-      to={`/courses/${courseId}`}
+      to={destination}
       className="course-card block no-underline focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary-cyan)]/40 focus-visible:ring-offset-2"
     >
       <div className="flex flex-col gap-6">
