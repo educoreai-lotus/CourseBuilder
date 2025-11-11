@@ -25,24 +25,33 @@ export default function CourseDetailsPage() {
     return params.get('personalized') === 'true'
   }, [location.search])
 
+  const metadataPersonalized = useMemo(
+    () => Boolean(course?.metadata?.personalized || course?.metadata?.source === 'learner_ai'),
+    [course]
+  )
+
   const loadCourse = useCallback(async () => {
     setLoading(true)
     setError(null)
     try {
       const params = learnerId ? { learner_id: learnerId } : undefined
       const data = await getCourseById(id, params)
-      const enrichedCourse = isPersonalizedFlow
+      const isPersonalized = isPersonalizedFlow || Boolean(
+        data?.metadata?.personalized || data?.metadata?.source === 'learner_ai'
+      )
+      const enrichedCourse = isPersonalized
         ? {
             ...data,
             metadata: {
               ...(data.metadata || {}),
-              personalized: true
+              personalized: true,
+              source: data.metadata?.source || 'learner_ai'
             }
           }
         : data
 
       const personalizedProgress = () => {
-        if (!isPersonalizedFlow) {
+        if (!isPersonalized) {
           return enrichedCourse.learner_progress || null
         }
 
@@ -71,10 +80,12 @@ export default function CourseDetailsPage() {
     loadCourse()
   }, [id, loadCourse])
 
-  const isEnrolled = isPersonalizedFlow || learnerProgress?.is_enrolled
+  const isPersonalizedCourse = isPersonalizedFlow || metadataPersonalized
+
+  const isEnrolled = isPersonalizedCourse || learnerProgress?.is_enrolled
 
   const handleEnrollment = async () => {
-    if (isPersonalizedFlow) {
+    if (isPersonalizedCourse) {
       navigate(`/course/${id}/structure`)
       return
     }

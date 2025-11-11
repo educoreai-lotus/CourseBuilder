@@ -20,7 +20,11 @@ export default function LearnerMarketplace() {
     setLoading(true)
     try {
       const data = await getCourses({ limit: 60, ...filters })
-      setCourses(data.courses || [])
+      const marketplaceCourses = (data.courses || []).filter((course) => {
+        const meta = course.metadata || {}
+        return meta.personalized !== true && meta.source !== 'learner_ai'
+      })
+      setCourses(marketplaceCourses)
     } catch (err) {
       showToast('Failed to load marketplace courses', 'error')
     } finally {

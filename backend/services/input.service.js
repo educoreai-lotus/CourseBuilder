@@ -34,6 +34,8 @@ export const prepareCourseInputDTO = (data) => {
   const normalized = validateInput(data);
   return {
     learnerId: normalized.learner_id || null,
+    learnerName: normalized.learner_name || null,
+    learnerCompany: normalized.learner_company || null,
     learningPath: normalized.learning_path.map(t => ({
       topicId: t.topic_id || null,
       topicName: t.topic_name,
@@ -43,7 +45,11 @@ export const prepareCourseInputDTO = (data) => {
     skills: normalized.skills,
     level: normalized.level || null,
     duration: normalized.duration || null,
-    metadata: normalized.metadata || {}
+    metadata: {
+      ...(normalized.metadata || {}),
+      learner_name: normalized.learner_name || null,
+      learner_company: normalized.learner_company || null
+    }
   };
 };
 

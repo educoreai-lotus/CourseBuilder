@@ -10,6 +10,9 @@ export default function CourseCard({ course, showProgress = false, progress = 0,
   const duration = course.duration ? `${course.duration} mins` : 'Approx. 45 mins'
   const displayProgress = showProgress && progress > 0
   const destination = to ?? `/courses/${courseId}`
+  const metadata = course.metadata || {}
+  const isPersonalized = Boolean(metadata.personalized) || metadata.source === 'learner_ai'
+  const skillChips = Array.isArray(metadata.skills) ? metadata.skills.slice(0, 4) : []
 
   return (
     <Link
@@ -22,6 +25,11 @@ export default function CourseCard({ course, showProgress = false, progress = 0,
             <span className="rounded-full bg-[rgba(15,118,110,0.12)] px-3 py-1 text-xs font-semibold uppercase tracking-wide text-[var(--primary-cyan)]">
               {level}
             </span>
+            {isPersonalized && (
+              <span className="rounded-full bg-[rgba(124,58,237,0.16)] px-3 py-1 text-xs font-semibold uppercase tracking-wide text-[#6d28d9]">
+                AI Path
+              </span>
+            )}
             {status !== 'live' && (
               <span className="rounded-full bg-[rgba(148,163,184,0.18)] px-3 py-1 text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">
                 {status}
@@ -54,6 +62,19 @@ export default function CourseCard({ course, showProgress = false, progress = 0,
             <span>{duration}</span>
           </div>
         </div>
+
+        {skillChips.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {skillChips.map((skill) => (
+              <span
+                key={skill}
+                className="rounded-full bg-[rgba(14,165,233,0.12)] px-3 py-1 text-xs font-semibold text-[#0f766e]"
+              >
+                {skill}
+              </span>
+            ))}
+          </div>
+        )}
       </div>
 
       {displayProgress && (

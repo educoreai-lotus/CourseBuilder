@@ -1,13 +1,38 @@
 import db from '../config/database.js';
 import { v4 as uuidv4 } from 'uuid';
 import { requestLessonsFromContentStudio } from './contentDelegation.service.js';
+import { generateCourseMetadata } from './courseMetadata.service.js';
+import { enrichLesson as enrichLessonAI } from './AIEnrichmentService.js';
 
 export const generateStructure = async (courseInputDTO) => {
-  const { learningPath, skills, level, duration, metadata } = courseInputDTO;
+  const {
+    learnerId,
+    learnerName,
+    learnerCompany,
+    learningPath,
+    skills,
+    level,
+    duration,
+    metadata
+  } = courseInputDTO;
 
   // Build modules from learningPath, topics map 1:1, lessons from Content Studio simulation
   const courseId = uuidv4();
   const now = new Date();
+
+  const {
+    courseName,
+    courseDescription,
+    metadata: courseMetadata
+  } = generateCourseMetadata({
+    learnerId,
+    learnerName,
+    learnerCompany,
+    learningPath,
+    skills,
+    level,
+    duration
+  });
 
   // Persist within a transaction
   return db.tx(async (t) => {
@@ -19,13 +44,13 @@ export const generateStructure = async (courseInputDTO) => {
       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,NOW(),NOW())`,
       [
         courseId,
-        `Generated Course ${now.toISOString()}`,
-        'Auto-generated from learning path and skills',
+        courseName,
+        courseDescription,
         level || null,
         'private',
         'draft',
         duration || null,
-        JSON.stringify({ ...metadata, skills })
+        JSON.stringify({ ...courseMetadata, ...(metadata || {}) })
       ]
     );
 
@@ -84,9 +109,33 @@ export const generateStructure = async (courseInputDTO) => {
           lesson.content_data?.content_ref ||
           `doc://${lessonName.toLowerCase().replace(/\s+/g, '_')}`;
 
+        const description =
+          lesson.description ||
+          lesson.lessonDescription ||
+          lesson.summary ||
+          lesson.content_data?.summary ||
+          (typeof lesson.content_data === 'string' ? lesson.content_data : null);
+
+        const enrichmentResult = await enrichLessonAI({
+          topicName: topic.topicName,
+          lessonName,
+          description,
+          skills
+        });
+
         await t.none(
-          `INSERT INTO lessons (lesson_id, module_id, topic_id, lesson_name, content_type, content_data, "order")
-           VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+          `INSERT INTO lessons (
+            lesson_id,
+            module_id,
+            topic_id,
+            lesson_name,
+            content_type,
+            content_data,
+            enrichment_data,
+            enriched_content,
+            "order"
+          )
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
           [
             lessonId,
             moduleId,
@@ -99,6 +148,8 @@ export const generateStructure = async (courseInputDTO) => {
                 source: lesson.source || 'content-studio'
               }
             ),
+            JSON.stringify(lesson.enrichment_data || {}),
+            JSON.stringify(enrichmentResult),
             lessonOrderIndex
           ]
         );
@@ -108,6 +159,18 @@ export const generateStructure = async (courseInputDTO) => {
 
       moduleOrder += 1;
     }
+
+    const updatedMetadata = {
+      ...courseMetadata,
+      total_lessons: totalLessons,
+      generated_at: now.toISOString(),
+      enrichment_provider: 'openai'
+    };
+
+    await t.none(
+      'UPDATE courses SET metadata = $2 WHERE course_id = $1',
+      [courseId, JSON.stringify({ ...updatedMetadata, ...(metadata || {}) })]
+    );
 
     return {
       courseId,

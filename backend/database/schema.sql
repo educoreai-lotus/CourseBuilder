@@ -123,6 +123,7 @@ CREATE TABLE lessons (
     nano_skills JSONB DEFAULT '[]'::jsonb, -- Most granular skills
     devlab_exercises JSONB DEFAULT '[]'::jsonb, -- Links to DevLab exercises
     enrichment_data JSONB DEFAULT '{}'::jsonb, -- AI metadata, YouTube/GitHub refs
+    enriched_content JSONB DEFAULT '{}'::jsonb, -- LLM-generated enrichment payload
     "order" INTEGER NOT NULL DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
