@@ -174,6 +174,7 @@ export default function CourseDetailsPage() {
         showStructureCta={userRole === 'learner'}
         learnerProfile={userProfile}
         progressSummary={learnerProgress}
+        backLink={isPersonalizedFlow ? '/learner/personalized' : '/learner/marketplace'}
       />
 
       {!isPersonalizedFlow && (

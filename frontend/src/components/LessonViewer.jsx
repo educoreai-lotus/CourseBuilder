@@ -1,65 +1,78 @@
 import { useEffect, useState } from 'react'
+import {
+  BookOpen,
+  Clock,
+  Youtube,
+  Github,
+  CheckCircle2,
+  PlayCircle,
+  ArrowLeft,
+  ArrowRight,
+  GraduationCap,
+  Lock
+} from 'lucide-react'
 import Button from './Button.jsx'
 
-/**
- * Render lesson content based on content_data structure
- * Supports Content Studio JSON format
- */
-function renderContent(lesson) {
-  if (!lesson.content_data || Object.keys(lesson.content_data).length === 0) {
+const renderContent = (lesson) => {
+  if (!lesson || !lesson.content_data || Object.keys(lesson.content_data).length === 0) {
     return (
-      <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: 'var(--spacing-xl)' }}>
-        <i className="fas fa-file-alt" style={{ fontSize: '3rem', marginBottom: 'var(--spacing-md)' }}></i>
-        <p>No content available for this lesson.</p>
+      <div className="flex flex-col items-center justify-center gap-4 py-12 text-[var(--text-muted)]">
+        <BookOpen className="h-10 w-10" />
+        <p className="text-sm">No content available for this lesson yet.</p>
       </div>
     )
   }
 
   const contentData = lesson.content_data
 
-  // If content_data has a content_ref, display it
   if (contentData.content_ref) {
     return (
-      <div>
-        <div style={{ marginBottom: 'var(--spacing-md)' }}>
-          <strong>Content Reference:</strong> {contentData.content_ref}
+      <div className="space-y-6">
+        <div className="rounded-2xl border border-[rgba(148,163,184,0.14)] bg-white/90 p-4 text-sm shadow-sm backdrop-blur">
+          <strong className="text-[var(--text-primary)]">Content Reference:</strong>{' '}
+          <span className="text-[var(--text-secondary)]">{contentData.content_ref}</span>
         </div>
         {contentData.text && (
-          <div style={{ whiteSpace: 'pre-wrap' }}>{contentData.text}</div>
+          <p className="text-base leading-7 text-[var(--text-secondary)] whitespace-pre-wrap">{contentData.text}</p>
         )}
         {contentData.html && (
-          <div dangerouslySetInnerHTML={{ __html: contentData.html }} />
+          <div
+            className="prose prose-slate max-w-none text-[var(--text-secondary)]"
+            dangerouslySetInnerHTML={{ __html: contentData.html }}
+          />
         )}
       </div>
     )
   }
 
-  // If content_data has text directly
   if (contentData.text) {
-    return <div style={{ whiteSpace: 'pre-wrap' }}>{contentData.text}</div>
+    return <p className="text-base leading-7 text-[var(--text-secondary)] whitespace-pre-wrap">{contentData.text}</p>
   }
 
-  // If content_data has HTML
   if (contentData.html) {
-    return <div dangerouslySetInnerHTML={{ __html: contentData.html }} />
+    return (
+      <div
+        className="prose prose-slate max-w-none text-[var(--text-secondary)]"
+        dangerouslySetInnerHTML={{ __html: contentData.html }}
+      />
+    )
   }
 
-  // If content_data is an array (Content Studio format)
   if (Array.isArray(contentData)) {
     return (
-      <div>
+      <div className="space-y-6">
         {contentData.map((item, idx) => {
           if (item.type === 'text' || item.type === 'paragraph') {
             return (
-              <p key={idx} style={{ marginBottom: 'var(--spacing-md)' }}>
+              <p key={idx} className="text-base leading-7 text-[var(--text-secondary)]">
                 {item.content || item.text}
               </p>
             )
           }
-          if (item.type === 'heading' || item.type === 'h1' || item.type === 'h2' || item.type === 'h3') {
-            const HeadingTag = item.level ? `h${item.level}` : 'h2'
+          if (item.type?.startsWith('h')) {
+            const HeadingTag = item.type
             return (
-              <HeadingTag key={idx} style={{ marginTop: 'var(--spacing-lg)', marginBottom: 'var(--spacing-md)' }}>
+              <HeadingTag key={idx} className="text-2xl font-semibold text-[var(--text-primary)]">
                 {item.content || item.text}
               </HeadingTag>
             )
@@ -67,7 +80,7 @@ function renderContent(lesson) {
           if (item.type === 'list' || item.type === 'ul' || item.type === 'ol') {
             const ListTag = item.ordered ? 'ol' : 'ul'
             return (
-              <ListTag key={idx} style={{ marginBottom: 'var(--spacing-md)', paddingLeft: 'var(--spacing-lg)' }}>
+              <ListTag key={idx} className="ml-6 list-disc space-y-2 text-[var(--text-secondary)]">
                 {(item.items || []).map((listItem, listIdx) => (
                   <li key={listIdx}>{listItem}</li>
                 ))}
@@ -76,19 +89,16 @@ function renderContent(lesson) {
           }
           if (item.type === 'code' || item.type === 'codeblock') {
             return (
-              <pre key={idx} style={{
-                background: 'var(--bg-primary)',
-                padding: 'var(--spacing-md)',
-                borderRadius: 'var(--radius-sm)',
-                overflow: 'auto',
-                marginBottom: 'var(--spacing-md)'
-              }}>
+              <pre
+                key={idx}
+                className="overflow-auto rounded-2xl border border-[rgba(148,163,184,0.18)] bg-[var(--bg-secondary)] p-4 text-sm text-[var(--text-primary)]"
+              >
                 <code>{item.content || item.code}</code>
               </pre>
             )
           }
           return (
-            <div key={idx} style={{ marginBottom: 'var(--spacing-md)' }}>
+            <div key={idx} className="text-sm text-[var(--text-secondary)]">
               {item.content || JSON.stringify(item)}
             </div>
           )
@@ -97,19 +107,10 @@ function renderContent(lesson) {
     )
   }
 
-  // Fallback: display as JSON
   return (
-    <div>
-      <pre style={{
-        background: 'var(--bg-primary)',
-        padding: 'var(--spacing-md)',
-        borderRadius: 'var(--radius-sm)',
-        overflow: 'auto',
-        fontSize: '0.9rem'
-      }}>
-        {JSON.stringify(contentData, null, 2)}
-      </pre>
-    </div>
+    <pre className="overflow-auto rounded-2xl border border-[rgba(148,163,184,0.18)] bg-[var(--bg-secondary)] p-4 text-sm text-[var(--text-primary)]">
+      {JSON.stringify(contentData, null, 2)}
+    </pre>
   )
 }
 
@@ -120,20 +121,20 @@ export default function LessonViewer({
   onComplete,
   isCompleted = false,
   onTakeTest,
-  canTakeTest = false
+  canTakeTest = false,
+  isFinalLesson = false
 }) {
   const [completed, setCompleted] = useState(isCompleted)
+  const [isProcessing, setProcessing] = useState(false)
 
   useEffect(() => {
     setCompleted(isCompleted)
   }, [isCompleted])
 
-  const [isProcessing, setProcessing] = useState(false)
-
   if (!lesson) {
     return (
-      <div style={{ padding: 'var(--spacing-2xl)', textAlign: 'center', color: 'var(--text-muted)' }}>
-        <i className="fas fa-book-open" style={{ fontSize: '3rem', marginBottom: 'var(--spacing-md)' }}></i>
+      <div className="rounded-3xl border border-[rgba(148,163,184,0.18)] bg-white/90 p-12 text-center shadow-sm backdrop-blur text-[var(--text-secondary)]">
+        <BookOpen className="mx-auto mb-4 h-10 w-10 text-[var(--text-muted)]" />
         <p>No lesson content available</p>
       </div>
     )
@@ -160,189 +161,165 @@ export default function LessonViewer({
   }
 
   return (
-    <div className="card">
-      {/* Lesson Header */}
-      <div style={{ marginBottom: 'var(--spacing-lg)' }}>
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 'var(--spacing-md)',
-          marginBottom: 'var(--spacing-md)'
-        }}>
-          <div className="card-icon" style={{ width: '60px', height: '60px' }}>
-            <i className="fas fa-book-open"></i>
-          </div>
-          <div style={{ flex: 1 }}>
-            <h2 style={{
-              fontSize: '1.8rem',
-              fontWeight: 600,
-              marginBottom: 'var(--spacing-xs)',
-              color: 'var(--text-primary)'
-            }}>
-              {lesson.title || lesson.lesson_name || 'Lesson'}
-            </h2>
-            <div style={{
-              display: 'flex',
-              gap: 'var(--spacing-md)',
-              alignItems: 'center',
-              color: 'var(--text-secondary)',
-              fontSize: '0.9rem'
-            }}>
-              {lesson.duration && (
-                <span>
-                  <i className="fas fa-clock mr-2"></i>
-                  {lesson.duration} minutes
-                </span>
-              )}
-              {lesson.content_type && (
-                <span style={{
-                  padding: 'var(--spacing-xs) var(--spacing-sm)',
-                  background: 'var(--bg-secondary)',
-                  borderRadius: 'var(--radius-sm)',
-                  textTransform: 'capitalize'
-                }}>
-                  {lesson.content_type}
-                </span>
-              )}
+    <div className="space-y-6">
+      <div className="rounded-3xl border border-[rgba(148,163,184,0.18)] bg-white/95 p-6 shadow-sm backdrop-blur">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex items-start gap-3">
+            <span className="rounded-2xl bg-[rgba(14,165,233,0.12)] p-3 text-[var(--primary-cyan)]">
+              <BookOpen size={22} />
+            </span>
+            <div className="space-y-1">
+              <h2 className="text-xl font-semibold text-[var(--text-primary)]">
+                {lesson.title || lesson.lesson_name || 'Lesson'}
+              </h2>
+              <p className="text-sm text-[var(--text-secondary)]">
+                {lesson.subtitle ||
+                  lesson.summary ||
+                  'Master the concepts through guided explanations, practical steps, and curated resources.'}
+              </p>
+              <div className="flex flex-wrap items-center gap-4 text-xs font-semibold uppercase tracking-widest text-[var(--text-muted)]">
+                {lesson.duration && (
+                  <span className="flex items-center gap-1">
+                    <Clock size={12} />
+                    {typeof lesson.duration === 'string' ? lesson.duration : `${lesson.duration} mins`}
+                  </span>
+                )}
+                {lesson.content_type && (
+                  <span className="flex items-center gap-1 text-[var(--primary-cyan)]">
+                    <PlayCircle size={12} />
+                    {lesson.content_type}
+                  </span>
+                )}
+                {completed && (
+                  <span className="flex items-center gap-1 text-[#047857]">
+                    <CheckCircle2 size={12} />
+                    Completed
+                  </span>
+                )}
+              </div>
             </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button variant="secondary" onClick={onPrevious} disabled={!onPrevious}>
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Previous
+            </Button>
+            {onNext && !isFinalLesson && (
+              <Button variant="secondary" onClick={onNext} disabled={!onNext}>
+                Next
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+            )}
+            {isFinalLesson && onTakeTest && (
+              <Button variant={canTakeTest ? 'primary' : 'secondary'} onClick={onTakeTest} disabled={!canTakeTest}>
+                {canTakeTest ? (
+                  <>
+                    Take assessment
+                    <GraduationCap className="ml-2 h-4 w-4" />
+                  </>
+                ) : (
+                  <>
+                    Complete lesson
+                    <Lock className="ml-2 h-4 w-4" />
+                  </>
+                )}
+              </Button>
+            )}
           </div>
         </div>
       </div>
 
-      {/* Lesson Content */}
-      <div style={{
-        padding: 'var(--spacing-xl)',
-        background: 'var(--bg-secondary)',
-        borderRadius: 'var(--radius-md)',
-        marginBottom: 'var(--spacing-lg)',
-        minHeight: '300px',
-        lineHeight: 1.8,
-        color: 'var(--text-primary)'
-      }}>
+      <div className="rounded-3xl border border-[rgba(148,163,184,0.12)] bg-[var(--bg-secondary)]/40 p-6 shadow-inner backdrop-blur">
         {renderContent(lesson)}
 
-        {/* Enrichment Data */}
-        {lesson.enrichment_data && (
-          <div style={{ marginTop: 'var(--spacing-lg)', paddingTop: 'var(--spacing-lg)', borderTop: '1px solid var(--bg-tertiary)' }}>
-            <h4 style={{
-              fontSize: '1.1rem',
-              fontWeight: 600,
-              marginBottom: 'var(--spacing-md)',
-              color: 'var(--text-primary)'
-            }}>
-              Additional Resources
-            </h4>
-            {lesson.enrichment_data.youtube_links && lesson.enrichment_data.youtube_links.length > 0 && (
-              <div style={{ marginBottom: 'var(--spacing-md)' }}>
-                <div style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: 'var(--spacing-xs)' }}>
-                  <i className="fab fa-youtube mr-2" style={{ color: '#FF0000' }}></i>
-                  YouTube Videos
+        {(lesson.enrichment_data || lesson.micro_skills || lesson.nano_skills) && (
+          <div className="mt-8 space-y-6">
+            {lesson.enrichment_data && (
+              <div className="rounded-2xl border border-[rgba(148,163,184,0.14)] bg-white/90 p-5 shadow-sm backdrop-blur">
+                <h3 className="mb-3 text-lg font-semibold text-[var(--text-primary)]">Additional resources</h3>
+                <div className="space-y-4 text-sm">
+                  {Array.isArray(lesson.enrichment_data.youtube_links) && lesson.enrichment_data.youtube_links.length > 0 && (
+                    <div>
+                      <div className="mb-2 flex items-center gap-2 text-[var(--text-secondary)]">
+                        <Youtube size={16} className="text-[#FF0000]" />
+                        YouTube
+                      </div>
+                      <ul className="space-y-2 pl-5 text-[var(--text-secondary)]">
+                        {lesson.enrichment_data.youtube_links.map((link, idx) => (
+                          <li key={idx}>
+                            <a
+                              href={link}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-[var(--primary-cyan)] underline-offset-2 hover:underline"
+                            >
+                              {link}
+                            </a>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {Array.isArray(lesson.enrichment_data.github_repos) && lesson.enrichment_data.github_repos.length > 0 && (
+                    <div>
+                      <div className="mb-2 flex items-center gap-2 text-[var(--text-secondary)]">
+                        <Github size={16} />
+                        GitHub
+                      </div>
+                      <ul className="space-y-2 pl-5 text-[var(--text-secondary)]">
+                        {lesson.enrichment_data.github_repos.map((repo, idx) => (
+                          <li key={idx}>
+                            <a
+                              href={repo}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-[var(--primary-cyan)] underline-offset-2 hover:underline"
+                            >
+                              {repo}
+                            </a>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
                 </div>
-                <ul style={{ listStyle: 'none', paddingLeft: 'var(--spacing-md)' }}>
-                  {lesson.enrichment_data.youtube_links.map((link, idx) => (
-                    <li key={idx} style={{ marginBottom: 'var(--spacing-xs)' }}>
-                      <a
-                        href={link}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style={{
-                          color: 'var(--primary-cyan)',
-                          textDecoration: 'none'
-                        }}
-                      >
-                        {link}
-                      </a>
-                    </li>
-                  ))}
-                </ul>
               </div>
             )}
-            {lesson.enrichment_data.github_repos && lesson.enrichment_data.github_repos.length > 0 && (
-              <div>
-                <div style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: 'var(--spacing-xs)' }}>
-                  <i className="fab fa-github mr-2"></i>
-                  GitHub Repositories
-                </div>
-                <ul style={{ listStyle: 'none', paddingLeft: 'var(--spacing-md)' }}>
-                  {lesson.enrichment_data.github_repos.map((repo, idx) => (
-                    <li key={idx} style={{ marginBottom: 'var(--spacing-xs)' }}>
-                      <a
-                        href={repo}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style={{
-                          color: 'var(--primary-cyan)',
-                          textDecoration: 'none'
-                        }}
-                      >
-                        {repo}
-                      </a>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-          </div>
-        )}
 
-        {/* Skills */}
-        {(lesson.micro_skills || lesson.nano_skills) && (
-          <div style={{
-            marginTop: 'var(--spacing-lg)',
-            paddingTop: 'var(--spacing-lg)',
-            borderTop: '1px solid var(--bg-tertiary)'
-          }}>
-            <h4 style={{
-              fontSize: '1.1rem',
-              fontWeight: 600,
-              marginBottom: 'var(--spacing-md)',
-              color: 'var(--text-primary)'
-            }}>
-              Learning Objectives
-            </h4>
-            {lesson.micro_skills && (
-              <div style={{ marginBottom: 'var(--spacing-md)' }}>
-                <div style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: 'var(--spacing-sm)' }}>
-                  Micro Skills
-                </div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--spacing-sm)' }}>
-                  {lesson.micro_skills.map((skill, idx) => (
-                    <span
-                      key={idx}
-                      style={{
-                        padding: 'var(--spacing-xs) var(--spacing-sm)',
-                        background: 'rgba(0, 166, 118, 0.1)',
-                        color: 'var(--primary-emerald)',
-                        borderRadius: 'var(--radius-sm)',
-                        fontSize: '0.85rem'
-                      }}
-                    >
-                      {skill}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-            {lesson.nano_skills && (
-              <div>
-                <div style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: 'var(--spacing-sm)' }}>
-                  Nano Skills
-                </div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--spacing-sm)' }}>
-                  {lesson.nano_skills.map((skill, idx) => (
-                    <span
-                      key={idx}
-                      style={{
-                        padding: 'var(--spacing-xs) var(--spacing-sm)',
-                        background: 'var(--bg-tertiary)',
-                        color: 'var(--text-primary)',
-                        borderRadius: 'var(--radius-sm)',
-                        fontSize: '0.85rem'
-                      }}
-                    >
-                      {skill}
-                    </span>
-                  ))}
+            {(lesson.micro_skills || lesson.nano_skills) && (
+              <div className="rounded-2xl border border-[rgba(148,163,184,0.14)] bg-white/90 p-5 shadow-sm backdrop-blur">
+                <h3 className="mb-3 text-lg font-semibold text-[var(--text-primary)]">Learning objectives</h3>
+                <div className="space-y-4 text-sm text-[var(--text-secondary)]">
+                  {lesson.micro_skills && (
+                    <div>
+                      <div className="mb-2 font-semibold text-[var(--text-primary)]">Micro skills</div>
+                      <div className="flex flex-wrap gap-2">
+                        {lesson.micro_skills.map((skill, idx) => (
+                          <span
+                            key={idx}
+                            className="rounded-full bg-[rgba(16,185,129,0.12)] px-3 py-1 text-xs font-semibold text-[#047857]"
+                          >
+                            {skill}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {lesson.nano_skills && (
+                    <div>
+                      <div className="mb-2 font-semibold text-[var(--text-primary)]">Nano skills</div>
+                      <div className="flex flex-wrap gap-2">
+                        {lesson.nano_skills.map((skill, idx) => (
+                          <span
+                            key={idx}
+                            className="rounded-full bg-[rgba(14,165,233,0.12)] px-3 py-1 text-xs font-semibold text-[#0f766e]"
+                          >
+                            {skill}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -350,58 +327,30 @@ export default function LessonViewer({
         )}
       </div>
 
-      {/* Navigation */}
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          gap: 'var(--spacing-md)',
-          paddingTop: 'var(--spacing-lg)',
-          borderTop: '1px solid var(--bg-tertiary)'
-        }}
-      >
-        <Button variant="secondary" onClick={onPrevious} disabled={!onPrevious}>
-          <i className="fas fa-arrow-left mr-2"></i>
-          Previous
-        </Button>
-
-        <Button variant="primary" onClick={handleComplete} disabled={completed || isProcessing}>
-          {completed ? (
-            <>
-              <i className="fas fa-check-circle mr-2"></i>
-              Completed
-            </>
-          ) : (
-            <>
-              <i className="fas fa-check mr-2"></i>
-              Mark Complete
-            </>
-          )}
-        </Button>
-
-        {onTakeTest ? (
-          <Button variant={canTakeTest ? 'primary' : 'secondary'} onClick={onTakeTest} disabled={!canTakeTest}>
-            {canTakeTest ? (
+      <div className="flex flex-col gap-3 border-t border-[rgba(148,163,184,0.14)] pt-6 md:flex-row md:items-center md:justify-between">
+        <div className="flex items-center gap-2 text-sm font-semibold text-[var(--text-secondary)]">
+          <span className="rounded-full bg-[rgba(14,165,233,0.12)] p-2 text-[var(--primary-cyan)]">
+            {completed ? <CheckCircle2 size={16} /> : <PlayCircle size={16} />}
+          </span>
+          {completed ? 'Lesson marked as complete' : 'Mark lesson complete to track progress'}
+        </div>
+        <div className="flex items-center gap-3">
+          <Button variant="primary" onClick={handleComplete} disabled={completed || isProcessing}>
+            {completed ? (
               <>
-                Take Test
-                <i className="fas fa-graduation-cap ml-2"></i>
+                <CheckCircle2 className="mr-2 h-4 w-4" />
+                Completed
               </>
             ) : (
               <>
-                Complete lesson
-                <i className="fas fa-lock ml-2"></i>
+                <CheckCircle2 className="mr-2 h-4 w-4" />
+                Mark complete
               </>
             )}
           </Button>
-        ) : onNext ? (
-          <Button variant="secondary" onClick={onNext} disabled={!onNext}>
-            Next
-            <i className="fas fa-arrow-right ml-2"></i>
-          </Button>
-        ) : (
-          <span />
-        )}
+        </div>
       </div>
     </div>
   )
 }
+

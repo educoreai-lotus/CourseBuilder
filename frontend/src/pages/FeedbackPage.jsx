@@ -1,6 +1,15 @@
 import { useMemo, useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import Button from '../components/Button.jsx'
+import {
+  ArrowLeft,
+  Star,
+  MessageSquare,
+  CheckCircle2,
+  Edit3,
+  Trash2,
+  Loader2,
+  Sparkles
+} from 'lucide-react'
 import Container from '../components/Container.jsx'
 import LoadingSpinner from '../components/LoadingSpinner.jsx'
 import {
@@ -12,6 +21,38 @@ import {
   deleteFeedback
 } from '../services/apiService.js'
 import { useApp } from '../context/AppContext'
+import Button from '../components/Button.jsx'
+
+const renderStars = (rating, onSelect, interactive = false) => {
+  return (
+    <div className="flex gap-2">
+      {[1, 2, 3, 4, 5].map((value) => {
+        const filled = value <= rating
+        const star = (
+          <Star
+            key={value}
+            size={36}
+            className={filled ? 'text-yellow-400' : 'text-gray-300'}
+            fill={filled ? 'currentColor' : 'none'}
+          />
+        )
+        if (!interactive || !onSelect) {
+          return star
+        }
+        return (
+          <button
+            type="button"
+            key={value}
+            className="transition-transform hover:scale-110 focus:outline-none"
+            onClick={() => onSelect(value)}
+          >
+            {star}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
 
 export default function FeedbackPage() {
   const { courseId, id } = useParams()
@@ -86,7 +127,7 @@ export default function FeedbackPage() {
     return () => {
       isMounted = false
     }
-  }, [actualCourseId, showToast, tagOptions])
+  }, [actualCourseId, showToast])
 
   const toggleTag = (tag) => {
     setTags((prev) => (prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]))
@@ -198,179 +239,180 @@ export default function FeedbackPage() {
   return (
     <div className="page-surface">
       <Container>
-        <div className="stack-lg">
-          <div className="flex items-center gap-2 text-sm font-semibold text-[var(--primary-cyan)]">
-            <Link to={`/course/${actualCourseId}/overview`} className="inline-flex items-center gap-2 hover:underline">
-              <i className="fas fa-arrow-left" aria-hidden="true" />
-              Back to course
+        <div className="mx-auto flex max-w-4xl flex-col gap-10 py-10">
+          <div className="flex items-center justify-between gap-4">
+            <Link
+              to={`/course/${actualCourseId}/overview`}
+              className="inline-flex items-center gap-2 text-sm font-medium transition-colors hover:text-[var(--primary-cyan)]"
+              style={{ color: 'var(--text-secondary)' }}
+            >
+              <ArrowLeft size={16} />
+              Back to overview
             </Link>
+            <div className="text-sm font-semibold uppercase tracking-widest text-[var(--text-muted)]">
+              Feedback · Reflection
+            </div>
           </div>
 
-          {course && (
-            <header className="space-y-2">
-              <h1 className="text-3xl font-bold text-[var(--text-primary)]">Course feedback</h1>
-              <p className="text-sm font-medium uppercase tracking-[0.4em] text-[var(--primary-cyan)]">Share your experience</p>
-              <p className="text-base text-[var(--text-secondary)]">{course.title || course.course_name}</p>
-            </header>
-          )}
-
-          {communityStats && (
-            <section className="surface-card soft space-y-4">
-              <h2 className="text-lg font-semibold text-[var(--text-primary)]">Community insights</h2>
-              <div className="grid gap-4 sm:grid-cols-3">
-                <div className="rounded-2xl border border-[rgba(148,163,184,0.18)] bg-white/90 p-4 text-center shadow-sm backdrop-blur">
-                  <p className="text-xs font-semibold uppercase tracking-widest text-[var(--text-muted)]">Average rating</p>
-                  <p className="mt-2 text-3xl font-bold text-[var(--primary-cyan)]">
-                    {communityStats.average_rating?.toFixed(1) ?? '—'}
-                  </p>
-                  <p className="text-sm text-[#FACC15]">{'★'.repeat(Math.round(communityStats.average_rating || 0))}</p>
-                </div>
-                <div className="rounded-2xl border border-[rgba(148,163,184,0.18)] bg-white/90 p-4 text-center shadow-sm backdrop-blur">
-                  <p className="text-xs font-semibold uppercase tracking-widest text-[var(--text-muted)]">Responses</p>
-                  <p className="mt-2 text-3xl font-bold text-[var(--primary-cyan)]">
-                    {communityStats.total_ratings?.toLocaleString() || 0}
-                  </p>
-                  <p className="text-sm text-[var(--text-secondary)]">Learners contributing feedback</p>
-                </div>
-                <div className="rounded-2xl border border-[rgba(148,163,184,0.18)] bg-white/90 p-4 text-center shadow-sm backdrop-blur">
-                  <p className="text-xs font-semibold uppercase tracking-widest text-[var(--text-muted)]">Top theme</p>
-                  <p className="mt-2 text-base font-semibold text-[var(--text-primary)]">
-                    {communityStats.top_tag || 'Personalised learning'}
-                  </p>
-                  <p className="text-sm text-[var(--text-secondary)]">Most cited by your peers</p>
-                </div>
+          <section className="microservice-card refined space-y-6" style={{ textAlign: 'left' }}>
+            <div className="flex flex-col items-center gap-4 text-center">
+              <div className="rounded-3xl bg-[var(--gradient-secondary)] p-4 text-white shadow-lg">
+                <MessageSquare className="h-9 w-9" />
               </div>
-            </section>
-          )}
-
-          {readonlyView ? (
-            <section className="surface-card soft space-y-5">
-              <header className="flex flex-wrap items-center justify-between gap-4">
-                <div>
-                  <h2 className="text-xl font-semibold text-[var(--text-primary)]">You already shared feedback</h2>
-                  <p className="text-sm text-[var(--text-secondary)]">Update or remove your response below.</p>
-                </div>
-                <div className="flex items-center gap-3 rounded-2xl border border-[rgba(148,163,184,0.18)] bg-white/80 px-4 py-2 shadow-sm backdrop-blur">
-                  <span className="text-lg font-bold text-[var(--primary-cyan)]">{Number(existingFeedback.rating).toFixed(1)}</span>
-                  <span className="text-sm text-[#FACC15]">{'★'.repeat(Math.round(existingFeedback.rating))}</span>
-                </div>
-              </header>
-
-              {existingFeedback.comment && (
-                <p className="rounded-2xl border border-[rgba(148,163,184,0.18)] bg-white/80 p-4 text-sm text-[var(--text-secondary)] shadow-sm backdrop-blur">
-                  {existingFeedback.comment}
+              <div className="space-y-2">
+                <h1 className="text-3xl font-bold leading-tight text-[var(--text-primary)]">
+                  Share your experience
+                </h1>
+                <p className="text-base leading-7 text-[var(--text-secondary)]">
+                  Help us improve <strong>{course?.title || course?.course_name || 'the course'}</strong> by rating the learning experience and adding insights.
+                  Your perspective informs recommendations and future iterations.
                 </p>
-              )}
-
-              {existingFeedback.tags && existingFeedback.tags.length > 0 && (
-                <div className="flex flex-wrap gap-2">
-                  {existingFeedback.tags.map((tag) => (
-                    <span key={tag} className="status-chip bg-[rgba(16,185,129,0.12)] text-[#047857]">
-                      <i className="fa-solid fa-tag" aria-hidden="true" /> {tag}
-                    </span>
-                  ))}
-                </div>
-              )}
-
-              <div className="flex flex-wrap gap-3">
-                <Button type="button" variant="primary" onClick={startEdit}>
-                  <i className="fa-solid fa-pen-to-square" aria-hidden="true" /> Edit feedback
-                </Button>
-                <Button type="button" variant="secondary" onClick={handleDelete} disabled={formLoading}>
-                  <i className="fa-solid fa-trash" aria-hidden="true" /> Delete feedback
-                </Button>
-                <Button type="button" variant="secondary" onClick={() => navigate(`/course/${actualCourseId}/overview`)}>
-                  Back to course
-                </Button>
               </div>
-            </section>
-          ) : (
-            <form onSubmit={handleSubmit} className="surface-card space-y-8">
-              <div className="space-y-3">
-                <label className="block text-sm font-semibold uppercase tracking-[0.4em] text-[var(--primary-cyan)]">
-                  Rating <span className="text-xs font-normal text-[var(--text-muted)]">(1-5)</span>
-                </label>
-                <div className="flex flex-wrap items-center gap-4">
-                  <input
-                    type="range"
-                    min="1"
-                    max="5"
-                    step="1"
-                    value={rating}
-                    onChange={(e) => setRating(Number(e.target.value))}
-                    className="flex-1 min-w-[200px]"
-                  />
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-4xl font-bold text-[var(--primary-cyan)]">{rating}</span>
-                    <span className="text-xl text-[#FACC15]">{'★'.repeat(Number(rating))}</span>
+            </div>
+
+            {communityStats && (
+              <div className="rounded-3xl border border-[rgba(148,163,184,0.18)] bg-white/90 p-6 shadow-sm backdrop-blur">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <h2 className="text-lg font-semibold text-[var(--text-primary)]">Community sentiment</h2>
+                    <p className="text-sm text-[var(--text-secondary)]">
+                      Average rating from {communityStats.total_responses || 'recent'} responses.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3 text-2xl font-bold text-[var(--text-primary)]">
+                    {communityStats.average_rating?.toFixed(1)}
+                    <Star size={24} className="text-yellow-400" fill="currentColor" />
                   </div>
                 </div>
-                <div className="flex justify-between text-xs font-semibold uppercase tracking-[0.4em] text-[var(--text-muted)]">
-                  <span>Poor</span>
-                  <span>Excellent</span>
+              </div>
+            )}
+
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <div className="rounded-3xl border border-[rgba(148,163,184,0.18)] bg-white/95 p-6 shadow-sm backdrop-blur">
+                <div className="flex flex-col gap-6">
+                  <div className="flex flex-col items-center gap-4 text-center">
+                    <div className="text-sm font-semibold uppercase tracking-widest text-[var(--text-muted)]">
+                      Overall rating
+                    </div>
+                    {renderStars(rating, isEditing ? setRating : undefined, isEditing)}
+                    <div className="text-sm text-[var(--text-secondary)]">
+                      {rating === 0
+                        ? 'Select a rating'
+                        : rating === 1
+                          ? 'Needs significant improvement'
+                          : rating === 2
+                            ? 'Below expectations'
+                            : rating === 3
+                              ? 'Met expectations'
+                              : rating === 4
+                                ? 'Strong experience'
+                                : 'Exceptional experience'}
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <label className="text-sm font-semibold text-[var(--text-primary)]">
+                      Additional comments (optional)
+                    </label>
+                    <textarea
+                      value={comment}
+                      onChange={(e) => setComment(e.target.value)}
+                      rows={6}
+                      className="w-full resize-none rounded-2xl border border-[rgba(148,163,184,0.2)] bg-white/90 p-4 text-sm text-[var(--text-primary)] shadow-sm outline-none transition focus:border-[var(--primary-cyan)] focus:ring-2 focus:ring-[var(--primary-cyan)]/30"
+                      placeholder="Tell us about your experience, what resonated, or what could be improved..."
+                      readOnly={!isEditing}
+                    />
+                  </div>
+
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <label className="text-sm font-semibold text-[var(--text-primary)]">Tag this experience</label>
+                      <span className="text-xs font-semibold uppercase tracking-widest text-[var(--text-muted)]">
+                        Optional
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {tagOptions.map((tag) => {
+                        const active = tags.includes(tag)
+                        return (
+                          <button
+                            key={tag}
+                            type="button"
+                            onClick={() => (isEditing ? toggleTag(tag) : null)}
+                            className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
+                              active
+                                ? 'bg-[rgba(14,165,233,0.18)] text-[#0f766e] border border-[rgba(14,165,233,0.3)]'
+                                : 'bg-[rgba(148,163,184,0.12)] text-[var(--text-muted)]'
+                            } ${!isEditing ? 'cursor-default opacity-70' : 'hover:opacity-80'}`}
+                          >
+                            #{tag}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
                 </div>
               </div>
 
-              <div className="space-y-3">
-                <label className="block text-sm font-semibold uppercase tracking-[0.25em] text-[var(--text-primary)]">
-                  What stood out? <span className="text-xs font-normal text-[var(--text-muted)]">(optional)</span>
-                </label>
-                <div className="flex flex-wrap gap-2">
-                  {tagOptions.map((tag) => {
-                    const active = tags.includes(tag)
-                    return (
-                      <button
-                        key={tag}
-                        type="button"
-                        onClick={() => toggleTag(tag)}
-                        className={`rounded-full px-4 py-2 text-sm font-semibold transition-all ${
-                          active
-                            ? 'bg-[var(--primary-cyan)] text-white shadow-sm'
-                            : 'border border-[rgba(148,163,184,0.35)] bg-white/90 text-[var(--text-primary)] hover:border-[var(--primary-cyan)]'
-                        }`}
-                      >
-                        {tag}
-                      </button>
-                    )
-                  })}
+              <div className="flex flex-col gap-3 border-t border-[rgba(148,163,184,0.16)] pt-6 md:flex-row md:items-center md:justify-between">
+                <div className="flex items-center gap-2 text-sm text-[var(--text-secondary)]">
+                  <Sparkles size={16} className="text-[var(--primary-cyan)]" />
+                  Feedback informs future cohorts, adaptive recommendations, and assessment improvements.
                 </div>
-              </div>
 
-              <div className="space-y-3">
-                <label className="block text-sm font-semibold uppercase tracking-[0.25em] text-[var(--text-primary)]">
-                  Additional comments <span className="text-xs font-normal text-[var(--text-muted)]">(optional)</span>
-                </label>
-                <textarea
-                  value={comment}
-                  onChange={(e) => setComment(e.target.value)}
-                  rows="6"
-                  placeholder="Share your thoughts about this course..."
-                  className="w-full rounded-2xl border border-[rgba(148,163,184,0.35)] bg-white/90 p-4 text-sm text-[var(--text-primary)] shadow-sm backdrop-blur focus:border-[var(--primary-cyan)] focus:outline-none focus:ring-2 focus:ring-[rgba(14,165,233,0.25)]"
-                />
-              </div>
-
-              <div className="flex flex-wrap gap-3">
-                <Button type="submit" variant="primary" disabled={formLoading} style={{ minWidth: '160px' }}>
-                  {formLoading ? (
+                <div className="flex flex-wrap items-center gap-3">
+                  {readonlyView ? (
                     <>
-                      <i className="fas fa-spinner fa-spin" aria-hidden="true" /> Saving...
+                      <Button variant="secondary" onClick={startEdit}>
+                        <Edit3 className="mr-2 h-4 w-4" />
+                        Edit feedback
+                      </Button>
+                      <Button variant="secondary" onClick={handleDelete} disabled={formLoading}>
+                        {formLoading ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Removing...
+                          </>
+                        ) : (
+                          <>
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Delete
+                          </>
+                        )}
+                      </Button>
                     </>
                   ) : (
                     <>
-                      <i className="fas fa-paper-plane" aria-hidden="true" /> {hasExistingFeedback ? 'Update feedback' : 'Submit feedback'}
+                      <Button variant="secondary" onClick={cancelEdit} disabled={formLoading}>
+                        Cancel
+                      </Button>
+                      <Button variant="primary" type="submit" disabled={formLoading}>
+                        {formLoading ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Saving...
+                          </>
+                        ) : hasExistingFeedback ? (
+                          <>
+                            <CheckCircle2 className="mr-2 h-4 w-4" />
+                            Update feedback
+                          </>
+                        ) : (
+                          <>
+                            <CheckCircle2 className="mr-2 h-4 w-4" />
+                            Submit feedback
+                          </>
+                        )}
+                      </Button>
                     </>
                   )}
-                </Button>
-                {hasExistingFeedback && (
-                  <Button type="button" variant="secondary" onClick={cancelEdit} disabled={formLoading}>
-                    Cancel
-                  </Button>
-                )}
+                </div>
               </div>
             </form>
-          )}
+          </section>
         </div>
       </Container>
     </div>
   )
 }
+

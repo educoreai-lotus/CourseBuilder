@@ -135,41 +135,13 @@ export default function LessonPage() {
     }
     navigate(`/course/${courseId}/assessment`)
   }
-  const completionSummary = (
-    <div
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 'var(--spacing-sm)',
-        fontSize: '0.9rem',
-        color: canTakeAssessment || allLessonsCompleted ? '#047857' : 'var(--text-secondary)'
-      }}
-    >
-      {isFinalLesson ? (
-        canTakeAssessment ? (
-          <>
-            <i className="fa-solid fa-unlock" />
-            Final assessment ready – click “Take Test” to continue.
-          </>
-        ) : (
-          <>
-            <i className="fa-solid fa-lock" />
-            Finish this lesson to unlock the assessment.
-          </>
-        )
-      ) : allLessonsCompleted ? (
-        <>
-          <i className="fa-solid fa-unlock" />
-          Exercises & exam unlocked
-        </>
-      ) : (
-        <>
-          <i className="fa-solid fa-lock" />
-          Complete all lessons to unlock exercises and exam
-        </>
-      )}
-    </div>
-  )
+  const completionSummary = isFinalLesson
+    ? canTakeAssessment
+      ? 'Final assessment ready – take the test when you are ready.'
+      : 'Finish this lesson to unlock the assessment.'
+    : allLessonsCompleted
+      ? 'Exercises and assessment unlocked.'
+      : 'Complete remaining lessons to unlock exercises and assessment.'
 
   return (
     <LessonView
@@ -185,6 +157,8 @@ export default function LessonPage() {
       onTakeTest={isFinalLesson ? handleTakeTest : undefined}
       canTakeTest={canTakeAssessment}
       isFinalLesson={isFinalLesson}
+      structureHref={`/course/${courseId}/structure`}
+      overviewHref={`/course/${courseId}/overview`}
     />
   )
 }

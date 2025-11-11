@@ -1,4 +1,16 @@
 import { useMemo, useState } from 'react'
+import {
+  ChevronDown,
+  ChevronRight,
+  Layers,
+  Folder,
+  BookOpen,
+  CheckCircle2,
+  PlayCircle,
+  Lock,
+  Circle,
+  Clock
+} from 'lucide-react'
 
 const normalizeHierarchy = (course) => {
   if (!course) return []
@@ -13,12 +25,12 @@ const normalizeHierarchy = (course) => {
       modules: (topic.modules || []).map((module, moduleIndex) => ({
         id: String(module.id || module.module_id || `module-${moduleIndex}`),
         title: module.title || module.module_name || module.name || `Module ${moduleIndex + 1}`,
+        description: module.summary || module.description,
         lessons: (module.lessons || []).map((lesson, lessonIndex) => ({
           id: String(lesson.id || lesson.lesson_id || `lesson-${lessonIndex}`),
           title: lesson.title || lesson.lesson_name || `Lesson ${lessonIndex + 1}`,
           duration: lesson.duration || lesson.estimated_duration || 12,
-          status: lesson.status || 'locked',
-          icon: lesson.icon || 'fa-lightbulb'
+          status: lesson.status || 'locked'
         }))
       }))
     }))
@@ -33,16 +45,28 @@ const normalizeHierarchy = (course) => {
       modules: modules.map((module, moduleIndex) => ({
         id: String(module.id || module.module_id || `module-${moduleIndex}`),
         title: module.title || module.module_name || module.name || `Module ${moduleIndex + 1}`,
+        description: module.summary || module.description,
         lessons: (module.lessons || []).map((lesson, lessonIndex) => ({
           id: String(lesson.id || lesson.lesson_id || `lesson-${lessonIndex}`),
           title: lesson.title || lesson.lesson_name || `Lesson ${lessonIndex + 1}`,
           duration: lesson.duration || lesson.estimated_duration || 12,
-          status: lesson.status || 'locked',
-          icon: lesson.icon || 'fa-lightbulb'
+          status: lesson.status || 'locked'
         }))
       }))
     }
   ]
+}
+
+const formatDuration = (duration) => {
+  if (!duration) return 'Approx. 12 mins'
+  if (typeof duration === 'string') return duration
+  return `${duration} mins`
+}
+
+const getLessonState = (lessonId, completedLessonIds, unlocked, status) => {
+  const completed = completedLessonIds.includes(lessonId)
+  const accessible = unlocked || status === 'unlocked' || completed
+  return { completed, accessible }
 }
 
 export default function CourseStructure({
@@ -79,169 +103,185 @@ export default function CourseStructure({
     })
   }
 
-  const renderLessonStatus = (lessonId, status) => {
-    if (completedLessonIds.includes(lessonId)) {
-      return (
-        <span className="status-chip bg-[rgba(16,185,129,0.18)] text-[#047857]">
-          <i className="fa-solid fa-circle-check" aria-hidden="true" />
-          Completed
-        </span>
-      )
-    }
-
-    if (unlocked || status === 'unlocked') {
-      return (
-        <span className="status-chip bg-[rgba(59,130,246,0.15)] text-[#1d4ed8]">
-          <i className="fa-solid fa-unlock" aria-hidden="true" />
-          Available
-        </span>
-      )
-    }
-
-    return (
-      <span className="status-chip bg-[rgba(148,163,184,0.2)] text-[#475569]">
-        <i className="fa-solid fa-lock" aria-hidden="true" />
-        Locked
-      </span>
-    )
-  }
-
   if (hierarchy.length === 0) {
     return (
-      <div className="course-card text-center text-[var(--text-secondary)]">
-        <i className="fa-solid fa-cubes mb-4 text-3xl" aria-hidden="true" />
-        <p>No modules have been published for this course yet.</p>
+      <div className="rounded-2xl border border-[rgba(148,163,184,0.18)] bg-white/90 p-10 text-center shadow-sm backdrop-blur">
+        <BookOpen className="mx-auto mb-4 h-8 w-8 text-[var(--text-muted)]" />
+        <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+          Modules will appear here once the course publisher adds structured content.
+        </p>
       </div>
     )
   }
 
   return (
-    <div className="stack-lg">
-      {hierarchy.map((topic) => (
-        <article key={topic.id} className="course-card space-y-5">
-          <header
-            onClick={() => toggleTopic(topic.id)}
-            className="flex flex-col gap-4 cursor-pointer md:flex-row md:items-center md:justify-between"
+    <div className="space-y-5">
+      {hierarchy.map((topic) => {
+        const topicExpanded = expandedTopics.has(topic.id)
+        return (
+          <div
+            key={topic.id}
+            className="rounded-3xl border border-[rgba(148,163,184,0.16)] bg-white/90 shadow-sm backdrop-blur transition-shadow hover:shadow-lg"
           >
-            <div className="flex flex-col gap-2">
-              <span className="tag-chip w-max">
-                <i className="fa-solid fa-layer-group" aria-hidden="true" />
-                Topic
-              </span>
-              <h3 className="text-xl font-semibold text-[var(--text-primary)]">{topic.title}</h3>
-              {topic.summary && (
-                <p className="max-w-2xl text-sm text-[var(--text-secondary)]">{topic.summary}</p>
-              )}
-            </div>
-            <button type="button" className="btn btn-secondary w-full md:w-auto">
-              <i
-                className={`fa-solid ${
-                  expandedTopics.has(topic.id) ? 'fa-chevron-up' : 'fa-chevron-down'
-                }`}
-                aria-hidden="true"
-              />
-              {expandedTopics.has(topic.id) ? 'Collapse' : 'Expand'}
-            </button>
-          </header>
-
-          {expandedTopics.has(topic.id) && (
-            <div className="stack-md">
-              {topic.modules.map((module) => (
-                <section key={module.id} className="surface-card soft space-y-4">
-                  <header
-                    onClick={() => toggleModule(module.id)}
-                    className="flex cursor-pointer items-center justify-between gap-4"
-                  >
-                    <div className="flex items-center gap-4">
-                      <span className="card-icon h-12 w-12">
-                        <i className="fa-solid fa-puzzle-piece" aria-hidden="true" />
-                      </span>
-                      <div>
-                        <h4 className="text-lg font-semibold text-[var(--text-primary)]">
-                          {module.title}
-                        </h4>
-                        <p className="text-sm text-[var(--text-secondary)]">
-                          {(module.lessons?.length || 0)} lesson
-                          {module.lessons?.length === 1 ? '' : 's'}
-                        </p>
-                      </div>
-                    </div>
-                    <i
-                      className={`fa-solid ${
-                        expandedModules.has(module.id) ? 'fa-minus' : 'fa-plus'
-                      } text-[var(--text-secondary)]`}
-                      aria-hidden="true"
-                    />
-                  </header>
-
-                  {expandedModules.has(module.id) && (
-                    <ul className="flex flex-col gap-3">
-                      {(module.lessons || []).map((lesson) => {
-                        const isCompleted = completedLessonIds.includes(lesson.id)
-                        const isAccessible = unlocked || lesson.status === 'unlocked' || isCompleted
-                        const isLocked = !isAccessible && lesson.status === 'locked'
-                        const label = isCompleted
-                          ? 'Review'
-                          : completedLessonIds.length > 0
-                            ? 'Resume'
-                            : 'Start'
-
-                        return (
-                          <li
-                            key={lesson.id}
-                            className="flex flex-col gap-4 rounded-2xl border border-[rgba(15,118,110,0.12)] bg-[var(--bg-secondary)] p-4 shadow-sm md:flex-row md:items-center md:justify-between"
-                          >
-                            <div className="flex items-start gap-4">
-                              <span className="card-icon h-10 w-10">
-                                <i className={`fa-solid ${lesson.icon}`} aria-hidden="true" />
-                              </span>
-                              <div>
-                                <h5 className="text-base font-semibold text-[var(--text-primary)]">
-                                  {lesson.title}
-                                </h5>
-                                <p className="mt-1 text-sm text-[var(--text-secondary)]">
-                                  <i className="fa-solid fa-clock mr-2" aria-hidden="true" />
-                                  {lesson.duration} mins · Lesson #{lesson.id.toString().slice(-2)}
-                                </p>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-3">
-                              {renderLessonStatus(lesson.id, lesson.status)}
-                              <button
-                                type="button"
-                                className="btn btn-secondary"
-                                onClick={() => onSelectLesson?.(lesson.id)}
-                                disabled={isLocked}
-                              >
-                                <i className="fa-solid fa-play" aria-hidden="true" />
-                                {label}
-                              </button>
-                            </div>
-                          </li>
-                        )
-                      })}
-                    </ul>
+            <button
+              type="button"
+              onClick={() => toggleTopic(topic.id)}
+              className="flex w-full items-start justify-between gap-4 rounded-3xl px-6 py-5 text-left transition-colors hover:bg-[var(--bg-secondary)]/40"
+            >
+              <div className="flex items-start gap-4">
+                <span className="mt-1 rounded-xl bg-[rgba(14,165,233,0.12)] p-3 text-[var(--primary-cyan)]">
+                  <Layers size={18} />
+                </span>
+                <div className="space-y-1">
+                  <div className="flex items-center gap-3">
+                    <h3 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
+                      {topic.title}
+                    </h3>
+                    <span className="rounded-full bg-[rgba(15,118,110,0.12)] px-3 py-1 text-xs font-semibold text-[#047857]">
+                      {(topic.modules?.length || 0)} module{topic.modules?.length === 1 ? '' : 's'}
+                    </span>
+                  </div>
+                  {topic.summary && (
+                    <p className="text-sm leading-6" style={{ color: 'var(--text-secondary)' }}>
+                      {topic.summary}
+                    </p>
                   )}
-                </section>
-              ))}
-            </div>
-          )}
-        </article>
-      ))}
+                </div>
+              </div>
+              <div className="mt-1 text-[var(--text-muted)]">
+                {topicExpanded ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
+              </div>
+            </button>
 
-      <footer className="flex flex-col gap-3 border-t border-[rgba(148,163,184,0.18)] pt-6 text-sm text-[var(--text-secondary)] md:flex-row md:items-center md:justify-between">
-        <div className="flex flex-wrap items-center gap-3">
-          <span className="tag-chip bg-[rgba(16,185,129,0.12)] text-[#047857]">
-            <i className="fa-solid fa-wand-magic-sparkles" aria-hidden="true" />
-            Adaptive difficulty enabled
-          </span>
-          <span className="tag-chip bg-[rgba(59,130,246,0.12)] text-[#1d4ed8]">
-            <i className="fa-solid fa-robot" aria-hidden="true" />
-            AI enrichment active
-          </span>
-        </div>
-        <p>Lessons update dynamically as you progress.</p>
-      </footer>
+            {topicExpanded && (
+              <div className="space-y-4 px-6 pb-6">
+                {(topic.modules || []).map((module) => {
+                  const moduleExpanded = expandedModules.has(module.id)
+                  return (
+                    <div
+                      key={module.id}
+                      className="rounded-2xl border border-[rgba(148,163,184,0.12)] bg-[var(--bg-secondary)]/40"
+                    >
+                      <button
+                        type="button"
+                        onClick={() => toggleModule(module.id)}
+                        className="flex w-full items-start justify-between gap-4 rounded-2xl px-5 py-4 text-left transition-colors hover:bg-[var(--bg-secondary)]/60"
+                      >
+                        <div className="flex items-start gap-3">
+                          <span className="mt-1 rounded-xl bg-white/70 p-2 text-[var(--primary-cyan)] shadow-sm">
+                            <Folder size={16} />
+                          </span>
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2">
+                              <h4 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>
+                                {module.title}
+                              </h4>
+                              <span className="rounded-full bg-white/70 px-3 py-1 text-xs font-semibold text-[var(--text-muted)]">
+                                {(module.lessons?.length || 0)} lesson{module.lessons?.length === 1 ? '' : 's'}
+                              </span>
+                            </div>
+                            {module.description && (
+                              <p className="text-xs leading-6" style={{ color: 'var(--text-secondary)' }}>
+                                {module.description}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        <div className="mt-1 text-[var(--text-muted)]">
+                          {moduleExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                        </div>
+                      </button>
+
+                      {moduleExpanded && (
+                        <ul className="space-y-2 px-5 pb-4">
+                          {(module.lessons || []).map((lesson) => {
+                            const lessonId = lesson.id
+                            const { completed, accessible } = getLessonState(
+                              lessonId,
+                              completedLessonIds,
+                              unlocked,
+                              lesson.status
+                            )
+                            const disabled = !accessible
+
+                            return (
+                              <li key={lessonId}>
+                                <button
+                                  type="button"
+                                  className={`flex w-full items-center justify-between gap-4 rounded-2xl border border-transparent px-4 py-3 text-left transition-all ${
+                                    disabled
+                                      ? 'cursor-not-allowed opacity-60'
+                                      : 'hover:border-[var(--primary-cyan)] hover:bg-white'
+                                  }`}
+                                  style={{
+                                    background: completed ? 'rgba(16,185,129,0.08)' : 'rgba(255,255,255,0.9)',
+                                    color: 'var(--text-primary)',
+                                    boxShadow: completed ? '0 8px 20px rgba(16,185,129,0.12)' : 'none'
+                                  }}
+                                  onClick={() => {
+                                    if (!disabled) {
+                                      onSelectLesson?.(lessonId)
+                                    }
+                                  }}
+                                  disabled={disabled}
+                                >
+                                  <div className="flex items-center gap-4">
+                                    <span className="rounded-full bg-[rgba(14,165,233,0.12)] p-2 text-[var(--primary-cyan)]">
+                                      {completed ? (
+                                        <CheckCircle2 size={18} />
+                                      ) : accessible ? (
+                                        <PlayCircle size={18} />
+                                      ) : (
+                                        <Lock size={18} />
+                                      )}
+                                    </span>
+                                    <div className="space-y-1">
+                                      <div className="font-semibold">{lesson.title}</div>
+                                      <div className="flex items-center gap-3 text-xs font-medium" style={{ color: 'var(--text-muted)' }}>
+                                        <span className="flex items-center gap-1">
+                                          <Clock size={12} />
+                                          {formatDuration(lesson.duration)}
+                                        </span>
+                                        <span className="flex items-center gap-1">
+                                          {completed ? (
+                                            <>
+                                              <CheckCircle2 size={12} />
+                                              Completed
+                                            </>
+                                          ) : accessible ? (
+                                            <>
+                                              <Circle size={10} />
+                                              Ready to start
+                                            </>
+                                          ) : (
+                                            <>
+                                              <Lock size={12} />
+                                              Locked
+                                            </>
+                                          )}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                  {!disabled && (
+                                    <span className="text-xs font-semibold uppercase tracking-widest text-[var(--primary-cyan)]">
+                                      {completed ? 'Review' : 'Start'}
+                                    </span>
+                                  )}
+                                </button>
+                              </li>
+                            )
+                          })}
+                        </ul>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        )
+      })}
     </div>
   )
 }

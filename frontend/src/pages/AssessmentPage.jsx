@@ -1,5 +1,15 @@
 import { useParams, useNavigate } from 'react-router-dom'
 import { useState, useEffect } from 'react'
+import {
+  ArrowLeft,
+  ClipboardCheck,
+  CheckCircle2,
+  Clock,
+  Target,
+  AlertTriangle,
+  Sparkles,
+  Loader2
+} from 'lucide-react'
 import Button from '../components/Button.jsx'
 import LoadingSpinner from '../components/LoadingSpinner.jsx'
 import { getCourseById } from '../services/apiService.js'
@@ -15,20 +25,20 @@ export default function AssessmentPage() {
   const [redirecting, setRedirecting] = useState(false)
 
   useEffect(() => {
-    loadCourse()
-  }, [id])
-
-  const loadCourse = async () => {
-    setLoading(true)
-    try {
-      const data = await getCourseById(id)
-      setCourse(data)
-    } catch (err) {
-      showToast('Failed to load course', 'error')
-    } finally {
-      setLoading(false)
+    const loadCourse = async () => {
+      setLoading(true)
+      try {
+        const data = await getCourseById(id)
+        setCourse(data)
+      } catch (err) {
+        showToast('Failed to load course', 'error')
+      } finally {
+        setLoading(false)
+      }
     }
-  }
+
+    loadCourse()
+  }, [id, showToast])
 
   const handleStartAssessment = () => {
     setRedirecting(true)
@@ -51,59 +61,121 @@ export default function AssessmentPage() {
     )
   }
 
+  const courseTitle = course?.title || course?.course_name || 'Course assessment'
+
   return (
     <div className="page-surface">
       <Container>
-        <section className="section-panel" style={{ maxWidth: '820px', width: '100%', display: 'flex', flexDirection: 'column', gap: 'var(--spacing-xl)' }}>
-          <Button variant="secondary" onClick={() => navigate(`/course/${id}/structure`)}>
-            <i className="fas fa-arrow-left" style={{ marginRight: '8px' }} /> Back to course
-          </Button>
-
-          <article className="course-card" style={{ textAlign: 'center' }}>
-            <div className="dashboard-icon" style={{ width: '80px', height: '80px', margin: '0 auto var(--spacing-md)' }}>
-              <i className="fas fa-clipboard-check" style={{ fontSize: '2rem' }} />
-            </div>
-            <h1 style={{ fontSize: '2rem', fontWeight: 700 }}>Course assessment</h1>
-            <p style={{ color: 'var(--text-muted)', fontSize: '1rem', marginTop: 'var(--spacing-xs)' }}>
-              {course?.title || course?.course_name || 'Course'}
-            </p>
-          </article>
-
-          <section className="course-card">
-            <h2 style={{ fontSize: '1.3rem', fontWeight: 600 }}>Assessment details</h2>
-            <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 'var(--spacing-sm)', marginTop: 'var(--spacing-md)', color: 'var(--text-muted)' }}>
-              <li><i className="fas fa-check-circle" style={{ color: '#047857', marginRight: '8px' }} /> Covers all course modules and lessons</li>
-              <li><i className="fas fa-check-circle" style={{ color: '#047857', marginRight: '8px' }} /> Multiple choice and practical questions</li>
-              <li><i className="fas fa-check-circle" style={{ color: '#047857', marginRight: '8px' }} /> Passing score: 70% or higher</li>
-              <li><i className="fas fa-check-circle" style={{ color: '#047857', marginRight: '8px' }} /> Time limit: 60 minutes</li>
-            </ul>
-          </section>
-
-          <section className="course-card" style={{ background: 'rgba(245, 158, 11, 0.12)', border: '1px solid rgba(245,158,11,0.3)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)', marginBottom: 'var(--spacing-sm)', color: '#b45309', fontWeight: 600 }}>
-              <i className="fas fa-exclamation-triangle" /> Important notes
-            </div>
-            <ul style={{ listStyle: 'none', color: 'var(--text-secondary)', fontSize: '0.9rem', lineHeight: 1.7 }}>
-              <li>• Ensure all lessons are complete before starting the assessment.</li>
-              <li>• You can only take the assessment once per course.</li>
-              <li>• Results are shared with Learning Analytics and HR.</li>
-              <li>• Upon passing, you&apos;ll receive a digital credential via Credly.</li>
-            </ul>
-          </section>
-
-          <div style={{ display: 'flex', gap: 'var(--spacing-md)', justifyContent: 'center' }}>
-            <Button variant="primary" size="lg" onClick={handleStartAssessment} disabled={redirecting}>
-              {redirecting ? <><i className="fas fa-spinner fa-spin" style={{ marginRight: '8px' }} /> Redirecting...</> : <><i className="fas fa-play" style={{ marginRight: '8px' }} /> Start assessment</>}
+        <div className="mx-auto flex max-w-4xl flex-col gap-10 py-10">
+          <div className="flex items-center justify-between gap-4">
+            <Button variant="secondary" onClick={() => navigate(`/course/${id}/structure`)}>
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Back to structure
             </Button>
-            <Button variant="secondary" onClick={() => navigate(`/course/${id}/structure`)} disabled={redirecting}>
-              Cancel
-            </Button>
+            <div className="text-sm font-semibold uppercase tracking-widest text-[var(--text-muted)]">
+              Assessment · Feedback
+            </div>
           </div>
 
-          <p style={{ textAlign: 'center', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-            <i className="fas fa-info-circle" style={{ marginRight: '6px' }} /> Once finished, you&apos;ll move straight into the feedback page.
-          </p>
-        </section>
+          <section className="microservice-card refined space-y-6" style={{ textAlign: 'left' }}>
+            <div className="flex flex-col items-center gap-6 text-center">
+              <div className="rounded-3xl bg-[var(--gradient-secondary)] p-4 text-white shadow-lg">
+                <ClipboardCheck className="h-10 w-10" />
+              </div>
+              <div className="space-y-2">
+                <h1 className="text-3xl font-bold leading-tight text-[var(--text-primary)]">
+                  Final assessment
+                </h1>
+                <p className="text-base leading-7 text-[var(--text-secondary)]">
+                  Demonstrate mastery of <strong>{courseTitle}</strong> through scenario-based questions and practical evaluation.
+                  Passing this assessment unlocks your completion certificate and tailored feedback report.
+                </p>
+              </div>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-3">
+              <div className="rounded-2xl border border-[rgba(148,163,184,0.16)] bg-white/90 p-4 text-sm shadow-sm backdrop-blur">
+                <div className="flex items-center gap-2 text-[var(--primary-cyan)]">
+                  <CheckCircle2 size={16} />
+                  <span className="font-semibold text-[var(--text-primary)]">Passing score</span>
+                </div>
+                <p className="mt-2 font-semibold text-[var(--text-secondary)]">70% or higher</p>
+              </div>
+              <div className="rounded-2xl border border-[rgba(148,163,184,0.16)] bg-white/90 p-4 text-sm shadow-sm backdrop-blur">
+                <div className="flex items-center gap-2 text-[var(--primary-cyan)]">
+                  <Clock size={16} />
+                  <span className="font-semibold text-[var(--text-primary)]">Time limit</span>
+                </div>
+                <p className="mt-2 font-semibold text-[var(--text-secondary)]">60 minutes</p>
+              </div>
+              <div className="rounded-2xl border border-[rgba(148,163,184,0.16)] bg-white/90 p-4 text-sm shadow-sm backdrop-blur">
+                <div className="flex items-center gap-2 text-[var(--primary-cyan)]">
+                  <Sparkles size={16} />
+                  <span className="font-semibold text-[var(--text-primary)]">Attempts</span>
+                </div>
+                <p className="mt-2 font-semibold text-[var(--text-secondary)]">1 attempt</p>
+              </div>
+            </div>
+
+            <div className="rounded-3xl border border-[rgba(148,163,184,0.18)] bg-white/90 p-6 shadow-sm backdrop-blur">
+              <h2 className="mb-4 text-lg font-semibold text-[var(--text-primary)]">Assessment checklist</h2>
+              <ul className="space-y-3 text-sm text-[var(--text-secondary)]">
+                <li className="flex items-start gap-3">
+                  <CheckCircle2 className="mt-0.5 h-4 w-4 text-[#047857]" />
+                  Covers all course modules and key learning objectives
+                </li>
+                <li className="flex items-start gap-3">
+                  <CheckCircle2 className="mt-0.5 h-4 w-4 text-[#047857]" />
+                  Mix of scenario-based multiple choice and short-form responses
+                </li>
+                <li className="flex items-start gap-3">
+                  <CheckCircle2 className="mt-0.5 h-4 w-4 text-[#047857]" />
+                  Adaptive scoring aligned with capability framework
+                </li>
+                <li className="flex items-start gap-3">
+                  <CheckCircle2 className="mt-0.5 h-4 w-4 text-[#047857]" />
+                  Results shared with Analytics & Credentialing services
+                </li>
+              </ul>
+            </div>
+
+            <div className="rounded-3xl border border-[rgba(245,158,11,0.3)] bg-[rgba(245,158,11,0.12)] p-6 text-sm text-[#b45309] shadow-sm">
+              <div className="mb-3 flex items-center gap-2 font-semibold uppercase tracking-widest text-[#b45309]">
+                <AlertTriangle size={16} />
+                Important notes
+              </div>
+              <ul className="space-y-2 text-[var(--text-secondary)]">
+                <li>Ensure all lessons are completed before starting the exam.</li>
+                <li>You have a single attempt — plan your time carefully.</li>
+                <li>Keep a stable internet connection to avoid interruptions.</li>
+                <li>Passing the assessment issues your digital credential automatically.</li>
+              </ul>
+            </div>
+
+            <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
+              <Button variant="primary" size="lg" onClick={handleStartAssessment} disabled={redirecting}>
+                {redirecting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Redirecting...
+                  </>
+                ) : (
+                  <>
+                    Launch assessment
+                    <Target className="ml-3 h-4 w-4" />
+                  </>
+                )}
+              </Button>
+              <Button variant="secondary" onClick={() => navigate(`/course/${id}/structure`)} disabled={redirecting}>
+                Review structure
+              </Button>
+            </div>
+
+            <p className="text-center text-xs text-[var(--text-muted)]">
+              Once finished, you&apos;ll move straight into the feedback experience to reflect on your learning journey.
+            </p>
+          </section>
+        </div>
       </Container>
     </div>
   )

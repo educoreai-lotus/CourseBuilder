@@ -1,4 +1,18 @@
 import { Link } from 'react-router-dom'
+import {
+  ArrowLeft,
+  Users,
+  Clock,
+  Star,
+  Layers,
+  Award,
+  ShieldCheck,
+  Sparkles,
+  PlayCircle,
+  BookOpen,
+  CheckCircle2,
+  Target
+} from 'lucide-react'
 import Container from '../Container.jsx'
 
 const getMetadataItems = (course) => {
@@ -10,33 +24,72 @@ const getMetadataItems = (course) => {
         ? course.modules
         : []
 
+  const lessonsCount =
+    modules.length > 0
+      ? modules.reduce((total, module) => total + (module.lessons?.length || 0), 0)
+      : Array.isArray(course?.lessons)
+        ? course.lessons.length
+        : 0
+
   return [
     {
-      icon: 'fa-layer-group',
+      icon: <Layers size={18} />,
       label: 'Modules',
-      value: modules.length > 0 ? `${modules.length}` : 'N/A'
+      value: modules.length > 0 ? `${modules.length}` : 'Coming soon'
     },
     {
-      icon: 'fa-file-lines',
+      icon: <BookOpen size={18} />,
       label: 'Lessons',
-      value:
-        modules.length > 0
-          ? modules.reduce((total, module) => total + (module.lessons?.length || 0), 0)
-          : Array.isArray(course?.lessons)
-            ? course.lessons.length
-            : 'N/A'
+      value: lessonsCount > 0 ? `${lessonsCount}` : 'Preview'
     },
     {
-      icon: 'fa-clock',
+      icon: <Clock size={18} />,
       label: 'Duration',
       value: course?.duration ? `${course.duration} mins` : 'Approx. 45 mins'
     },
     {
-      icon: 'fa-signal',
+      icon: <ShieldCheck size={18} />,
       label: 'Difficulty',
       value: (course?.difficulty || course?.level || 'Mixed').toString()
     }
   ]
+}
+
+const buildInsightCards = (rating, totalLearners) => [
+  {
+    icon: <Users size={18} />,
+    title: 'Learners enrolled',
+    description: `${totalLearners} active learners`
+  },
+  {
+    icon: <Star size={18} />,
+    title: 'Satisfaction',
+    description: `Average rating ${rating}/5`
+  },
+  {
+    icon: <Sparkles size={18} />,
+    title: 'Adaptive journey',
+    description: 'Recommendations that adapt to your goals'
+  }
+]
+
+const getSampleTopics = (course) => {
+  const topics = Array.isArray(course?.topics) ? course.topics : []
+  if (topics.length > 0) {
+    return topics.slice(0, 3)
+  }
+
+  const modules = Array.isArray(course?.modules) ? course.modules : []
+  if (modules.length > 0) {
+    return modules.slice(0, 3).map((module, index) => ({
+      id: module.id || module.module_id || `module-${index}`,
+      title: module.title || module.module_name || module.name,
+      description: module.summary || module.description,
+      modules: [module]
+    }))
+  }
+
+  return []
 }
 
 export default function CourseOverview({
@@ -46,12 +99,14 @@ export default function CourseOverview({
   onContinue,
   showStructureCta = true,
   learnerProfile,
-  progressSummary
+  progressSummary,
+  backLink
 }) {
   if (!course) {
     return null
   }
 
+  const personalized = Boolean(course?.metadata?.personalized)
   const metadata = getMetadataItems(course)
   const metadataTags = course?.metadata?.tags || course?.metadata?.skills || []
   const tags = course?.tags || course?.skills || metadataTags
@@ -60,218 +115,358 @@ export default function CourseOverview({
   const totalLearners = course?.total_enrollments
     ? `${course.total_enrollments.toLocaleString()}+`
     : 'Growing'
+  const insights = buildInsightCards(rating, totalLearners)
+  const sampleTopics = getSampleTopics(course)
 
-  const breadcrumbSegments = ['Overview']
-  if (isEnrolled) {
-    breadcrumbSegments.push('Structure', 'Lesson')
-  }
+  const selectedBackLink = backLink ?? (personalized ? '/learner/personalized' : '/learner/marketplace')
+  const instructorName = course?.trainer_name || course?.instructor || learnerProfile?.name || 'Expert instructor'
 
-  const insightCards = [
-    {
-      icon: 'fa-solid fa-users',
-      title: 'Learners enrolled',
-      description: `${totalLearners} active learners`
-    },
-    {
-      icon: 'fa-solid fa-face-smile',
-      title: 'Satisfaction',
-      description: `Average rating ${rating}/5`
-    },
-    {
-      icon: 'fa-solid fa-robot',
-      title: 'Adaptive journey',
-      description: 'Recommendations that adapt to your goals'
-    }
-  ]
+  const progressPercent = progressSummary?.progress ?? 0
+  const completedLessons = progressSummary?.completed_lessons?.length || 0
+  const coursePrice = course?.price ?? 0
+
+  const primaryCta = showStructureCta
+    ? personalized || isEnrolled
+      ? (
+          <button
+            type="button"
+            className="btn btn-primary flex items-center justify-center gap-2"
+            onClick={onContinue}
+          >
+            <PlayCircle size={18} />
+            {personalized ? 'Start learning' : 'Continue learning'}
+          </button>
+        )
+      : (
+          <button
+            type="button"
+            className="btn btn-primary flex items-center justify-center gap-2"
+            onClick={onEnrollClick}
+          >
+            <Target size={18} />
+            Enroll now
+          </button>
+        )
+    : null
+
+  const secondaryCta = showStructureCta
+    ? personalized
+      ? (
+          <Link to="/learner/marketplace" className="btn btn-secondary flex items-center justify-center gap-2">
+            <BookOpen size={18} />
+            Explore marketplace
+          </Link>
+        )
+      : isEnrolled
+        ? (
+            <Link to="/learner/enrolled" className="btn btn-secondary flex items-center justify-center gap-2">
+              <CheckCircle2 size={18} />
+              View progress
+            </Link>
+          )
+        : (
+            <Link to="/learner/enrolled" className="btn btn-secondary flex items-center justify-center gap-2">
+              <BookOpen size={18} />
+              My library
+            </Link>
+          )
+    : null
 
   return (
     <div className="page-surface">
       <Container>
-        <div className="stack-lg">
-          <nav className="flex items-center gap-2 text-sm text-[var(--text-muted)]" aria-label="Course breadcrumb">
-            {breadcrumbSegments.map((segment, index) => (
-              <span key={segment} className="relative pr-4 font-medium">
-                {segment}
-                {index < breadcrumbSegments.length - 1 && (
-                  <span className="absolute right-1 text-[var(--text-secondary)]">›</span>
-                )}
-              </span>
-            ))}
-          </nav>
+        <div className="flex flex-col gap-10 py-10">
+          <div className="flex items-center justify-between gap-4">
+            <Link
+              to={selectedBackLink}
+              className="inline-flex items-center gap-2 text-sm font-medium transition-colors"
+              style={{ color: 'var(--text-secondary)' }}
+            >
+              <ArrowLeft size={16} />
+              Back to {personalized ? 'personalized courses' : 'marketplace'}
+            </Link>
+            <div className="text-sm font-semibold uppercase tracking-widest text-[var(--text-muted)]">
+              Overview · Structure · Lessons
+            </div>
+          </div>
 
           <section
-            className="surface-card space-y-8"
-            style={{
-              background:
-                'linear-gradient(135deg, rgba(6, 95, 70, 0.1) 0%, rgba(15, 118, 110, 0.08) 40%, rgba(255, 255, 255, 0.96) 100%)'
-            }}
+            className="microservice-card refined grid gap-8 lg:grid-cols-[minmax(0,1fr)_320px]"
+            style={{ textAlign: 'left' }}
           >
-            <div className="flex flex-col gap-8 lg:flex-row lg:items-start lg:justify-between">
-              <div className="space-y-4">
-                <p className="text-sm font-semibold uppercase tracking-widest text-[var(--primary-cyan)]">
-                  Course overview
-                </p>
-                <h1 className="text-4xl font-bold leading-tight text-[var(--text-primary)]">
-                  {course.title || course.course_name}
-                </h1>
-                <p className="max-w-2xl text-base leading-7 text-[var(--text-secondary)]">{summary}</p>
+            <div className="space-y-6">
+              <div className="flex flex-wrap items-center gap-3">
+                <span
+                  className="rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide"
+                  style={{
+                    background: personalized ? 'rgba(124,58,237,0.14)' : 'rgba(14,165,233,0.14)',
+                    color: personalized ? '#6d28d9' : '#0f766e'
+                  }}
+                >
+                  {personalized ? 'Personalized' : 'Marketplace'}
+                </span>
+                <span
+                  className="rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide"
+                  style={{
+                    background: 'rgba(16,185,129,0.12)',
+                    color: '#047857'
+                  }}
+                >
+                  {course?.metadata?.difficulty || course?.level || 'Intermediate'}
+                </span>
               </div>
 
-              <div className="grid gap-3 rounded-2xl border border-[rgba(148,163,184,0.18)] bg-white/80 p-4 text-sm shadow-sm backdrop-blur">
+              <div className="space-y-4">
+                <h1 className="text-4xl font-bold leading-tight" style={{ color: 'var(--text-primary)' }}>
+                  {course.title || course.course_name}
+                </h1>
+                <p className="text-base leading-7" style={{ color: 'var(--text-secondary)' }}>
+                  {summary}
+                </p>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-6 text-sm" style={{ color: 'var(--text-muted)' }}>
+                <div className="flex items-center gap-2">
+                  <Users size={16} />
+                  <span className="font-medium">{instructorName}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Clock size={16} />
+                  <span>{course?.metadata?.duration || `${course?.duration || 45} mins`}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Star size={16} style={{ color: 'var(--accent-gold)' }} />
+                  <span className="font-medium">{rating}</span>
+                  <span className="ml-1">({course?.students || totalLearners})</span>
+                </div>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 {metadata.map((item) => (
-                  <div key={item.label} className="flex items-center justify-between gap-6">
-                    <span className="flex items-center gap-2 font-medium text-[var(--text-secondary)]">
-                      <i className={item.icon} aria-hidden="true" />
-                      {item.label}
-                    </span>
-                    <span className="font-semibold text-[var(--text-primary)]">{item.value}</span>
+                  <div
+                    key={item.label}
+                    className="rounded-2xl border border-[rgba(148,163,184,0.14)] bg-white/90 p-4 text-sm shadow-sm backdrop-blur"
+                    style={{ background: 'var(--bg-card)' }}
+                  >
+                    <div className="flex items-center gap-2 text-[var(--primary-cyan)]">
+                      {item.icon}
+                      <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>
+                        {item.label}
+                      </span>
+                    </div>
+                    <p className="mt-2 font-semibold" style={{ color: 'var(--text-secondary)' }}>
+                      {item.value}
+                    </p>
                   </div>
                 ))}
               </div>
             </div>
 
-            {showStructureCta && (
-              <div className="flex flex-wrap gap-4">
-                {!isEnrolled ? (
-                  <button type="button" className="btn btn-primary" onClick={onEnrollClick}>
-                    <i className="fa-solid fa-user-plus" aria-hidden="true" />
-                    Enroll now
-                  </button>
-                ) : (
-                  <button type="button" className="btn btn-primary" onClick={onContinue}>
-                    <i className="fa-solid fa-diagram-project" aria-hidden="true" />
-                    Continue learning
-                  </button>
-                )}
-
-                <Link to="/learner/enrolled" className="btn btn-secondary">
-                  <i className="fa-solid fa-bookmark" aria-hidden="true" />
-                  My courses
-                </Link>
+            <aside className="space-y-4 rounded-3xl border border-[rgba(148,163,184,0.18)] bg-white/80 p-6 shadow-lg backdrop-blur">
+              <div className="space-y-2 text-sm">
+                <div className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>
+                  Course access
+                </div>
+                <div
+                  className="text-3xl font-bold"
+                  style={{ color: coursePrice === 0 || personalized ? 'var(--accent-green)' : 'var(--text-primary)' }}
+                >
+                  {personalized || coursePrice === 0 ? 'Included' : `$${coursePrice}`}
+                </div>
+                <p style={{ color: 'var(--text-secondary)' }}>
+                  {personalized
+                    ? 'AI-powered journey tailored to your goals'
+                    : 'Full course access with exercises & assessment'}
+                </p>
               </div>
-            )}
+
+              <div className="space-y-3">
+                {primaryCta}
+                {secondaryCta}
+                {!personalized && !isEnrolled && showStructureCta && (
+                  <p className="text-center text-xs" style={{ color: 'var(--text-muted)' }}>
+                    Secure access in one click. Cancel anytime during preview.
+                  </p>
+                )}
+              </div>
+
+              {progressSummary?.status && (
+                <div className="rounded-2xl border border-[rgba(16,185,129,0.22)] bg-[rgba(16,185,129,0.08)] p-4 text-sm text-[#047857]">
+                  <div className="flex items-center gap-2 font-semibold">
+                    <CheckCircle2 size={16} />
+                    Progress {Math.round(progressPercent)}% · {completedLessons} lessons complete
+                  </div>
+                  <p className="mt-2 text-xs text-[#0f5132]">
+                    Status: {progressSummary?.status?.replace('_', ' ')}
+                  </p>
+                </div>
+              )}
+
+              <ul className="flex flex-col gap-2 text-xs" style={{ color: 'var(--text-muted)' }}>
+                <li className="flex items-center gap-2">
+                  <CheckCircle2 size={14} style={{ color: 'var(--accent-green)' }} />
+                  Adaptive path recommendations
+                </li>
+                <li className="flex items-center gap-2">
+                  <CheckCircle2 size={14} style={{ color: 'var(--accent-green)' }} />
+                  Downloadable resources & transcripts
+                </li>
+                <li className="flex items-center gap-2">
+                  <CheckCircle2 size={14} style={{ color: 'var(--accent-green)' }} />
+                  Certificate on completion
+                </li>
+              </ul>
+            </aside>
           </section>
 
-          <div className="grid gap-6 lg:grid-cols-2">
-            <section className="surface-card soft space-y-5">
-              <header className="flex items-center gap-3">
-                <span className="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-[rgba(15,118,110,0.12)] text-[var(--primary-cyan)]">
-                  <i className="fa-solid fa-graduation-cap" aria-hidden="true" />
-                </span>
-                <div>
-                  <h2 className="text-lg font-semibold text-[var(--text-primary)]">What you&apos;ll experience</h2>
-                  <p className="text-sm text-[var(--text-secondary)]">
-                    Designed for practical mastery with guided projects and checkpoints.
-                  </p>
-                </div>
-              </header>
-
-              <div className="grid gap-4 sm:grid-cols-3">
-                {insightCards.map((item) => (
-                  <div
-                    key={item.title}
-                    className="rounded-2xl border border-[rgba(148,163,184,0.18)] bg-white/90 p-4 text-sm shadow-sm backdrop-blur"
-                  >
-                    <div className="flex items-center gap-2 text-[var(--primary-cyan)]">
-                      <i className={item.icon} aria-hidden="true" />
-                      <span className="font-semibold text-[var(--text-primary)]">{item.title}</span>
+          <div className="grid gap-8 lg:grid-cols-3">
+            <div className="lg:col-span-2 space-y-8">
+              <section className="microservice-card" style={{ textAlign: 'left' }}>
+                <h2 className="text-2xl font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>
+                  What you&apos;ll experience
+                </h2>
+                <p className="text-base leading-7 mb-6" style={{ color: 'var(--text-secondary)' }}>
+                  Designed for practical mastery with guided projects, peer-inspired challenges, and reflective checkpoints.
+                  You&apos;ll learn through hands-on exercises, curated references, and adaptive prompts that keep pace with your progress.
+                </p>
+                <div className="grid gap-4 sm:grid-cols-3">
+                  {insights.map((item) => (
+                    <div
+                      key={item.title}
+                      className="rounded-2xl border border-[rgba(148,163,184,0.18)] bg-white/90 p-5 text-sm shadow-sm backdrop-blur"
+                      style={{ background: 'var(--bg-card)' }}
+                    >
+                      <div className="flex items-center gap-3 text-[var(--primary-cyan)]">
+                        {item.icon}
+                        <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>
+                          {item.title}
+                        </span>
+                      </div>
+                      <p className="mt-3" style={{ color: 'var(--text-secondary)' }}>
+                        {item.description}
+                      </p>
                     </div>
-                    <p className="mt-2 text-[var(--text-secondary)]">{item.description}</p>
-                  </div>
-                ))}
-              </div>
-            </section>
-
-            {isEnrolled && progressSummary ? (
-              <section className="surface-card soft space-y-4">
-                <header className="flex items-center gap-3">
-                  <span className="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-[rgba(14,165,233,0.12)] text-[#0f766e]">
-                    <i className="fa-solid fa-circle-check" aria-hidden="true" />
-                  </span>
-                  <div>
-                    <h2 className="text-lg font-semibold text-[var(--text-primary)]">You&apos;re enrolled</h2>
-                    <p className="text-sm text-[var(--text-secondary)]">
-                      Track progress and pick up where you left off.
-                    </p>
-                  </div>
-                </header>
-
-                <div className="flex flex-col gap-3 text-sm text-[var(--text-secondary)]">
-                  <div>
-                    <span className="font-semibold text-[var(--text-primary)]">Learner:</span>{' '}
-                    {learnerProfile?.name || 'You'}
-                  </div>
-                  <div className="flex flex-wrap items-center gap-3">
-                    <span className="status-chip">
-                      <i className="fa-solid fa-chart-line" aria-hidden="true" />{' '}
-                      {Math.round(progressSummary.progress ?? 0)}%
-                    </span>
-                    <span className="font-medium text-[var(--text-secondary)]">
-                      {progressSummary.status?.replace('_', ' ') || 'In progress'}
-                    </span>
-                  </div>
-                  <p>
-                    {progressSummary.completed_lessons?.length || 0} lesson
-                    {progressSummary.completed_lessons?.length === 1 ? '' : 's'} completed so far.
-                  </p>
+                  ))}
                 </div>
               </section>
-            ) : (
-              <section className="surface-card soft space-y-4">
-                <header className="flex items-center gap-3">
-                  <span className="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-[rgba(249,115,22,0.12)] text-[#f97316]">
-                    <i className="fa-solid fa-bolt" aria-hidden="true" />
-                  </span>
-                  <div>
-                    <h2 className="text-lg font-semibold text-[var(--text-primary)]">Ready to dive in?</h2>
-                    <p className="text-sm text-[var(--text-secondary)]">
-                      Enrol to unlock the full structure and adaptive learning tools.
+
+              <section className="microservice-card" style={{ textAlign: 'left' }}>
+                <h2 className="text-2xl font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>
+                  Course curriculum preview
+                </h2>
+                {sampleTopics.length > 0 ? (
+                  <div className="space-y-4">
+                    {sampleTopics.map((topic) => (
+                      <div
+                        key={topic.id}
+                        className="rounded-2xl border border-[rgba(148,163,184,0.14)] bg-white/90 p-5 shadow-sm backdrop-blur"
+                        style={{ background: 'var(--bg-card)' }}
+                      >
+                        <div className="flex items-start justify-between gap-4">
+                          <div>
+                            <h3 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
+                              {topic.title}
+                            </h3>
+                            {topic.description && (
+                              <p className="mt-2 text-sm" style={{ color: 'var(--text-secondary)' }}>
+                                {topic.description}
+                              </p>
+                            )}
+                          </div>
+                          <span className="rounded-full bg-[rgba(14,165,233,0.12)] px-3 py-1 text-xs font-semibold text-[#0f766e]">
+                            {(topic.modules?.length || 1)} module{(topic.modules?.length || 1) > 1 ? 's' : ''}
+                          </span>
+                        </div>
+                        <div
+                          className="mt-4 flex flex-wrap items-center gap-4 text-xs font-semibold"
+                          style={{ color: 'var(--text-muted)' }}
+                        >
+                          <span>
+                            {(topic.modules || []).reduce((acc, module) => acc + (module.lessons?.length || 0), 0)} lessons
+                          </span>
+                          <span>Guided projects</span>
+                          <span>Reflection checkpoints</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-10">
+                    <BookOpen size={28} className="mx-auto mb-3" style={{ color: 'var(--text-muted)' }} />
+                    <p style={{ color: 'var(--text-secondary)' }}>
+                      Module breakdown will unlock after enrollment.
                     </p>
                   </div>
-                </header>
-                <ul className="space-y-2 text-sm text-[var(--text-secondary)]">
-                  <li className="flex items-center gap-2">
-                    <i className="fa-solid fa-check text-[var(--primary-cyan)]" aria-hidden="true" />
-                    Guided modules with interactive checkpoints.
+                )}
+              </section>
+            </div>
+
+            <aside className="space-y-6">
+              <div className="microservice-card" style={{ textAlign: 'left' }}>
+                <h3 className="text-xl font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>
+                  Course milestones
+                </h3>
+                <ul className="space-y-4 text-sm" style={{ color: 'var(--text-secondary)' }}>
+                  <li className="flex items-start gap-3">
+                    <CheckCircle2 size={18} style={{ color: 'var(--accent-green)' }} />
+                    <span>Structured learning path with adaptive checkpoints</span>
                   </li>
-                  <li className="flex items-center gap-2">
-                    <i className="fa-solid fa-check text-[var(--primary-cyan)]" aria-hidden="true" />
-                    Personalised lesson recommendations as you progress.
+                  <li className="flex items-start gap-3">
+                    <CheckCircle2 size={18} style={{ color: 'var(--accent-green)' }} />
+                    <span>Hands-on exercises and real-world scenario walkthroughs</span>
                   </li>
-                  <li className="flex items-center gap-2">
-                    <i className="fa-solid fa-check text-[var(--primary-cyan)]" aria-hidden="true" />
-                    Community-powered insights and feedback loops.
+                  <li className="flex items-start gap-3">
+                    <CheckCircle2 size={18} style={{ color: 'var(--accent-green)' }} />
+                    <span>Final assessment and feedback loop to consolidate knowledge</span>
                   </li>
                 </ul>
-              </section>
-            )}
-          </div>
-
-          {tags.length > 0 && (
-            <section className="surface-card soft space-y-4">
-              <header className="flex items-center gap-3">
-                <span className="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-[rgba(59,130,246,0.12)] text-[#2563eb]">
-                  <i className="fa-solid fa-hashtag" aria-hidden="true" />
-                </span>
-                <div>
-                  <h2 className="text-lg font-semibold text-[var(--text-primary)]">Key focus areas</h2>
-                  <p className="text-sm text-[var(--text-secondary)]">
-                    Curated skill domains and competencies addressed in this course.
-                  </p>
-                </div>
-              </header>
-              <div className="flex flex-wrap gap-2">
-                {tags.map((tag, idx) => (
-                  <span
-                    key={`${tag}-${idx}`}
-                    className="rounded-full bg-[rgba(15,118,110,0.12)] px-3 py-1 text-sm font-medium text-[var(--primary-cyan)]"
-                  >
-                    {tag}
-                  </span>
-                ))}
               </div>
-            </section>
-          )}
+
+              <div className="microservice-card" style={{ textAlign: 'left' }}>
+                <h3 className="text-xl font-semibold mb-3" style={{ color: 'var(--text-primary)' }}>
+                  Skills you&apos;ll gain
+                </h3>
+                {tags && tags.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {tags.map((tag) => (
+                      <span
+                        key={tag}
+                        className="rounded-full bg-[rgba(14,165,233,0.12)] px-3 py-1 text-xs font-semibold text-[#0f766e]"
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                    Skills will populate as you progress through the course.
+                  </p>
+                )}
+              </div>
+
+              <div className="microservice-card" style={{ textAlign: 'left' }}>
+                <h3 className="text-xl font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>
+                  Instructor
+                </h3>
+                <div className="flex items-center gap-3">
+                  <div
+                    className="flex h-12 w-12 items-center justify-center rounded-full"
+                    style={{ background: 'var(--gradient-primary)', color: '#fff' }}
+                  >
+                    <Award size={20} />
+                  </div>
+                  <div>
+                    <div className="font-medium" style={{ color: 'var(--text-primary)' }}>
+                      {instructorName}
+                    </div>
+                    <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                      Industry expert & mentor
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </aside>
+          </div>
         </div>
       </Container>
     </div>
