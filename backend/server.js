@@ -7,6 +7,7 @@ import inputRoutes from './routes/input.routes.js';
 import lessonsRoutes from './routes/lessons.routes.js';
 import integrationRoutes from './routes/integration.routes.js';
 import enrichmentRoutes from './routes/enrichmentRoutes.js';
+import enrichmentAssetsRoutes from './routes/enrichmentAssetsRoutes.js';
 import { authenticateRequest } from './middleware/auth.middleware.js';
 
 dotenv.config();
@@ -71,6 +72,7 @@ app.use('/api/v1', inputRoutes);
 app.use('/api/v1/lessons', lessonsRoutes);
 app.use('/api/v1/integrations', integrationRoutes);
 app.use('/api/enrichment', enrichmentRoutes);
+app.use('/api/enrichment', enrichmentAssetsRoutes);
 
 // 404 handler
 app.use((req, res) => {

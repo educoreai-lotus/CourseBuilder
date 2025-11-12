@@ -164,7 +164,7 @@ export const generateStructure = async (courseInputDTO) => {
       ...courseMetadata,
       total_lessons: totalLessons,
       generated_at: now.toISOString(),
-      enrichment_provider: 'openai'
+      enrichment_provider: 'gemini-assets'
     };
 
     await t.none(
