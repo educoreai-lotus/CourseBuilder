@@ -60,7 +60,7 @@ export async function enrichLesson({
     return { ...defaultEnrichment };
   }
 
-  const modelName = process.env.GEMINI_MODEL || 'gemini-1.5-flash';
+  const modelName = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
   const prompt = buildPrompt({ topicName, lessonName, description, skills });
   console.log('Using Gemini model:', modelName);
   console.log('Client version:', GoogleGenerativeAI?.version || 'unknown');
