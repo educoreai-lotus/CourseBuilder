@@ -6,6 +6,9 @@ const getGeminiClient = () => {
   if (!process.env.GEMINI_API_KEY) {
     return null;
   }
+  console.log('Using Gemini model:', modelName);
+console.log('Client version:', GoogleGenerativeAI?.version || 'unknown');
+
 
   if (!cachedClient) {
     cachedClient = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
