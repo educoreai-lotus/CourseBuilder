@@ -34,18 +34,18 @@ const formatNumber = (value) => {
   return num.toString()
 }
 
-export default function LessonAssetsPanel({ data, loading, error }) {
-  if (!loading && !data && !error) {
+export default function LessonAssetsPanel({ assets, loading, error }) {
+  if (!loading && !assets && !error) {
     return null
   }
 
-  const hasVideos = data?.videos?.length > 0
-  const hasRepos = data?.repos?.length > 0
+  const hasVideos = assets?.videos?.length > 0
+  const hasRepos = assets?.repos?.length > 0
   const hasSuggested = Boolean(
-    (data?.suggestedUrls?.youtube && data.suggestedUrls.youtube.length > 0) ||
-      (data?.suggestedUrls?.github && data.suggestedUrls.github.length > 0)
+    (assets?.suggestedUrls?.youtube && assets.suggestedUrls.youtube.length > 0) ||
+      (assets?.suggestedUrls?.github && assets.suggestedUrls.github.length > 0)
   )
-  const hasTags = Array.isArray(data?.tags) && data.tags.length > 0
+  const hasTags = Array.isArray(assets?.tags) && assets.tags.length > 0
 
   return (
     <section className="rounded-3xl border border-[rgba(148,163,184,0.18)] bg-[var(--bg-card)]/90 p-6 shadow-lg backdrop-blur transition-colors">
@@ -58,10 +58,10 @@ export default function LessonAssetsPanel({ data, loading, error }) {
             Videos and repositories selected for this lesson to help you deepen mastery with hands-on exploration.
           </p>
         </div>
-        {data?.generatedAt && (
+        {assets?.generatedAt && (
           <span className="inline-flex items-center gap-2 rounded-full bg-[rgba(14,165,233,0.12)] px-4 py-2 text-xs font-semibold uppercase tracking-widest text-[#0f766e]">
             <RefreshCw size={14} />
-            Updated {dayjs(data.generatedAt).fromNow()}
+            Updated {dayjs(assets.generatedAt).fromNow()}
           </span>
         )}
       </header>
@@ -87,11 +87,11 @@ export default function LessonAssetsPanel({ data, loading, error }) {
         </div>
       )}
 
-      {!loading && !error && data && (
+      {!loading && !error && assets && (
         <div className="space-y-6">
           {hasTags && (
             <div className="flex flex-wrap items-center gap-2">
-              {data.tags.map((tag) => (
+              {assets.tags.map((tag) => (
                 <span
                   key={tag}
                   className="inline-flex items-center gap-2 rounded-full bg-[rgba(124,58,237,0.16)] px-3 py-1 text-xs font-semibold uppercase tracking-wide text-[#5b21b6]"
@@ -105,14 +105,14 @@ export default function LessonAssetsPanel({ data, loading, error }) {
 
           {hasSuggested && (
             <div className="grid gap-4 md:grid-cols-2">
-              {data?.suggestedUrls?.youtube?.length > 0 && (
+              {assets?.suggestedUrls?.youtube?.length > 0 && (
                 <div className="rounded-2xl border border-[rgba(148,163,184,0.14)] bg-[var(--bg-card)]/80 p-4 shadow-sm transition-colors">
                   <div className="mb-3 inline-flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-[#dc2626]">
                     <Youtube size={16} />
                     Quick-start playlists
                   </div>
                   <ul className="space-y-2 text-sm" style={{ color: 'var(--text-secondary)' }}>
-                    {data.suggestedUrls.youtube.map((url) => (
+                    {assets.suggestedUrls.youtube.map((url) => (
                       <li key={url}>
                         <a
                           href={url}
@@ -128,14 +128,14 @@ export default function LessonAssetsPanel({ data, loading, error }) {
                   </ul>
                 </div>
               )}
-              {data?.suggestedUrls?.github?.length > 0 && (
+              {assets?.suggestedUrls?.github?.length > 0 && (
                 <div className="rounded-2xl border border-[rgba(148,163,184,0.14)] bg-[var(--bg-card)]/80 p-4 shadow-sm transition-colors">
                   <div className="mb-3 inline-flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-[#111827] dark:text-white">
                     <Github size={16} />
                     Must-read repos
                   </div>
                   <ul className="space-y-2 text-sm" style={{ color: 'var(--text-secondary)' }}>
-                    {data.suggestedUrls.github.map((url) => (
+                    {assets.suggestedUrls.github.map((url) => (
                       <li key={url}>
                         <a
                           href={url}
@@ -163,7 +163,7 @@ export default function LessonAssetsPanel({ data, loading, error }) {
                 </h3>
               </div>
               <div className="grid gap-4 md:grid-cols-2">
-                {data.videos.map((video) => (
+                {assets.videos.map((video) => (
                   <a
                     key={video.id}
                     href={video.url}
@@ -212,7 +212,7 @@ export default function LessonAssetsPanel({ data, loading, error }) {
                 </h3>
               </div>
               <div className="grid gap-4 md:grid-cols-2">
-                {data.repos.map((repo) => (
+                {assets.repos.map((repo) => (
                   <a
                     key={repo.id}
                     href={repo.url}

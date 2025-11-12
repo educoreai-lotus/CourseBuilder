@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { enrichAssets as enrichAssetsRequest } from '../features/enrichment/services/enrichmentAPI.js'
 
 // Ensure baseURL always ends with /api/v1
 const getBaseURL = () => {
@@ -127,9 +128,7 @@ export function updateCourseProgress(courseId, body) {
   return api.patch(`/courses/${courseId}/progress`, body).then(r => r.data)
 }
 
-export function fetchEnrichmentAssets(payload) {
-  return api.post('../enrichment/assets', payload).then(r => r.data)
-}
+export const fetchEnrichmentAssets = (payload) => enrichAssetsRequest(payload)
 
 export default {
   getCourses,

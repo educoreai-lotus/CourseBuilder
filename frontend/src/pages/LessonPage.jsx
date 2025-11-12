@@ -22,9 +22,9 @@ export default function LessonPage() {
   const [course, setCourse] = useState(null)
   const [completedLessons, setCompletedLessons] = useState([])
   const [learnerProgress, setLearnerProgress] = useState(null)
-  const [assetData, setAssetData] = useState(null)
-  const [assetLoading, setAssetLoading] = useState(false)
-  const [assetError, setAssetError] = useState(null)
+  const [enrichmentAssets, setEnrichmentAssets] = useState(null)
+  const [enrichmentLoading, setEnrichmentLoading] = useState(false)
+  const [enrichmentError, setEnrichmentError] = useState(null)
 
   const loadData = useCallback(async () => {
     setLoading(true)
@@ -195,15 +195,15 @@ export default function LessonPage() {
     const skills = collectSkills(lessonSkills, courseSkills, tags)
 
     if (!topic && skills.length === 0) {
-      setAssetData(null)
-      setAssetError(null)
-      setAssetLoading(false)
+      setEnrichmentAssets(null)
+      setEnrichmentError(null)
+      setEnrichmentLoading(false)
       return
     }
 
     let isMounted = true
-    setAssetLoading(true)
-    setAssetError(null)
+    setEnrichmentLoading(true)
+    setEnrichmentError(null)
 
     fetchEnrichmentAssets({
       topic: topic || 'Learning practice',
@@ -212,16 +212,16 @@ export default function LessonPage() {
     })
       .then((response) => {
         if (!isMounted) return
-        setAssetData(response)
+        setEnrichmentAssets(response)
       })
       .catch((err) => {
         if (!isMounted) return
-        setAssetError(err)
-        setAssetData(null)
+        setEnrichmentError(err)
+        setEnrichmentAssets(null)
       })
       .finally(() => {
         if (!isMounted) return
-        setAssetLoading(false)
+        setEnrichmentLoading(false)
       })
 
     return () => {
@@ -245,9 +245,9 @@ export default function LessonPage() {
       isFinalLesson={isFinalLesson}
       structureHref={`/course/${courseId}/structure`}
       overviewHref={`/course/${courseId}/overview`}
-      assetEnrichment={assetData}
-      assetLoading={assetLoading}
-      assetError={assetError}
+      enrichmentAssets={enrichmentAssets}
+      enrichmentLoading={enrichmentLoading}
+      enrichmentError={enrichmentError}
     />
   )
 }

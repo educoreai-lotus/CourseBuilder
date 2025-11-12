@@ -1,5 +1,5 @@
 import { useParams, useNavigate } from 'react-router-dom'
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { CheckCircle2, Circle, Layers, ListChecks, Rocket } from 'lucide-react'
 import { getCourseById, fetchEnrichmentAssets } from '../services/apiService.js'
 import CourseTreeView from '../components/CourseTreeView.jsx'
@@ -8,6 +8,7 @@ import LoadingSpinner from '../components/LoadingSpinner.jsx'
 import Container from '../components/Container.jsx'
 import { useApp } from '../context/AppContext'
 import LessonAssetsPanel from '../components/course/LessonAssetsPanel.jsx'
+import EnrichmentButton from '../features/enrichment/components/EnrichmentButton.jsx'
 
 export default function TrainerCourseValidation() {
   const { id } = useParams()
@@ -57,6 +58,36 @@ export default function TrainerCourseValidation() {
       (lesson) => String(lesson.id || lesson.lesson_id) === String(selectedLessonId)
     ) || null
   }, [lessons, selectedLessonId])
+
+  const enrichmentAssetDescriptor = useMemo(() => {
+    if (!course || !selectedLesson) {
+      return null
+    }
+
+    const {
+      lesson_name,
+      title,
+      name,
+      description,
+      summary,
+      content_type,
+      metadata = {},
+      enriched_content = {}
+    } = selectedLesson
+
+    return {
+      type: content_type || 'lesson',
+      title: title || lesson_name || name,
+      description: description || summary || metadata.description,
+      metadata: {
+        course_id: course.id || course.course_id,
+        course_title: course.title || course.course_name,
+        skills: course?.metadata?.skills,
+        lesson_skills: selectedLesson.micro_skills,
+        tags: enriched_content?.tags
+      }
+    }
+  }, [course, selectedLesson])
 
   useEffect(() => {
     if (!selectedLesson) {
@@ -138,6 +169,17 @@ export default function TrainerCourseValidation() {
       cancelled = true
     }
   }, [selectedLesson, course])
+
+  const handleManualEnrichment = useCallback(
+    (response) => {
+      setAssetData(response)
+      setAssetError(null)
+      if (response) {
+        showToast('AI enrichment refreshed for the selected lesson.', 'success')
+      }
+    },
+    [showToast]
+  )
 
   const checklist = useMemo(() => {
     if (!course) return []
@@ -293,40 +335,49 @@ export default function TrainerCourseValidation() {
                   Review enrichment assets for individual lessons to ensure learners receive fresh, high-quality practice materials.
                 </p>
               </div>
-              <div className="flex flex-col gap-2 text-sm text-[var(--text-secondary)] md:flex-row md:items-center">
-                <label htmlFor="trainer-lesson-selector" className="font-semibold text-[var(--text-primary)]">
-                  Select lesson
-                </label>
-                <select
-                  id="trainer-lesson-selector"
-                  value={selectedLessonId}
-                  onChange={(event) => setSelectedLessonId(event.target.value)}
-                  className="rounded-full border border-[rgba(148,163,184,0.35)] bg-[var(--bg-primary)] px-4 py-2 text-sm font-medium text-[var(--text-primary)] shadow-sm focus:border-[var(--primary-cyan)] focus:outline-none"
-                  disabled={lessons.length === 0}
-                >
-                  {lessons.map((lesson) => {
-                    const lessonId = String(lesson.id || lesson.lesson_id)
-                    const label =
-                      lesson.title ||
-                      lesson.lesson_name ||
-                      lesson.name ||
-                      `Lesson ${lessonId.slice(0, 6)}`
-                    const moduleLabel = lesson.moduleName ? ` · ${lesson.moduleName}` : ''
+              <div className="flex flex-col gap-2 text-sm text-[var(--text-secondary)] md:flex-row md:items-center md:gap-3">
+                <div className="flex items-center gap-2">
+                  <label htmlFor="trainer-lesson-selector" className="font-semibold text-[var(--text-primary)]">
+                    Select lesson
+                  </label>
+                  <select
+                    id="trainer-lesson-selector"
+                    value={selectedLessonId}
+                    onChange={(event) => setSelectedLessonId(event.target.value)}
+                    className="rounded-full border border-[rgba(148,163,184,0.35)] bg-[var(--bg-primary)] px-4 py-2 text-sm font-medium text-[var(--text-primary)] shadow-sm focus:border-[var(--primary-cyan)] focus:outline-none"
+                    disabled={lessons.length === 0}
+                  >
+                    {lessons.map((lesson) => {
+                      const lessonId = String(lesson.id || lesson.lesson_id)
+                      const label =
+                        lesson.title ||
+                        lesson.lesson_name ||
+                        lesson.name ||
+                        `Lesson ${lessonId.slice(0, 6)}`
+                      const moduleLabel = lesson.moduleName ? ` · ${lesson.moduleName}` : ''
 
-                    return (
-                      <option key={lessonId} value={lessonId}>
-                        {label}
-                        {moduleLabel}
-                      </option>
-                    )
-                  })}
-                  {lessons.length === 0 && <option value="">No lessons available</option>}
-                </select>
+                      return (
+                        <option key={lessonId} value={lessonId}>
+                          {label}
+                          {moduleLabel}
+                        </option>
+                      )
+                    })}
+                    {lessons.length === 0 && <option value="">No lessons available</option>}
+                  </select>
+                </div>
+                <EnrichmentButton
+                  asset={enrichmentAssetDescriptor}
+                  onResults={handleManualEnrichment}
+                  disabled={!enrichmentAssetDescriptor}
+                  buttonLabel="Regenerate assets"
+                  className="self-start"
+                />
               </div>
             </header>
 
             <LessonAssetsPanel
-              data={assetData}
+              assets={assetData}
               loading={assetLoading}
               error={assetError}
             />

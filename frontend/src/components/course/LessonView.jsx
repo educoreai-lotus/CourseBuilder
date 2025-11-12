@@ -27,9 +27,9 @@ export default function LessonView({
   isFinalLesson = false,
   structureHref,
   overviewHref,
-  assetEnrichment,
-  assetLoading = false,
-  assetError = null
+  enrichmentAssets,
+  enrichmentLoading = false,
+  enrichmentError = null
 }) {
   const lessonTitle = lesson?.title || lesson?.lesson_name || 'Lesson'
   const lessonSummary =
@@ -128,7 +128,7 @@ export default function LessonView({
               isFinalLesson={isFinalLesson}
             />
 
-            <LessonAssetsPanel data={assetEnrichment} loading={assetLoading} error={assetError} />
+            <LessonAssetsPanel assets={enrichmentAssets} loading={enrichmentLoading} error={enrichmentError} />
 
             <footer className="flex flex-col gap-4 rounded-2xl border border-[rgba(148,163,184,0.16)] bg-[var(--bg-card)]/90 px-6 py-4 text-sm text-[var(--text-secondary)] backdrop-blur transition-colors md:flex-row md:items-center md:justify-between">
               <div className="flex items-center gap-3 text-sm font-medium">
