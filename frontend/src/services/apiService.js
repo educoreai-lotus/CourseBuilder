@@ -127,6 +127,10 @@ export function updateCourseProgress(courseId, body) {
   return api.patch(`/courses/${courseId}/progress`, body).then(r => r.data)
 }
 
+export function fetchEnrichmentAssets(payload) {
+  return api.post('../enrichment/assets', payload).then(r => r.data)
+}
+
 export default {
   getCourses,
   getCourseById,
@@ -147,7 +151,8 @@ export default {
   triggerPersonalizedCourse,
   getLessonById,
   getLearnerProgress,
-  updateCourseProgress
+  updateCourseProgress,
+  fetchEnrichmentAssets
 }
 
 

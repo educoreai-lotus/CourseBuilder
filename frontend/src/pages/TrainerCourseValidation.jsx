@@ -1,12 +1,13 @@
 import { useParams, useNavigate } from 'react-router-dom'
 import { useState, useEffect, useMemo } from 'react'
 import { CheckCircle2, Circle, Layers, ListChecks, Rocket } from 'lucide-react'
-import { getCourseById } from '../services/apiService.js'
+import { getCourseById, fetchEnrichmentAssets } from '../services/apiService.js'
 import CourseTreeView from '../components/CourseTreeView.jsx'
 import Button from '../components/Button.jsx'
 import LoadingSpinner from '../components/LoadingSpinner.jsx'
 import Container from '../components/Container.jsx'
 import { useApp } from '../context/AppContext'
+import LessonAssetsPanel from '../components/course/LessonAssetsPanel.jsx'
 
 export default function TrainerCourseValidation() {
   const { id } = useParams()
@@ -15,6 +16,10 @@ export default function TrainerCourseValidation() {
   const [course, setCourse] = useState(null)
   const [loading, setLoading] = useState(true)
   const [validated, setValidated] = useState(false)
+  const [selectedLessonId, setSelectedLessonId] = useState('')
+  const [assetData, setAssetData] = useState(null)
+  const [assetLoading, setAssetLoading] = useState(false)
+  const [assetError, setAssetError] = useState(null)
 
   useEffect(() => {
     loadCourse()
@@ -26,6 +31,12 @@ export default function TrainerCourseValidation() {
       const data = await getCourseById(id)
       setCourse(data)
       setValidated(data.status === 'validated')
+      const lessons = flattenLessons(data)
+      if (lessons.length > 0) {
+        setSelectedLessonId(String(lessons[0].id || lessons[0].lesson_id))
+      } else {
+        setSelectedLessonId('')
+      }
     } catch (err) {
       showToast('Failed to load course', 'error')
     } finally {
@@ -37,6 +48,96 @@ export default function TrainerCourseValidation() {
     setValidated(true)
     showToast('Course validated successfully! Ready for publishing.', 'success')
   }
+
+  const lessons = useMemo(() => flattenLessons(course), [course])
+
+  const selectedLesson = useMemo(() => {
+    if (!selectedLessonId) return null
+    return lessons.find(
+      (lesson) => String(lesson.id || lesson.lesson_id) === String(selectedLessonId)
+    ) || null
+  }, [lessons, selectedLessonId])
+
+  useEffect(() => {
+    if (!selectedLesson) {
+      setAssetData(null)
+      setAssetError(null)
+      setAssetLoading(false)
+      return
+    }
+
+    const topicCandidates = [
+      selectedLesson.topic_name,
+      selectedLesson.topicName,
+      selectedLesson.moduleName,
+      course?.title,
+      course?.course_name
+    ]
+      .map((value) => (typeof value === 'string' ? value.trim() : ''))
+      .filter(Boolean)
+
+    const topic = topicCandidates[0] || 'Lesson assets'
+
+    const collectSkills = (...sources) => {
+      const set = new Set()
+      sources.forEach((source) => {
+        if (Array.isArray(source)) {
+          source.forEach((skill) => {
+            if (typeof skill === 'string' && skill.trim()) {
+              set.add(skill.trim())
+            }
+          })
+        }
+      })
+      return Array.from(set).slice(0, 8)
+    }
+
+    const lessonSkills =
+      selectedLesson.skills ||
+      selectedLesson.metadata?.skills ||
+      selectedLesson.content_data?.skills ||
+      selectedLesson.content_data?.topics ||
+      []
+
+    const courseSkills =
+      course?.skills ||
+      course?.metadata?.skills ||
+      course?.metadata?.topics ||
+      []
+
+    const enrichmentTags = Array.isArray(selectedLesson.enriched_content?.tags)
+      ? selectedLesson.enriched_content.tags
+      : []
+
+    const skills = collectSkills(lessonSkills, courseSkills, enrichmentTags)
+
+    let cancelled = false
+    setAssetLoading(true)
+    setAssetError(null)
+
+    fetchEnrichmentAssets({
+      topic,
+      skills,
+      maxItems: 6
+    })
+      .then((response) => {
+        if (cancelled) return
+        setAssetData(response)
+      })
+      .catch((err) => {
+        if (cancelled) return
+        setAssetError(err)
+        setAssetData(null)
+      })
+      .finally(() => {
+        if (cancelled) return
+        setAssetLoading(false)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [selectedLesson, course])
 
   const checklist = useMemo(() => {
     if (!course) return []
@@ -182,6 +283,55 @@ export default function TrainerCourseValidation() {
             <CourseTreeView modules={course.modules || []} courseId={id} />
           </section>
 
+          <section className="flex flex-col gap-5 rounded-3xl border border-[rgba(148,163,184,0.18)] bg-[var(--bg-card)] p-6 shadow-sm backdrop-blur">
+            <header className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <div>
+                <h2 className="text-xl font-semibold text-[var(--text-primary)]">
+                  AI asset sandbox
+                </h2>
+                <p className="text-sm leading-6 text-[var(--text-secondary)]">
+                  Review enrichment assets for individual lessons to ensure learners receive fresh, high-quality practice materials.
+                </p>
+              </div>
+              <div className="flex flex-col gap-2 text-sm text-[var(--text-secondary)] md:flex-row md:items-center">
+                <label htmlFor="trainer-lesson-selector" className="font-semibold text-[var(--text-primary)]">
+                  Select lesson
+                </label>
+                <select
+                  id="trainer-lesson-selector"
+                  value={selectedLessonId}
+                  onChange={(event) => setSelectedLessonId(event.target.value)}
+                  className="rounded-full border border-[rgba(148,163,184,0.35)] bg-[var(--bg-primary)] px-4 py-2 text-sm font-medium text-[var(--text-primary)] shadow-sm focus:border-[var(--primary-cyan)] focus:outline-none"
+                  disabled={lessons.length === 0}
+                >
+                  {lessons.map((lesson) => {
+                    const lessonId = String(lesson.id || lesson.lesson_id)
+                    const label =
+                      lesson.title ||
+                      lesson.lesson_name ||
+                      lesson.name ||
+                      `Lesson ${lessonId.slice(0, 6)}`
+                    const moduleLabel = lesson.moduleName ? ` · ${lesson.moduleName}` : ''
+
+                    return (
+                      <option key={lessonId} value={lessonId}>
+                        {label}
+                        {moduleLabel}
+                      </option>
+                    )
+                  })}
+                  {lessons.length === 0 && <option value="">No lessons available</option>}
+                </select>
+              </div>
+            </header>
+
+            <LessonAssetsPanel
+              data={assetData}
+              loading={assetLoading}
+              error={assetError}
+            />
+          </section>
+
           <section className="rounded-3xl border border-[rgba(148,163,184,0.18)] bg-[var(--bg-card)] p-6 shadow-sm backdrop-blur">
             <header className="mb-4 flex items-center justify-between gap-3">
               <h2 className="text-xl font-semibold text-[var(--text-primary)]">Validation checklist</h2>
@@ -219,5 +369,49 @@ export default function TrainerCourseValidation() {
       </Container>
     </div>
   )
+}
+
+const flattenLessons = (course) => {
+  if (!course) return []
+
+  const result = []
+
+  if (Array.isArray(course.topics) && course.topics.length > 0) {
+    course.topics.forEach((topic) => {
+      const topicName = topic.topicName || topic.topic_name || topic.name
+      const topicModules = Array.isArray(topic.modules) ? topic.modules : []
+      topicModules.forEach((module) => {
+        const moduleLessons = Array.isArray(module.lessons) ? module.lessons : []
+        moduleLessons.forEach((lesson) => {
+          result.push({
+            ...lesson,
+            topicName,
+            moduleName: module.module_name || module.name || module.title || topicName
+          })
+        })
+      })
+    })
+    return result
+  }
+
+  if (Array.isArray(course.modules) && course.modules.length > 0) {
+    course.modules.forEach((module) => {
+      const moduleLessons = Array.isArray(module.lessons) ? module.lessons : []
+      moduleLessons.forEach((lesson) => {
+        result.push({
+          ...lesson,
+          topicName: module.topic_name || module.topicName,
+          moduleName: module.module_name || module.name || module.title || module.topic_name
+        })
+      })
+    })
+    return result
+  }
+
+  if (Array.isArray(course.lessons)) {
+    return course.lessons.map((lesson) => ({ ...lesson }))
+  }
+
+  return result
 }
 

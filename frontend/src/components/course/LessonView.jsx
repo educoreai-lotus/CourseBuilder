@@ -12,6 +12,7 @@ import {
 } from 'lucide-react'
 import LessonViewer from '../LessonViewer.jsx'
 import Container from '../Container.jsx'
+import LessonAssetsPanel from './LessonAssetsPanel.jsx'
 
 export default function LessonView({
   courseTitle,
@@ -25,7 +26,10 @@ export default function LessonView({
   canTakeTest = false,
   isFinalLesson = false,
   structureHref,
-  overviewHref
+  overviewHref,
+  assetEnrichment,
+  assetLoading = false,
+  assetError = null
 }) {
   const lessonTitle = lesson?.title || lesson?.lesson_name || 'Lesson'
   const lessonSummary =
@@ -123,6 +127,8 @@ export default function LessonView({
               canTakeTest={canTakeTest}
               isFinalLesson={isFinalLesson}
             />
+
+            <LessonAssetsPanel data={assetEnrichment} loading={assetLoading} error={assetError} />
 
             <footer className="flex flex-col gap-4 rounded-2xl border border-[rgba(148,163,184,0.16)] bg-[var(--bg-card)]/90 px-6 py-4 text-sm text-[var(--text-secondary)] backdrop-blur transition-colors md:flex-row md:items-center md:justify-between">
               <div className="flex items-center gap-3 text-sm font-medium">

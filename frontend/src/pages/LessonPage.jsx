@@ -1,6 +1,11 @@
 import { useParams, useNavigate } from 'react-router-dom'
 import { useState, useEffect, useMemo, useCallback } from 'react'
-import { getLessonById, getCourseById, updateCourseProgress } from '../services/apiService.js'
+import {
+  getLessonById,
+  getCourseById,
+  updateCourseProgress,
+  fetchEnrichmentAssets
+} from '../services/apiService.js'
 import LoadingSpinner from '../components/LoadingSpinner.jsx'
 import LessonView from '../components/course/LessonView.jsx'
 import { useApp } from '../context/AppContext'
@@ -17,6 +22,9 @@ export default function LessonPage() {
   const [course, setCourse] = useState(null)
   const [completedLessons, setCompletedLessons] = useState([])
   const [learnerProgress, setLearnerProgress] = useState(null)
+  const [assetData, setAssetData] = useState(null)
+  const [assetLoading, setAssetLoading] = useState(false)
+  const [assetError, setAssetError] = useState(null)
 
   const loadData = useCallback(async () => {
     setLoading(true)
@@ -72,6 +80,7 @@ export default function LessonPage() {
   const currentIndex = flattenedLessons.findIndex(
     (item) => (item.id || item.lesson_id || '').toString() === normalizedLessonId
   )
+  const currentLessonMeta = currentIndex >= 0 ? flattenedLessons[currentIndex] : null
   const previousLesson = currentIndex > 0 ? flattenedLessons[currentIndex - 1] : null
   const nextLesson =
     currentIndex >= 0 && currentIndex < flattenedLessons.length - 1 ? flattenedLessons[currentIndex + 1] : null
@@ -143,6 +152,83 @@ export default function LessonPage() {
       ? 'Exercises and assessment unlocked.'
       : 'Complete remaining lessons to unlock exercises and assessment.'
 
+  useEffect(() => {
+    const topicCandidates = [
+      lesson?.topic?.topic_name,
+      lesson?.topic_name,
+      currentLessonMeta?.topic_name,
+      currentLessonMeta?.topicName,
+      course?.title,
+      course?.course_name
+    ].map((value) => (typeof value === 'string' ? value.trim() : '')).filter(Boolean)
+
+    const topic = topicCandidates[0] || ''
+
+    const collectSkills = (...sources) => {
+      const set = new Set()
+      sources.forEach((source) => {
+        if (Array.isArray(source)) {
+          source.forEach((skill) => {
+            if (typeof skill === 'string' && skill.trim()) {
+              set.add(skill.trim())
+            }
+          })
+        }
+      })
+      return Array.from(set).slice(0, 8)
+    }
+
+    const lessonSkills =
+      lesson?.skills ||
+      lesson?.metadata?.skills ||
+      lesson?.content_data?.skills ||
+      lesson?.content_data?.topics ||
+      []
+
+    const courseSkills =
+      course?.skills ||
+      course?.metadata?.skills ||
+      course?.metadata?.topics ||
+      []
+
+    const tags = Array.isArray(lesson?.enriched_content?.tags) ? lesson.enriched_content.tags : []
+    const skills = collectSkills(lessonSkills, courseSkills, tags)
+
+    if (!topic && skills.length === 0) {
+      setAssetData(null)
+      setAssetError(null)
+      setAssetLoading(false)
+      return
+    }
+
+    let isMounted = true
+    setAssetLoading(true)
+    setAssetError(null)
+
+    fetchEnrichmentAssets({
+      topic: topic || 'Learning practice',
+      skills,
+      maxItems: 6
+    })
+      .then((response) => {
+        if (!isMounted) return
+        setAssetData(response)
+      })
+      .catch((err) => {
+        if (!isMounted) return
+        setAssetError(err)
+        setAssetData(null)
+      })
+      .finally(() => {
+        if (!isMounted) return
+        setAssetLoading(false)
+      })
+
+    return () => {
+      isMounted = false
+    }
+  }, [lesson, course, currentLessonMeta])
+
   return (
     <LessonView
       courseTitle={course?.title || course?.course_name}
@@ -159,6 +245,9 @@ export default function LessonPage() {
       isFinalLesson={isFinalLesson}
       structureHref={`/course/${courseId}/structure`}
       overviewHref={`/course/${courseId}/overview`}
+      assetEnrichment={assetData}
+      assetLoading={assetLoading}
+      assetError={assetError}
     />
   )
 }
