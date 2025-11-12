@@ -58,7 +58,8 @@ export async function enrichLesson({
     return { ...defaultEnrichment };
   }
   const modelName = process.env.GEMINI_MODEL || 'gemini-1.5-flash';
-  const apiVersion = process.env.GEMINI_API_VERSION || 'v1';
+  const apiVersion =
+    process.env.GEMINI_API_VERSION || (modelName.includes('1.5') ? 'v1beta' : 'v1');
   const prompt = buildPrompt({ topicName, lessonName, description, skills });
 
   try {
