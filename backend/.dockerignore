@@ -1,0 +1,19 @@
+node_modules/
+npm-debug.log*
+*.log
+
+.git
+.gitignore
+
+.vscode/
+.idea/
+
+.env
+.env.*
+
+Dockerfile
+.dockerignore
+
+# Exclude frontend entirely (backend image doesn't need it)
+../frontend/
+
