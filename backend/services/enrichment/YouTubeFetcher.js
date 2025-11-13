@@ -36,6 +36,27 @@ const hasSkillInTitle = (title, skills) => {
   return skills.some((skill) => lowerTitle.includes(skill.toLowerCase()));
 };
 
+const computeTopicRelevance = (title, topic) => {
+  if (!title || !topic) return 0;
+  
+  const lowerTitle = title.toLowerCase();
+  const lowerTopic = topic.toLowerCase();
+  
+  // Split topic into words
+  const topicWords = lowerTopic.split(/\s+/).filter(w => w.length > 2);
+  
+  // Count matching words
+  let matches = 0;
+  topicWords.forEach(word => {
+    if (lowerTitle.includes(word)) {
+      matches += 1;
+    }
+  });
+  
+  // Return relevance score (0-2 points max)
+  return Math.min(matches * 0.5, 2);
+};
+
 const computeRecencyBoost = (publishedAt) => {
   if (!publishedAt) {
     return 0;
@@ -56,12 +77,15 @@ const computeRecencyBoost = (publishedAt) => {
   return 0;
 };
 
-const scoreVideo = (video, skills) => {
+const scoreVideo = (video, skills = [], topic = '') => {
   const views = Number(video.viewCount || 0);
   const viewScore = Math.log10(views + 1);
   const recency = computeRecencyBoost(video.publishedAt);
-  const skillBonus = hasSkillInTitle(video.title, skills) ? 0.5 : 0;
-  return viewScore + recency + skillBonus;
+  const skillBonus = hasSkillInTitle(video.title, skills) ? 1.0 : 0;
+  const topicRelevance = computeTopicRelevance(video.title, topic);
+  
+  // Combined score with emphasis on relevance
+  return viewScore + recency + skillBonus + topicRelevance;
 };
 
 const normalizeVideo = (item) => ({
@@ -85,7 +109,7 @@ const uniqById = (items) => {
   return Array.from(map.values());
 };
 
-export async function searchYouTube({ queries = [], skills = [], maxItems = 6 } = {}) {
+export async function searchYouTube({ queries = [], skills = [], topic = '', maxItems = 4 } = {}) {
   if (!process.env.YOUTUBE_API_KEY) {
     console.warn('YouTubeFetcher skipped: YOUTUBE_API_KEY missing');
     return [];
@@ -173,12 +197,17 @@ export async function searchYouTube({ queries = [], skills = [], maxItems = 6 } 
     const scored = uniqueItems
       .map((item) => ({
         ...item,
-        score: scoreVideo(item, skills)
+        score: scoreVideo(item, skills, topic)
       }))
       .sort((a, b) => b.score - a.score)
       .slice(0, maxItems);
 
-    return scored.map(normalizeVideo);
+    // Filter out low-relevance items (score < 1.0) unless we have very few results
+    const filtered = scored.length >= 3
+      ? scored.filter(item => item.score >= 1.0)
+      : scored;
+
+    return filtered.map(normalizeVideo);
   } catch (error) {
     console.error('YouTubeFetcher encountered an error:', error);
     return [];
@@ -191,6 +220,7 @@ export default {
 
 export const __private__ = {
   hasSkillInTitle,
+  computeTopicRelevance,
   computeRecencyBoost,
   scoreVideo,
   uniqById,

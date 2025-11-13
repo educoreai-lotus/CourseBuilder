@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import {
   Youtube,
   Github,
@@ -6,7 +7,9 @@ import {
   Star,
   Clock,
   RefreshCw,
-  Tag
+  Tag,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
@@ -35,17 +38,39 @@ const formatNumber = (value) => {
 }
 
 export default function LessonAssetsPanel({ assets, loading, error }) {
+  const [expandedSections, setExpandedSections] = useState({
+    videos: true,
+    repos: true,
+    suggested: false,
+    tags: false
+  })
+
+  const toggleSection = (section) => {
+    setExpandedSections(prev => ({
+      ...prev,
+      [section]: !prev[section]
+    }))
+  }
+
   if (!loading && !assets && !error) {
     return null
   }
 
-  const hasVideos = assets?.videos?.length > 0
-  const hasRepos = assets?.repos?.length > 0
+  // Limit displayed items to top 4
+  const videos = assets?.videos?.slice(0, 4) || []
+  const repos = assets?.repos?.slice(0, 4) || []
+  const suggestedUrls = {
+    youtube: assets?.suggestedUrls?.youtube?.slice(0, 2) || [],
+    github: assets?.suggestedUrls?.github?.slice(0, 2) || []
+  }
+  const tags = assets?.tags?.slice(0, 5) || []
+
+  const hasVideos = videos.length > 0
+  const hasRepos = repos.length > 0
   const hasSuggested = Boolean(
-    (assets?.suggestedUrls?.youtube && assets.suggestedUrls.youtube.length > 0) ||
-      (assets?.suggestedUrls?.github && assets.suggestedUrls.github.length > 0)
+    suggestedUrls.youtube.length > 0 || suggestedUrls.github.length > 0
   )
-  const hasTags = Array.isArray(assets?.tags) && assets.tags.length > 0
+  const hasTags = tags.length > 0
 
   return (
     <section className="rounded-3xl border border-[rgba(148,163,184,0.18)] bg-[var(--bg-card)]/90 p-6 shadow-lg backdrop-blur transition-colors">
@@ -88,82 +113,120 @@ export default function LessonAssetsPanel({ assets, loading, error }) {
       )}
 
       {!loading && !error && assets && (
-        <div className="space-y-6">
+        <div className="space-y-4">
           {hasTags && (
-            <div className="flex flex-wrap items-center gap-2">
-              {assets.tags.map((tag) => (
-                <span
-                  key={tag}
-                  className="inline-flex items-center gap-2 rounded-full bg-[rgba(124,58,237,0.16)] px-3 py-1 text-xs font-semibold uppercase tracking-wide text-[#5b21b6]"
-                >
-                  <Tag size={14} />
-                  {tag}
-                </span>
-              ))}
+            <div className="rounded-2xl border border-[rgba(148,163,184,0.14)] bg-[var(--bg-card)]/80 p-4">
+              <button
+                onClick={() => toggleSection('tags')}
+                className="flex w-full items-center justify-between text-left"
+              >
+                <div className="flex items-center gap-2">
+                  <Tag size={16} className="text-[#5b21b6]" />
+                  <h3 className="text-sm font-semibold uppercase tracking-wide" style={{ color: 'var(--text-primary)' }}>
+                    Related Topics ({tags.length})
+                  </h3>
+                </div>
+                {expandedSections.tags ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+              </button>
+              {expandedSections.tags && (
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  {tags.map((tag) => (
+                    <span
+                      key={tag}
+                      className="inline-flex items-center gap-2 rounded-full bg-[rgba(124,58,237,0.16)] px-3 py-1 text-xs font-semibold uppercase tracking-wide text-[#5b21b6]"
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
           {hasSuggested && (
-            <div className="grid gap-4 md:grid-cols-2">
-              {assets?.suggestedUrls?.youtube?.length > 0 && (
-                <div className="rounded-2xl border border-[rgba(148,163,184,0.14)] bg-[var(--bg-card)]/80 p-4 shadow-sm transition-colors">
-                  <div className="mb-3 inline-flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-[#dc2626]">
-                    <Youtube size={16} />
-                    Quick-start playlists
-                  </div>
-                  <ul className="space-y-2 text-sm" style={{ color: 'var(--text-secondary)' }}>
-                    {assets.suggestedUrls.youtube.map((url) => (
-                      <li key={url}>
-                        <a
-                          href={url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-2 text-[var(--primary-cyan)] hover:text-[var(--primary-cyan-strong)]"
-                        >
-                          <ExternalLink size={14} />
-                          {url.replace(/^https?:\/\//, '')}
-                        </a>
-                      </li>
-                    ))}
-                  </ul>
+            <div className="rounded-2xl border border-[rgba(148,163,184,0.14)] bg-[var(--bg-card)]/80 p-4">
+              <button
+                onClick={() => toggleSection('suggested')}
+                className="flex w-full items-center justify-between text-left"
+              >
+                <div className="flex items-center gap-2">
+                  <ExternalLink size={16} className="text-[var(--primary-cyan)]" />
+                  <h3 className="text-sm font-semibold uppercase tracking-wide" style={{ color: 'var(--text-primary)' }}>
+                    Quick Links
+                  </h3>
                 </div>
-              )}
-              {assets?.suggestedUrls?.github?.length > 0 && (
-                <div className="rounded-2xl border border-[rgba(148,163,184,0.14)] bg-[var(--bg-card)]/80 p-4 shadow-sm transition-colors">
-                  <div className="mb-3 inline-flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-[#111827] dark:text-white">
-                    <Github size={16} />
-                    Must-read repos
-                  </div>
-                  <ul className="space-y-2 text-sm" style={{ color: 'var(--text-secondary)' }}>
-                    {assets.suggestedUrls.github.map((url) => (
-                      <li key={url}>
-                        <a
-                          href={url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-2 text-[var(--primary-cyan)] hover:text-[var(--primary-cyan-strong)]"
-                        >
-                          <ExternalLink size={14} />
-                          {url.replace(/^https?:\/\//, '')}
-                        </a>
-                      </li>
-                    ))}
-                  </ul>
+                {expandedSections.suggested ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+              </button>
+              {expandedSections.suggested && (
+                <div className="mt-4 grid gap-4 md:grid-cols-2">
+                  {suggestedUrls.youtube.length > 0 && (
+                    <div>
+                      <div className="mb-2 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-[#dc2626]">
+                        <Youtube size={14} />
+                        YouTube Playlists
+                      </div>
+                      <ul className="space-y-2 text-sm" style={{ color: 'var(--text-secondary)' }}>
+                        {suggestedUrls.youtube.map((url) => (
+                          <li key={url}>
+                            <a
+                              href={url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-2 text-[var(--primary-cyan)] hover:text-[var(--primary-cyan-strong)]"
+                            >
+                              <ExternalLink size={12} />
+                              {url.replace(/^https?:\/\//, '').substring(0, 50)}
+                            </a>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {suggestedUrls.github.length > 0 && (
+                    <div>
+                      <div className="mb-2 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-[#111827] dark:text-white">
+                        <Github size={14} />
+                        GitHub References
+                      </div>
+                      <ul className="space-y-2 text-sm" style={{ color: 'var(--text-secondary)' }}>
+                        {suggestedUrls.github.map((url) => (
+                          <li key={url}>
+                            <a
+                              href={url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-2 text-[var(--primary-cyan)] hover:text-[var(--primary-cyan-strong)]"
+                            >
+                              <ExternalLink size={12} />
+                              {url.replace(/^https?:\/\//, '').substring(0, 50)}
+                            </a>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
           )}
 
           {hasVideos && (
-            <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <Youtube size={18} className="text-[#dc2626]" />
-                <h3 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
-                  Focused YouTube sessions
-                </h3>
-              </div>
-              <div className="grid gap-4 md:grid-cols-2">
-                {assets.videos.map((video) => (
+            <div className="rounded-2xl border border-[rgba(148,163,184,0.14)] bg-[var(--bg-card)]/80 p-4">
+              <button
+                onClick={() => toggleSection('videos')}
+                className="flex w-full items-center justify-between text-left"
+              >
+                <div className="flex items-center gap-2">
+                  <Youtube size={18} className="text-[#dc2626]" />
+                  <h3 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
+                    Recommended Videos ({videos.length})
+                  </h3>
+                </div>
+                {expandedSections.videos ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+              </button>
+              {expandedSections.videos && (
+                <div className="mt-4 grid gap-4 md:grid-cols-2">
+                  {videos.map((video) => (
                   <a
                     key={video.id}
                     href={video.url}
@@ -198,21 +261,29 @@ export default function LessonAssetsPanel({ assets, loading, error }) {
                       )}
                     </div>
                   </a>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
           {hasRepos && (
-            <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <Github size={18} className="text-[#111827] dark:text-white" />
-                <h3 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
-                  GitHub practice repositories
-                </h3>
-              </div>
-              <div className="grid gap-4 md:grid-cols-2">
-                {assets.repos.map((repo) => (
+            <div className="rounded-2xl border border-[rgba(148,163,184,0.14)] bg-[var(--bg-card)]/80 p-4">
+              <button
+                onClick={() => toggleSection('repos')}
+                className="flex w-full items-center justify-between text-left"
+              >
+                <div className="flex items-center gap-2">
+                  <Github size={18} className="text-[#111827] dark:text-white" />
+                  <h3 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
+                    Practice Repositories ({repos.length})
+                  </h3>
+                </div>
+                {expandedSections.repos ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+              </button>
+              {expandedSections.repos && (
+                <div className="mt-4 grid gap-4 md:grid-cols-2">
+                  {repos.map((repo) => (
                   <a
                     key={repo.id}
                     href={repo.url}
@@ -250,8 +321,9 @@ export default function LessonAssetsPanel({ assets, loading, error }) {
                       )}
                     </div>
                   </a>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 

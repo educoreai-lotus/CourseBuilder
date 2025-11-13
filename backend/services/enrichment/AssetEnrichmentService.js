@@ -100,14 +100,16 @@ export async function enrichAssets({ topic, skills = [], maxItems = 6 } = {}) {
       searchYouTube({
         queries: intents.queries.youtube,
         skills,
-        maxItems
+        topic,
+        maxItems: Math.min(maxItems, 4) // Limit to 4 most relevant videos
       }).catch((error) => {
         console.error('[AssetEnrichmentService] YouTube search failed:', error);
         return [];
       }),
       searchRepos({
         queries: intents.queries.github,
-        maxItems
+        topic,
+        maxItems: Math.min(maxItems, 4) // Limit to 4 most relevant repos
       }).catch((error) => {
         console.error('[AssetEnrichmentService] GitHub search failed:', error);
         return [];
