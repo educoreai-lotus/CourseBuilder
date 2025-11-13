@@ -86,6 +86,8 @@ export default function LessonPage() {
     }
   }, [courseId, learnerProgress, loading, navigate, userRole, course])
 
+  // ALL HOOKS MUST BE CALLED BEFORE ANY CONDITIONAL RETURNS
+  // This ensures hooks are called in the same order on every render
   const flattenedLessons = useMemo(() => {
     if (!course) return []
     const topics = Array.isArray(course.topics) ? course.topics : []
@@ -110,6 +112,25 @@ export default function LessonPage() {
   const nextLesson =
     currentIndex >= 0 && currentIndex < flattenedLessons.length - 1 ? flattenedLessons[currentIndex + 1] : null
   const isFinalLesson = currentIndex >= 0 && !nextLesson
+
+  // Enrichment is now on-demand only (triggered by EnrichmentButton)
+  // Removed automatic useEffect that was calling fetchEnrichmentAssets
+  const enrichmentAssetDescriptor = useMemo(() => {
+    if (!lesson || !course) return null
+
+    return {
+      type: lesson.content_type || 'lesson',
+      title: lesson.title || lesson.lesson_name || lesson.name,
+      description: lesson.description || lesson.summary || lesson.metadata?.description,
+      metadata: {
+        course_id: course.id || course.course_id,
+        course_title: course.title || course.course_name,
+        skills: course?.metadata?.skills || course?.skills,
+        lesson_skills: lesson.skills || lesson.micro_skills || lesson.metadata?.skills,
+        tags: lesson?.enriched_content?.tags
+      }
+    }
+  }, [lesson, course])
 
   const handleComplete = async () => {
     if (!lessonId) return
@@ -195,26 +216,8 @@ export default function LessonPage() {
       ? 'Exercises and assessment unlocked.'
       : 'Complete remaining lessons to unlock exercises and assessment.'
 
-  // Enrichment is now on-demand only (triggered by EnrichmentButton)
-  // Removed automatic useEffect that was calling fetchEnrichmentAssets
-
-  const enrichmentAssetDescriptor = useMemo(() => {
-    if (!lesson || !course) return null
-
-    return {
-      type: lesson.content_type || 'lesson',
-      title: lesson.title || lesson.lesson_name || lesson.name,
-      description: lesson.description || lesson.summary || lesson.metadata?.description,
-      metadata: {
-        course_id: course.id || course.course_id,
-        course_title: course.title || course.course_name,
-        skills: course?.metadata?.skills || course?.skills,
-        lesson_skills: lesson.skills || lesson.micro_skills || lesson.metadata?.skills,
-        tags: lesson?.enriched_content?.tags
-      }
-    }
-  }, [lesson, course])
-
+  // Early returns AFTER all hooks have been called
+  // This ensures hooks are always called in the same order
   return (
     <LessonView
       courseTitle={course?.title || course?.course_name}
