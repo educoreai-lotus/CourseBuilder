@@ -5,7 +5,7 @@
 
 ## Base URL
 - **Local Development**: `http://localhost:3000`
-- **Production**: `https://your-backend.railway.app`
+- **Production**: `https://coursebuilderfs-production.up.railway.app/api/enrichment/assets`
 
 ## Request Headers
 ```

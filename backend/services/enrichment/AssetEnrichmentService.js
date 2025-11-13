@@ -82,8 +82,17 @@ export async function enrichAssets({ topic, skills = [], maxItems = 6 } = {}) {
         tagsCount: intents.tags.length
       });
     } catch (error) {
-      console.error('[AssetEnrichmentService] Failed to generate intents:', error);
-      throw error;
+      // generateIntents should never throw (it returns fallback), but be defensive
+      console.error('[AssetEnrichmentService] Failed to generate intents, using fallback:', error.message);
+      // Generate a basic fallback if generateIntents somehow throws
+      intents = {
+        queries: {
+          youtube: [`${topic || 'programming'} tutorial`],
+          github: [topic || 'programming']
+        },
+        suggestedUrls: { youtube: [], github: [] },
+        tags: [topic, ...skills].filter(Boolean).slice(0, 5)
+      };
     }
 
     const [videos, repos] = await Promise.all([

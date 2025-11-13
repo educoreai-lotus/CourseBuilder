@@ -68,11 +68,12 @@ const extractJsonPayload = (rawText) => {
     return null;
   }
 
-  let cleaned = rawText.trim();
-
-  if (cleaned.startsWith('```')) {
-    cleaned = cleaned.replace(/^```(?:json)?\s*/i, '').replace(/```$/, '').trim();
-  }
+  // Clean markdown fences before extracting JSON
+  let cleaned = rawText
+    .replace(/^```json\s*/i, '')
+    .replace(/^```\s*/i, '')
+    .replace(/```$/i, '')
+    .trim();
 
   const firstBrace = cleaned.indexOf('{');
   const lastBrace = cleaned.lastIndexOf('}');
@@ -183,15 +184,21 @@ const callGeminiWithRetry = async (client, modelName, prompt, maxRetries = 3) =>
   
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
-      // Use v1 API - the SDK should automatically use v1 for gemini-1.5-flash models
-      // If the SDK version is outdated and uses v1beta, update @google/generative-ai package
+      // Use v1 API - the SDK uses v1 by default
       const model = client.getGenerativeModel({ model: modelName });
       const result = await model.generateContent(prompt);
-      const text = result?.response?.text?.();
+      let text = result?.response?.text?.();
       
       if (!text) {
         throw new Error('Empty response from Gemini');
       }
+      
+      // Clean markdown fences before returning
+      text = text
+        .replace(/^```json\s*/i, '')
+        .replace(/^```\s*/i, '')
+        .replace(/```$/i, '')
+        .trim();
       
       return text;
     } catch (error) {
@@ -228,13 +235,13 @@ export async function generateIntents({ topic, skills = [] } = {}) {
   }
 
   // Use only free models that work with v1 API
-  // gemini-pro and gemini-1.5-pro require subscription
-  // For v1 API, use: gemini-1.5-flash or gemini-1.5-flash-latest
-  const primaryModel = process.env.GEMINI_MODEL || 'gemini-1.5-flash';
+  // gemini-pro and other premium models require subscription
+  // For v1 API, use: gemini-2.5-flash (free tier)
+  const primaryModel = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
   const modelsToTry = [primaryModel];
   
   // Try alternative model names that work with v1 API
-  const alternativeModels = ['gemini-1.5-flash', 'gemini-1.5-flash-latest'];
+  const alternativeModels = ['gemini-2.5-flash'];
   for (const altModel of alternativeModels) {
     if (!modelsToTry.includes(altModel)) {
       modelsToTry.push(altModel);
@@ -245,14 +252,16 @@ export async function generateIntents({ topic, skills = [] } = {}) {
 
   for (const modelName of modelsToTry) {
     try {
-      console.log(`[GeminiIntentService] Attempting with model: ${modelName}`);
+      console.log(`[GeminiIntentService] Using Gemini model: ${modelName}`);
       const text = await callGeminiWithRetry(client, modelName, prompt);
       
+      // Text is already cleaned in callGeminiWithRetry, but ensure it's valid JSON
       const jsonPayload = extractJsonPayload(text);
       if (!jsonPayload) {
         throw new Error('Unable to extract JSON payload from Gemini response');
       }
 
+      // Parse the cleaned JSON
       const parsed = JSON.parse(jsonPayload);
       const normalized = normalizeIntentPayload(parsed);
 
