@@ -46,16 +46,16 @@ const withOverallTimeout = async (promise) => {
   } catch (error) {
     if (error?.name === 'AbortError') {
       console.error('AssetEnrichmentService timed out');
+      return {
+        tags: [],
+        videos: [],
+        repos: [],
+        source: 'gemini+apis',
+        generatedAt: new Date().toISOString()
+      };
     } else {
       throw error;
     }
-    return {
-      tags: [],
-      videos: [],
-      repos: [],
-      source: 'gemini+apis',
-      generatedAt: new Date().toISOString()
-    };
   } finally {
     clearTimeout(timeoutId);
   }
@@ -66,26 +66,43 @@ export async function enrichAssets({ topic, skills = [], maxItems = 6 } = {}) {
   const cached = enrichmentCache.get(key);
 
   if (isCacheEntryValid(cached)) {
+    console.log('[AssetEnrichmentService] Returning cached result for:', topic);
     return cached.payload;
   }
 
   const operation = async () => {
-    const intents = await generateIntents({ topic, skills });
+    console.log('[AssetEnrichmentService] Starting enrichment for:', { topic, skillsCount: skills.length });
+    
+    let intents;
+    try {
+      intents = await generateIntents({ topic, skills });
+      console.log('[AssetEnrichmentService] Intents generated:', {
+        youtubeQueries: intents.queries.youtube.length,
+        githubQueries: intents.queries.github.length,
+        tagsCount: intents.tags.length
+      });
+    } catch (error) {
+      console.error('[AssetEnrichmentService] Failed to generate intents:', error);
+      throw error;
+    }
 
     const [videos, repos] = await Promise.all([
       searchYouTube({
         queries: intents.queries.youtube,
         skills,
         maxItems
+      }).catch((error) => {
+        console.error('[AssetEnrichmentService] YouTube search failed:', error);
+        return [];
       }),
       searchRepos({
         queries: intents.queries.github,
         maxItems
+      }).catch((error) => {
+        console.error('[AssetEnrichmentService] GitHub search failed:', error);
+        return [];
       })
-    ]).catch((error) => {
-      console.error('AssetEnrichmentService fetchers failed:', error);
-      return [[], []];
-    });
+    ]);
 
     const sanitizedSuggested = {
       youtube: sanitizeSuggestedUrls(intents.suggestedUrls.youtube),
@@ -106,10 +123,30 @@ export async function enrichAssets({ topic, skills = [], maxItems = 6 } = {}) {
       payload
     });
 
+    console.log('[AssetEnrichmentService] Enrichment completed:', {
+      videosCount: videos.length,
+      reposCount: repos.length,
+      tagsCount: payload.tags.length
+    });
+
     return payload;
   };
 
-  return withOverallTimeout(operation());
+  try {
+    return await withOverallTimeout(operation());
+  } catch (error) {
+    console.error('[AssetEnrichmentService] Enrichment operation failed:', error);
+    // Return a minimal response instead of throwing to prevent frontend crashes
+    return {
+      tags: [],
+      videos: [],
+      repos: [],
+      suggestedUrls: { youtube: [], github: [] },
+      source: 'gemini+apis',
+      generatedAt: new Date().toISOString(),
+      error: error.message
+    };
+  }
 }
 
 export function clearCache() {

@@ -23,20 +23,36 @@ const resolveEndpoint = () => {
 const ENRICHMENT_ENDPOINT = resolveEndpoint()
 
 export const enrichAssets = async (assetData = {}) => {
-  const response = await fetch(ENRICHMENT_ENDPOINT, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify(assetData)
-  })
+  try {
+    const response = await fetch(ENRICHMENT_ENDPOINT, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(assetData)
+    })
 
-  if (!response.ok) {
-    const errorText = await response.text().catch(() => '')
-    throw new Error(errorText || 'Failed to enrich asset')
+    if (!response.ok) {
+      let errorMessage = 'Failed to enrich assets'
+      try {
+        const errorData = await response.json()
+        errorMessage = errorData.message || errorData.error || errorMessage
+      } catch {
+        const errorText = await response.text().catch(() => '')
+        errorMessage = errorText || errorMessage
+      }
+      const error = new Error(errorMessage)
+      error.status = response.status
+      throw error
+    }
+
+    return await response.json()
+  } catch (error) {
+    if (error instanceof Error) {
+      throw error
+    }
+    throw new Error('Network error: Unable to connect to enrichment service')
   }
-
-  return response.json()
 }
 
 export default {
