@@ -193,14 +193,14 @@ export async function generateIntents({ topic, skills = [] } = {}) {
     return fallback;
   }
 
-  // Try primary model first, then fallback to gemini-pro if it fails
-  const primaryModel = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
-  const fallbackModel = 'gemini-pro';
+  // Use only free models (gemini-1.5-flash is free tier)
+  // gemini-pro and gemini-1.5-pro require subscription
+  const primaryModel = process.env.GEMINI_MODEL || 'gemini-1.5-flash';
   const modelsToTry = [primaryModel];
   
-  // Only add fallback if primary is different
-  if (primaryModel !== fallbackModel) {
-    modelsToTry.push(fallbackModel);
+  // Only add gemini-1.5-flash as fallback if primary is different
+  if (primaryModel !== 'gemini-1.5-flash') {
+    modelsToTry.push('gemini-1.5-flash');
   }
 
   const prompt = buildPrompt({ topic: trimmedTopic, skills: normalizedSkills });
@@ -240,7 +240,10 @@ export async function generateIntents({ topic, skills = [] } = {}) {
       }
       
       // Otherwise, try the next model
-      console.log(`[GeminiIntentService] Trying fallback model: ${fallbackModel}`);
+      const nextModelIndex = modelsToTry.indexOf(modelName) + 1;
+      if (nextModelIndex < modelsToTry.length) {
+        console.log(`[GeminiIntentService] Trying fallback model: ${modelsToTry[nextModelIndex]}`);
+      }
       continue;
     }
   }
