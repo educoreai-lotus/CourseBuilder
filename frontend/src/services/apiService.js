@@ -84,6 +84,10 @@ export function createCourse(payload) {
   return api.post('/courses', payload).then(r => r.data)
 }
 
+export function validateCourse(courseId) {
+  return api.post(`/courses/${courseId}/validate`).then(r => r.data)
+}
+
 export function publishCourse(courseId) {
   return api.post(`/courses/${courseId}/publish`).then(r => r.data)
 }
@@ -140,6 +144,7 @@ export default {
   updateFeedback,
   deleteFeedback,
   createCourse,
+  validateCourse,
   publishCourse,
   scheduleCourse,
   updateCourse,

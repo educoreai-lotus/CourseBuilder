@@ -8,7 +8,7 @@ export default function PublishControls({ courseId, onPublish, onSchedule, loadi
 
   const handlePublish = () => {
     if (publishMode === 'immediate') {
-      onPublish({ immediate: true })
+      onPublish()
     } else {
       if (!scheduledDate || !scheduledTime) {
         alert('Please select both date and time for scheduled publishing')

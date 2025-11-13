@@ -57,6 +57,12 @@ router.post('/:id/register', authorizeRoles('learner'), coursesController.regist
 router.patch('/:id/progress', authorizeRoles('learner'), coursesController.updateCourseProgress);
 
 /**
+ * POST /api/v1/courses/:id/validate
+ * Validate course (Trainer/Admin)
+ */
+router.post('/:id/validate', authorizeRoles('trainer', 'admin'), coursesController.validateCourse);
+
+/**
  * POST /api/v1/courses/:id/publish
  * Publish course immediately (Trainer/Admin)
  */

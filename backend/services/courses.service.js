@@ -256,7 +256,7 @@ export const getCourseDetails = async (courseId, options = {}) => {
 /**
  * Register a learner for a course
  */
-export const registerLearner = async (courseId, { learner_id, company_id }) => {
+export const registerLearner = async (courseId, { learner_id, learner_name, learner_company, company_id }) => {
   try {
     // Check if course exists
     const course = await db.oneOrNone(
@@ -284,10 +284,12 @@ export const registerLearner = async (courseId, { learner_id, company_id }) => {
 
     // Create registration
     const registrationId = uuidv4();
+    const finalLearnerName = learner_name || 'Learner';
+    const finalCompany = learner_company || company_id || null;
     await db.none(
       `INSERT INTO registrations (registration_id, course_id, learner_id, learner_name, learner_company, progress, status, created_at)
        VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())`,
-      [registrationId, courseId, learner_id, 'Learner', company_id || null, 0, 'in_progress']
+      [registrationId, courseId, learner_id, finalLearnerName, finalCompany, 0, 'in_progress']
     );
 
     // Update course enrollment count
@@ -679,6 +681,52 @@ export const schedulePublishing = async (courseId, publishAt) => {
 };
 
 /**
+ * Validate course (set status to validated)
+ */
+export const validateCourse = async (courseId) => {
+  try {
+    // Check if course exists
+    const course = await db.oneOrNone(
+      'SELECT course_id, status FROM courses WHERE course_id = $1',
+      [courseId]
+    );
+
+    if (!course) {
+      const error = new Error('Course not found');
+      error.status = 404;
+      throw error;
+    }
+
+    // Update course status to validated
+    await db.none(
+      `UPDATE courses 
+       SET status = 'validated', updated_at = NOW()
+       WHERE course_id = $1`,
+      [courseId]
+    );
+
+    // Update latest version status to validated
+    await db.none(
+      `UPDATE versions 
+       SET status = 'validated'
+       WHERE course_id = $1 AND version_no = (
+         SELECT MAX(version_no) FROM versions WHERE course_id = $1
+       )`,
+      [courseId]
+    );
+
+    return {
+      course_id: courseId,
+      status: 'validated',
+      validated_at: new Date().toISOString()
+    };
+  } catch (error) {
+    console.error('Error validating course:', error);
+    throw error;
+  }
+};
+
+/**
  * Unpublish/archive course
  */
 export const unpublishCourse = async (courseId) => {
@@ -823,7 +871,11 @@ export const getLearnerProgress = async (learnerId) => {
         r.status,
         r.created_at as enrolled_at,
         c.level,
-        c.average_rating as rating
+        c.average_rating as rating,
+        (SELECT COUNT(*)::int 
+         FROM lessons l 
+         JOIN modules m ON m.module_id = l.module_id 
+         WHERE m.course_id = r.course_id) as lessons_total
       FROM registrations r
       JOIN courses c ON c.course_id = r.course_id
       WHERE r.learner_id = $1
@@ -838,7 +890,8 @@ export const getLearnerProgress = async (learnerId) => {
       status: r.status,
       enrolled_at: r.enrolled_at.toISOString(),
       level: r.level,
-      rating: parseFloat(r.rating) || 0
+      rating: parseFloat(r.rating) || 0,
+      lessons_total: r.lessons_total || 0
     }));
   } catch (error) {
     console.error('Error getting learner progress:', error);
@@ -880,6 +933,7 @@ export const coursesService = {
   publishCourse,
   schedulePublishing,
   unpublishCourse,
+  validateCourse,
   getCourseVersions,
   getCourseFilters,
   getLessonDetails,

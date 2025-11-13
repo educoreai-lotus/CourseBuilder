@@ -83,7 +83,7 @@ export const getCourseDetails = async (req, res, next) => {
 export const registerForCourse = async (req, res, next) => {
   try {
     const { id: courseId } = req.params;
-    const { learner_id, company_id } = req.body;
+    const { learner_id, learner_name, learner_company, company_id } = req.body;
 
     if (!learner_id) {
       return res.status(400).json({
@@ -101,6 +101,8 @@ export const registerForCourse = async (req, res, next) => {
 
     const result = await coursesService.registerLearner(courseId, {
       learner_id,
+      learner_name,
+      learner_company,
       company_id
     });
 
@@ -282,6 +284,34 @@ export const schedulePublishing = async (req, res, next) => {
 };
 
 /**
+ * Validate course (Trainer/Admin)
+ * POST /api/v1/courses/:id/validate
+ */
+export const validateCourse = async (req, res, next) => {
+  try {
+    const { id: courseId } = req.params;
+
+    if (!courseId) {
+      return res.status(400).json({
+        error: 'Bad Request',
+        message: 'Course ID is required'
+      });
+    }
+
+    const result = await coursesService.validateCourse(courseId);
+    res.status(200).json(result);
+  } catch (error) {
+    if (error.status === 404) {
+      return res.status(404).json({
+        error: 'Not Found',
+        message: error.message
+      });
+    }
+    next(error);
+  }
+};
+
+/**
  * Unpublish/archive course (Admin)
  * POST /api/v1/courses/:id/unpublish
  */
@@ -406,6 +436,7 @@ export const coursesController = {
   publishCourse,
   schedulePublishing,
   unpublishCourse,
+  validateCourse,
   getCourseVersions,
   getCourseFilters,
   getLessonDetails,

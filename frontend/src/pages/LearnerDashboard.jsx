@@ -1,10 +1,14 @@
 import { useState, useEffect, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { BookOpen, CheckCircle, Zap, Award, Sparkles, ShoppingBag, Play } from 'lucide-react'
-import { getCourses } from '../services/apiService.js'
+import { getCourses, getLearnerProgress } from '../services/apiService.js'
 import LoadingSpinner from '../components/LoadingSpinner.jsx'
 import Container from '../components/Container.jsx'
 import { useApp } from '../context/AppContext'
+import dayjs from 'dayjs'
+import relativeTime from 'dayjs/plugin/relativeTime'
+
+dayjs.extend(relativeTime)
 
 export default function LearnerDashboard() {
   const { showToast, userProfile } = useApp()
@@ -14,30 +18,58 @@ export default function LearnerDashboard() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    loadCourses()
-  }, [])
+    loadDashboard()
+  }, [userProfile?.id])
 
-  const loadCourses = async (filters = {}) => {
+  const loadDashboard = async () => {
     setLoading(true)
     try {
-      const data = await getCourses({ limit: 24, ...filters })
-      const courses = data.courses || []
+      // Load recommended courses from marketplace
+      const coursesData = await getCourses({ limit: 12 })
+      const allCourses = coursesData.courses || []
+      setRecommended(allCourses.slice(0, 6))
 
-      setRecommended(courses.slice(0, 6))
-      setContinueLearning(
-        courses.slice(6, 12).map((course, idx) => ({
-          ...course,
-          progress: 20 + ((idx * 17) % 60),
-          lastTouched: `${2 + idx} days ago`
-        }))
-      )
-      setTrendingTopics(
-        courses.slice(12, 18).map((course, idx) => ({
-          topic: course.category || `Topic ${idx + 1}`,
-          learners: 320 + idx * 57,
-          momentum: idx % 2 === 0 ? 'up' : 'steady'
-        }))
-      )
+      // Load REAL enrolled courses with progress
+      if (userProfile?.id) {
+        try {
+          const progressData = await getLearnerProgress(userProfile.id)
+          const enrolledCourses = progressData.map(course => ({
+            id: course.course_id,
+            course_id: course.course_id,
+            title: course.title,
+            progress: course.progress || 0,
+            status: course.status,
+            level: course.level,
+            rating: course.rating,
+            lastTouched: course.enrolled_at 
+              ? dayjs(course.enrolled_at).fromNow()
+              : 'Recently'
+          }))
+          setContinueLearning(enrolledCourses)
+        } catch (progressErr) {
+          console.error('Failed to load progress:', progressErr)
+          setContinueLearning([])
+        }
+      } else {
+        setContinueLearning([])
+      }
+
+      // Generate trending topics from available courses
+      const topicsMap = new Map()
+      allCourses.forEach(course => {
+        const category = course.category || course.level || 'General'
+        if (!topicsMap.has(category)) {
+          topicsMap.set(category, {
+            topic: category,
+            learners: course.total_enrollments || 0,
+            momentum: 'up'
+          })
+        } else {
+          const existing = topicsMap.get(category)
+          existing.learners += course.total_enrollments || 0
+        }
+      })
+      setTrendingTopics(Array.from(topicsMap.values()).slice(0, 6))
     } catch (err) {
       showToast('Failed to load your learner dashboard', 'error')
     } finally {

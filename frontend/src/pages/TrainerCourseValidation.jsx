@@ -1,7 +1,7 @@
 import { useParams, useNavigate } from 'react-router-dom'
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { CheckCircle2, Circle, Layers, ListChecks, Rocket } from 'lucide-react'
-import { getCourseById } from '../services/apiService.js'
+import { getCourseById, validateCourse } from '../services/apiService.js'
 import CourseTreeView from '../components/CourseTreeView.jsx'
 import Button from '../components/Button.jsx'
 import LoadingSpinner from '../components/LoadingSpinner.jsx'
@@ -48,9 +48,17 @@ export default function TrainerCourseValidation() {
     }
   }
 
-  const handleValidate = () => {
-    setValidated(true)
-    showToast('Course validated successfully! Ready for publishing.', 'success')
+  const handleValidate = async () => {
+    try {
+      await validateCourse(id)
+      setValidated(true)
+      showToast('Course validated successfully! Ready for publishing.', 'success')
+      // Reload course to get updated status
+      await loadCourse()
+    } catch (err) {
+      const message = err.response?.data?.message || err.message || 'Failed to validate course'
+      showToast(message, 'error')
+    }
   }
 
   const lessons = useMemo(() => flattenLessons(course), [course])

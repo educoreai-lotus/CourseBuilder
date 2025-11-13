@@ -163,7 +163,8 @@ export default function LearnerLibrary() {
         level: course.level,
         rating: course.rating,
         progress: course.progress,
-        status: course.status
+        status: course.status,
+        lessons_total: course.lessons_total || FALLBACK_LESSON_COUNT
       }))
       setCourses(enhancedCourses)
     } catch (err) {

@@ -39,7 +39,8 @@ export default function TrainerPublish() {
       showToast('Course published successfully!', 'success')
       navigate('/trainer/dashboard')
     } catch (err) {
-      showToast('Failed to publish course', 'error')
+      const message = err.response?.data?.message || err.message || 'Failed to publish course'
+      showToast(message, 'error')
     } finally {
       setPublishing(false)
     }
@@ -52,7 +53,8 @@ export default function TrainerPublish() {
       showToast(`Course scheduled for ${new Date(scheduled_at).toLocaleString()}`, 'success')
       navigate('/trainer/dashboard')
     } catch (err) {
-      showToast('Failed to schedule course', 'error')
+      const message = err.response?.data?.message || err.message || 'Failed to schedule course'
+      showToast(message, 'error')
     } finally {
       setPublishing(false)
     }
