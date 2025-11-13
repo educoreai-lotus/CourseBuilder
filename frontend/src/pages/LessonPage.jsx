@@ -3,9 +3,9 @@ import { useState, useEffect, useMemo, useCallback } from 'react'
 import {
   getLessonById,
   getCourseById,
-  updateCourseProgress,
-  fetchEnrichmentAssets
+  updateCourseProgress
 } from '../services/apiService.js'
+import EnrichmentButton from '../features/enrichment/components/EnrichmentButton.jsx'
 import LoadingSpinner from '../components/LoadingSpinner.jsx'
 import LessonView from '../components/course/LessonView.jsx'
 import { useApp } from '../context/AppContext'
@@ -25,6 +25,25 @@ export default function LessonPage() {
   const [enrichmentAssets, setEnrichmentAssets] = useState(null)
   const [enrichmentLoading, setEnrichmentLoading] = useState(false)
   const [enrichmentError, setEnrichmentError] = useState(null)
+
+  const handleEnrichmentResults = useCallback((response) => {
+    setEnrichmentAssets(response)
+    setEnrichmentError(null)
+    if (response) {
+      showToast('AI enrichment loaded successfully.', 'success')
+    }
+  }, [showToast])
+
+  const handleEnrichmentLoading = useCallback((isLoading) => {
+    setEnrichmentLoading(isLoading)
+  }, [])
+
+  const handleEnrichmentError = useCallback((err) => {
+    setEnrichmentError(err)
+    if (err) {
+      setEnrichmentAssets(null)
+    }
+  }, [])
 
   const loadData = useCallback(async () => {
     setLoading(true)
@@ -152,82 +171,25 @@ export default function LessonPage() {
       ? 'Exercises and assessment unlocked.'
       : 'Complete remaining lessons to unlock exercises and assessment.'
 
-  useEffect(() => {
-    const topicCandidates = [
-      lesson?.topic?.topic_name,
-      lesson?.topic_name,
-      currentLessonMeta?.topic_name,
-      currentLessonMeta?.topicName,
-      course?.title,
-      course?.course_name
-    ].map((value) => (typeof value === 'string' ? value.trim() : '')).filter(Boolean)
+  // Enrichment is now on-demand only (triggered by EnrichmentButton)
+  // Removed automatic useEffect that was calling fetchEnrichmentAssets
 
-    const topic = topicCandidates[0] || ''
+  const enrichmentAssetDescriptor = useMemo(() => {
+    if (!lesson || !course) return null
 
-    const collectSkills = (...sources) => {
-      const set = new Set()
-      sources.forEach((source) => {
-        if (Array.isArray(source)) {
-          source.forEach((skill) => {
-            if (typeof skill === 'string' && skill.trim()) {
-              set.add(skill.trim())
-            }
-          })
-        }
-      })
-      return Array.from(set).slice(0, 8)
+    return {
+      type: lesson.content_type || 'lesson',
+      title: lesson.title || lesson.lesson_name || lesson.name,
+      description: lesson.description || lesson.summary || lesson.metadata?.description,
+      metadata: {
+        course_id: course.id || course.course_id,
+        course_title: course.title || course.course_name,
+        skills: course?.metadata?.skills || course?.skills,
+        lesson_skills: lesson.skills || lesson.micro_skills || lesson.metadata?.skills,
+        tags: lesson?.enriched_content?.tags
+      }
     }
-
-    const lessonSkills =
-      lesson?.skills ||
-      lesson?.metadata?.skills ||
-      lesson?.content_data?.skills ||
-      lesson?.content_data?.topics ||
-      []
-
-    const courseSkills =
-      course?.skills ||
-      course?.metadata?.skills ||
-      course?.metadata?.topics ||
-      []
-
-    const tags = Array.isArray(lesson?.enriched_content?.tags) ? lesson.enriched_content.tags : []
-    const skills = collectSkills(lessonSkills, courseSkills, tags)
-
-    if (!topic && skills.length === 0) {
-      setEnrichmentAssets(null)
-      setEnrichmentError(null)
-      setEnrichmentLoading(false)
-      return
-    }
-
-    let isMounted = true
-    setEnrichmentLoading(true)
-    setEnrichmentError(null)
-
-    fetchEnrichmentAssets({
-      topic: topic || 'Learning practice',
-      skills,
-      maxItems: 6
-    })
-      .then((response) => {
-        if (!isMounted) return
-        setEnrichmentAssets(response)
-      })
-      .catch((err) => {
-        if (!isMounted) return
-        setEnrichmentError(err)
-        setEnrichmentAssets(null)
-      })
-      .finally(() => {
-        if (!isMounted) return
-        setEnrichmentLoading(false)
-      })
-
-    return () => {
-      isMounted = false
-    }
-  }, [lesson, course, currentLessonMeta])
+  }, [lesson, course])
 
   return (
     <LessonView
@@ -248,6 +210,10 @@ export default function LessonPage() {
       enrichmentAssets={enrichmentAssets}
       enrichmentLoading={enrichmentLoading}
       enrichmentError={enrichmentError}
+      enrichmentAsset={enrichmentAssetDescriptor}
+      onEnrichmentResults={handleEnrichmentResults}
+      onEnrichmentLoading={handleEnrichmentLoading}
+      onEnrichmentError={handleEnrichmentError}
     />
   )
 }

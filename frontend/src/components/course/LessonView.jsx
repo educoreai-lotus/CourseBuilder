@@ -13,6 +13,7 @@ import {
 import LessonViewer from '../LessonViewer.jsx'
 import Container from '../Container.jsx'
 import LessonAssetsPanel from './LessonAssetsPanel.jsx'
+import EnrichmentButton from '../../features/enrichment/components/EnrichmentButton.jsx'
 
 export default function LessonView({
   courseTitle,
@@ -29,7 +30,11 @@ export default function LessonView({
   overviewHref,
   enrichmentAssets,
   enrichmentLoading = false,
-  enrichmentError = null
+  enrichmentError = null,
+  enrichmentAsset = null,
+  onEnrichmentResults = null,
+  onEnrichmentLoading = null,
+  onEnrichmentError = null
 }) {
   const lessonTitle = lesson?.title || lesson?.lesson_name || 'Lesson'
   const lessonSummary =
@@ -128,7 +133,24 @@ export default function LessonView({
               isFinalLesson={isFinalLesson}
             />
 
-            <LessonAssetsPanel assets={enrichmentAssets} loading={enrichmentLoading} error={enrichmentError} />
+            <div className="space-y-4">
+              <div className="flex items-center justify-between gap-4">
+                <h2 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
+                  Learning Resources
+                </h2>
+                {enrichmentAsset && (
+                  <EnrichmentButton
+                    asset={enrichmentAsset}
+                    onResults={onEnrichmentResults}
+                    onLoading={onEnrichmentLoading}
+                    onError={onEnrichmentError}
+                    buttonLabel={enrichmentAssets ? 'Refresh assets' : 'Load AI assets'}
+                    disabled={!enrichmentAsset}
+                  />
+                )}
+              </div>
+              <LessonAssetsPanel assets={enrichmentAssets} loading={enrichmentLoading} error={enrichmentError} />
+            </div>
 
             <footer className="flex flex-col gap-4 rounded-2xl border border-[rgba(148,163,184,0.16)] bg-[var(--bg-card)]/90 px-6 py-4 text-sm text-[var(--text-secondary)] backdrop-blur transition-colors md:flex-row md:items-center md:justify-between">
               <div className="flex items-center gap-3 text-sm font-medium">

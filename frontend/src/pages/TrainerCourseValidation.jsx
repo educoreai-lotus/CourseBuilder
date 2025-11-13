@@ -1,7 +1,7 @@
 import { useParams, useNavigate } from 'react-router-dom'
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { CheckCircle2, Circle, Layers, ListChecks, Rocket } from 'lucide-react'
-import { getCourseById, fetchEnrichmentAssets } from '../services/apiService.js'
+import { getCourseById } from '../services/apiService.js'
 import CourseTreeView from '../components/CourseTreeView.jsx'
 import Button from '../components/Button.jsx'
 import LoadingSpinner from '../components/LoadingSpinner.jsx'
@@ -21,6 +21,9 @@ export default function TrainerCourseValidation() {
   const [assetData, setAssetData] = useState(null)
   const [assetLoading, setAssetLoading] = useState(false)
   const [assetError, setAssetError] = useState(null)
+
+  // Note: assetLoading and assetError are managed by EnrichmentButton internally
+  // We keep them here for compatibility with LessonAssetsPanel
 
   useEffect(() => {
     loadCourse()
@@ -89,86 +92,8 @@ export default function TrainerCourseValidation() {
     }
   }, [course, selectedLesson])
 
-  useEffect(() => {
-    if (!selectedLesson) {
-      setAssetData(null)
-      setAssetError(null)
-      setAssetLoading(false)
-      return
-    }
-
-    const topicCandidates = [
-      selectedLesson.topic_name,
-      selectedLesson.topicName,
-      selectedLesson.moduleName,
-      course?.title,
-      course?.course_name
-    ]
-      .map((value) => (typeof value === 'string' ? value.trim() : ''))
-      .filter(Boolean)
-
-    const topic = topicCandidates[0] || 'Lesson assets'
-
-    const collectSkills = (...sources) => {
-      const set = new Set()
-      sources.forEach((source) => {
-        if (Array.isArray(source)) {
-          source.forEach((skill) => {
-            if (typeof skill === 'string' && skill.trim()) {
-              set.add(skill.trim())
-            }
-          })
-        }
-      })
-      return Array.from(set).slice(0, 8)
-    }
-
-    const lessonSkills =
-      selectedLesson.skills ||
-      selectedLesson.metadata?.skills ||
-      selectedLesson.content_data?.skills ||
-      selectedLesson.content_data?.topics ||
-      []
-
-    const courseSkills =
-      course?.skills ||
-      course?.metadata?.skills ||
-      course?.metadata?.topics ||
-      []
-
-    const enrichmentTags = Array.isArray(selectedLesson.enriched_content?.tags)
-      ? selectedLesson.enriched_content.tags
-      : []
-
-    const skills = collectSkills(lessonSkills, courseSkills, enrichmentTags)
-
-    let cancelled = false
-    setAssetLoading(true)
-    setAssetError(null)
-
-    fetchEnrichmentAssets({
-      topic,
-      skills,
-      maxItems: 6
-    })
-      .then((response) => {
-        if (cancelled) return
-        setAssetData(response)
-      })
-      .catch((err) => {
-        if (cancelled) return
-        setAssetError(err)
-        setAssetData(null)
-      })
-      .finally(() => {
-        if (cancelled) return
-        setAssetLoading(false)
-      })
-
-    return () => {
-      cancelled = true
-    }
-  }, [selectedLesson, course])
+  // Enrichment is now on-demand only (triggered by EnrichmentButton)
+  // Removed automatic useEffect that was calling fetchEnrichmentAssets
 
   const handleManualEnrichment = useCallback(
     (response) => {
@@ -180,6 +105,17 @@ export default function TrainerCourseValidation() {
     },
     [showToast]
   )
+
+  const handleEnrichmentLoading = useCallback((isLoading) => {
+    setAssetLoading(isLoading)
+  }, [])
+
+  const handleEnrichmentError = useCallback((err) => {
+    setAssetError(err)
+    if (err) {
+      setAssetData(null)
+    }
+  }, [])
 
   const checklist = useMemo(() => {
     if (!course) return []
@@ -369,6 +305,8 @@ export default function TrainerCourseValidation() {
                 <EnrichmentButton
                   asset={enrichmentAssetDescriptor}
                   onResults={handleManualEnrichment}
+                  onLoading={handleEnrichmentLoading}
+                  onError={handleEnrichmentError}
                   disabled={!enrichmentAssetDescriptor}
                   buttonLabel="Regenerate assets"
                   className="self-start"

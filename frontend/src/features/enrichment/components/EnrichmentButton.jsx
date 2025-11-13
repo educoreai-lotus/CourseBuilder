@@ -51,6 +51,8 @@ const mapEnrichedItems = (payload) => {
 export default function EnrichmentButton({
   asset,
   onResults,
+  onLoading,
+  onError,
   buttonLabel = 'AI Enrich',
   disabled,
   className = ''
@@ -94,6 +96,12 @@ export default function EnrichmentButton({
 
     setLoading(true)
     setError(null)
+    if (typeof onLoading === 'function') {
+      onLoading(true)
+    }
+    if (typeof onError === 'function') {
+      onError(null)
+    }
 
     try {
       const response = await enrichAssets(payload)
@@ -108,8 +116,14 @@ export default function EnrichmentButton({
       setError(err)
       setResults([])
       setShowModal(true)
+      if (typeof onError === 'function') {
+        onError(err)
+      }
     } finally {
       setLoading(false)
+      if (typeof onLoading === 'function') {
+        onLoading(false)
+      }
     }
   }
 
