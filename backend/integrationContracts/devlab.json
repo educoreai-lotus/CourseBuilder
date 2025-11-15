@@ -1,0 +1,31 @@
+{
+  "send": {
+    "fields": [
+      {
+        "name": "course_id",
+        "type": "string (UUID)",
+        "required": true,
+        "description": "Course identifier"
+      },
+      {
+        "name": "learner_id",
+        "type": "string (UUID)",
+        "required": true,
+        "description": "Learner identifier"
+      },
+      {
+        "name": "course_name",
+        "type": "string",
+        "required": true,
+        "description": "Course name"
+      }
+    ],
+    "description": "What Course Builder sends to DevLab microservice"
+  },
+  "receive": {
+    "fields": [],
+    "description": "DevLab does not send data back to Course Builder (exercises are stored in lessons.devlab_exercises)"
+  }
+}
+
+

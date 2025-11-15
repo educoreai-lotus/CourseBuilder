@@ -81,7 +81,7 @@ export default function LessonPage() {
         navigate(`/course/${courseId}/overview`, { replace: true })
       } else if (!learnerProgress && course) {
         // If no progress data but course exists, also redirect to overview
-        navigate(`/course/${courseId}/overview`, { replace: true })
+      navigate(`/course/${courseId}/overview`, { replace: true })
       }
     }
   }, [courseId, learnerProgress, loading, navigate, userRole, course])
@@ -126,7 +126,8 @@ export default function LessonPage() {
         course_id: course.id || course.course_id,
         course_title: course.title || course.course_name,
         skills: course?.metadata?.skills || course?.skills,
-        lesson_skills: lesson.skills || lesson.micro_skills || lesson.metadata?.skills,
+        // ⚠️ Skills are ONLY stored at Lesson level (from Content Studio)
+        lesson_skills: Array.isArray(lesson.skills) ? lesson.skills : [],
         tags: lesson?.enriched_content?.tags
       }
     }

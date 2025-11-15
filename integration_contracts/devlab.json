@@ -1,0 +1,70 @@
+{
+  "send": {
+    "course_id": {
+      "type": "string (UUID)",
+      "required": true,
+      "description": "Course identifier"
+    },
+    "learner_id": {
+      "type": "string (UUID)",
+      "required": true,
+      "description": "Learner identifier"
+    },
+    "course_name": {
+      "type": "string",
+      "required": true,
+      "description": "Course name"
+    }
+  },
+  "receive": {},
+  "source": {
+    "send": {
+      "course_id": "courses.id",
+      "learner_id": "registrations.learner_id",
+      "course_name": "courses.course_name"
+    },
+    "receive": {}
+  },
+  "derived": {
+    "send": {},
+    "receive": {}
+  },
+  "validation": {
+    "send": {
+      "course_id": {
+        "type": "string",
+        "format": "uuid",
+        "required": true
+      },
+      "learner_id": {
+        "type": "string",
+        "format": "uuid",
+        "required": true
+      },
+      "course_name": {
+        "type": "string",
+        "minLength": 1,
+        "required": true
+      }
+    },
+    "receive": {}
+  },
+  "examples": {
+    "minimal": {
+      "send": {
+        "course_id": "11111111-1111-1111-1111-111111111111",
+        "learner_id": "22222222-2222-2222-2222-222222222222",
+        "course_name": "Intro to React"
+      }
+    },
+    "full": {
+      "send": {
+        "course_id": "11111111-1111-1111-1111-111111111111",
+        "learner_id": "22222222-2222-2222-2222-222222222222",
+        "course_name": "Advanced React Development with Hooks and Context API"
+      }
+    }
+  }
+}
+
+

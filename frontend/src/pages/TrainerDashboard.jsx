@@ -113,7 +113,7 @@ export default function TrainerDashboard() {
               <p className="max-w-2xl text-sm leading-6 text-[var(--text-secondary)]">
                 Review draft courses, publish updates, and keep tabs on learner engagement. Everything you need to steer
                 your portfolio lives here.
-              </p>
+            </p>
             </div>
             <div className="flex flex-wrap gap-3">
               <Link to="/trainer/courses" className="btn btn-primary inline-flex items-center gap-2">
@@ -136,22 +136,22 @@ export default function TrainerDashboard() {
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-widest text-[var(--text-muted)]">{label}</p>
                   <p className="mt-3 text-3xl font-bold text-[var(--text-primary)]">{value}</p>
-                </div>
+          </div>
                 <span className={`inline-flex h-12 w-12 items-center justify-center rounded-2xl ${accent}`}>
                   <Icon className="h-6 w-6" />
                 </span>
               </article>
             ))}
-          </section>
+      </section>
 
           <section className="rounded-3xl border border-[rgba(148,163,184,0.18)] bg-[var(--bg-card)] p-6 shadow-sm backdrop-blur">
             <header className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <div>
+            <div>
                 <h2 className="text-xl font-semibold text-[var(--text-primary)]">Portfolio overview</h2>
                 <p className="text-sm text-[var(--text-secondary)]">
                   {courses.length} course{courses.length === 1 ? '' : 's'} assigned to you
                 </p>
-              </div>
+            </div>
               <Link
                 to="/trainer/feedback/overview"
                 className="inline-flex items-center gap-2 text-sm font-semibold text-[var(--primary-cyan)] hover:text-[var(--primary-blue)]"
@@ -159,23 +159,23 @@ export default function TrainerDashboard() {
                 View analytics
                 <ArrowUpRight className="h-4 w-4" />
               </Link>
-            </header>
+          </header>
 
-            {loading ? (
+          {loading ? (
               <div className="flex min-h-[320px] items-center justify-center">
-                <LoadingSpinner message="Syncing courses..." />
-              </div>
-            ) : courses.length === 0 ? (
+              <LoadingSpinner message="Syncing courses..." />
+            </div>
+          ) : courses.length === 0 ? (
               <div className="flex flex-col items-center justify-center gap-4 rounded-2xl border border-dashed border-[rgba(148,163,184,0.35)] bg-[var(--bg-secondary)]/40 p-10 text-center text-[var(--text-muted)]">
                 <Layers className="h-10 w-10 text-[var(--primary-cyan)]" />
                 <div className="space-y-1">
                   <h3 className="text-lg font-semibold text-[var(--text-primary)]">No assigned courses yet</h3>
                   <p className="text-sm">
-                    Your course workspace will appear here once content is provisioned for you.
-                  </p>
+                Your course workspace will appear here once content is provisioned for you.
+              </p>
                 </div>
-              </div>
-            ) : (
+            </div>
+          ) : (
               <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
                 {courses.map((course) => {
                   const courseId = course.id || course.course_id
@@ -219,32 +219,32 @@ export default function TrainerDashboard() {
                         <span className="flex items-center gap-2">
                           <Users className="h-4 w-4 text-[var(--primary-cyan)]" />
                           {course.active_enrollments || course.total_enrollments || 0} learners
-                        </span>
+                    </span>
                         <span className="flex items-center gap-2">
                           <BarChart3 className="h-4 w-4 text-[var(--primary-cyan)]" />
                           {(course.average_rating || 0).toFixed(1)} rating
-                        </span>
-                      </div>
+                    </span>
+                  </div>
 
                       <div className="flex flex-wrap gap-3">
                         {!isLive && (
-                          <button
-                            type="button"
+                      <button
+                        type="button"
                             onClick={() => onPublish(courseId)}
-                            disabled={publishing}
+                        disabled={publishing}
                             className="btn btn-primary flex-1 min-w-[140px] items-center justify-center gap-2"
-                          >
+                      >
                             <Rocket className="h-4 w-4" />
                             Publish
-                          </button>
-                        )}
+                      </button>
+                    )}
                         <Link
                           to={`/trainer/course/${courseId}`}
                           className="btn btn-secondary flex-1 min-w-[140px] items-center justify-center gap-2"
                         >
                           <Layers className="h-4 w-4" />
                           Structure
-                        </Link>
+                    </Link>
                         {isLive && (
                           <Link
                             to={`/trainer/feedback/${courseId}`}
@@ -252,15 +252,15 @@ export default function TrainerDashboard() {
                           >
                             <BarChart3 className="h-4 w-4" />
                             Feedback
-                          </Link>
-                        )}
-                      </div>
-                    </article>
+                      </Link>
+                    )}
+                  </div>
+                </article>
                   )
                 })}
-              </div>
-            )}
-          </section>
+            </div>
+          )}
+        </section>
         </div>
       </Container>
     </div>

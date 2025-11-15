@@ -7,7 +7,7 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node --watch server.js",
-    "test": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --config ./jest.config.js --runInBand --detectOpenHandles",
+    "test": "cross-env NODE_ENV=test NODE_OPTIONS=--experimental-vm-modules jest --config ./jest.config.js --runInBand --detectOpenHandles",
     "test:watch": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --config ./jest.config.js --watch",
     "test:coverage": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --config ./jest.config.js --coverage",
     "db:setup": "node scripts/setup-database.js",
@@ -15,6 +15,8 @@
     "seed": "node scripts/seed.js",
     "db:reset": "npm run migrate && npm run seed",
     "db:init": "npm run db:setup && npm run migrate && npm run seed",
+    "db:push-supabase": "node scripts/push-to-supabase.js",
+    "db:create-test": "node scripts/create-test-db.js",
     "generate-secrets": "node scripts/generate-secrets.js"
   },
   "keywords": [
@@ -29,6 +31,7 @@
     "@google/generative-ai": "^0.24.1",
     "@grpc/grpc-js": "^1.8.22",
     "@grpc/proto-loader": "^0.7.7",
+    "axios": "^1.13.2",
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",
     "express": "^4.18.2",

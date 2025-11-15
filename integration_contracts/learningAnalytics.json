@@ -1,0 +1,275 @@
+{
+  "send": {
+    "course_id": {
+      "type": "string (UUID)",
+      "required": true,
+      "description": "Course identifier"
+    },
+    "course_name": {
+      "type": "string",
+      "required": true,
+      "description": "Course name"
+    },
+    "course_type": {
+      "type": "string",
+      "required": true,
+      "description": "Course type (learner_specific | trainer)"
+    },
+    "status": {
+      "type": "string",
+      "required": true,
+      "description": "Course status (active | archived | draft)"
+    },
+    "level": {
+      "type": "string",
+      "required": false,
+      "description": "Course level (beginner | intermediate | advanced)"
+    },
+    "duration_hours": {
+      "type": "number",
+      "required": false,
+      "description": "Course duration in hours"
+    },
+    "structure": {
+      "type": "object",
+      "required": false,
+      "description": "Course structure with topics and skills",
+      "properties": {
+        "topics_count": {
+          "type": "number"
+        },
+        "topics": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "topic_id": {
+                "type": "string (UUID)"
+              },
+              "topic_name": {
+                "type": "string"
+              },
+              "skills": {
+                "type": "array<string>"
+              }
+            }
+          }
+        }
+      }
+    },
+    "enrollment": {
+      "type": "object",
+      "required": false,
+      "description": "Enrollment statistics",
+      "properties": {
+        "total_enrollments": {
+          "type": "number"
+        },
+        "active_enrollments": {
+          "type": "number"
+        },
+        "completed_enrollments": {
+          "type": "number"
+        }
+      }
+    },
+    "feedback": {
+      "type": "object",
+      "required": false,
+      "description": "Feedback statistics and data",
+      "properties": {
+        "total_feedback": {
+          "type": "number"
+        },
+        "average_rating": {
+          "type": "number"
+        },
+        "feedbacks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "learner_id": {
+                "type": "string (UUID)"
+              },
+              "rating": {
+                "type": "number"
+              },
+              "comment": {
+                "type": "string"
+              },
+              "submitted_at": {
+                "type": "string (ISO8601)"
+              }
+            }
+          }
+        }
+      }
+    },
+    "assessments": {
+      "type": "object",
+      "required": false,
+      "description": "Assessment statistics",
+      "properties": {
+        "total_assessments": {
+          "type": "number"
+        },
+        "passed_count": {
+          "type": "number"
+        },
+        "average_grade": {
+          "type": "number"
+        }
+      }
+    },
+    "created_at": {
+      "type": "string (ISO8601)",
+      "required": false,
+      "description": "Course creation timestamp"
+    },
+    "updated_at": {
+      "type": "string (ISO8601)",
+      "required": false,
+      "description": "Course update timestamp"
+    }
+  },
+  "receive": {},
+  "source": {
+    "send": {
+      "course_id": "courses.id",
+      "course_name": "courses.course_name",
+      "course_type": "courses.course_type",
+      "status": "courses.status",
+      "level": "courses.level",
+      "duration_hours": "courses.duration_hours",
+      "structure": "DERIVED from topics table (aggregated)",
+      "enrollment": "DERIVED from registrations table (aggregated)",
+      "feedback": "DERIVED from feedback table (aggregated)",
+      "assessments": "DERIVED from assessments table (aggregated)",
+      "created_at": "courses.created_at",
+      "updated_at": "courses.updated_at"
+    },
+    "receive": {}
+  },
+  "derived": {
+    "send": {
+      "structure": "Computed from topics array with skills",
+      "enrollment": "Computed from registrations (counts by status)",
+      "feedback": "Computed from feedback array (average rating, total count)",
+      "assessments": "Computed from assessments array (passed count, average grade)"
+    },
+    "receive": {}
+  },
+  "validation": {
+    "send": {
+      "course_id": {
+        "type": "string",
+        "format": "uuid",
+        "required": true
+      },
+      "course_name": {
+        "type": "string",
+        "minLength": 1,
+        "required": true
+      },
+      "course_type": {
+        "type": "string",
+        "enum": ["learner_specific", "trainer"],
+        "required": true
+      },
+      "status": {
+        "type": "string",
+        "enum": ["active", "archived", "draft"],
+        "required": true
+      },
+      "level": {
+        "type": "string",
+        "enum": ["beginner", "intermediate", "advanced"],
+        "required": false
+      },
+      "duration_hours": {
+        "type": "number",
+        "minimum": 0,
+        "required": false
+      },
+      "structure": {
+        "type": "object",
+        "required": false
+      },
+      "enrollment": {
+        "type": "object",
+        "required": false
+      },
+      "feedback": {
+        "type": "object",
+        "required": false
+      },
+      "assessments": {
+        "type": "object",
+        "required": false
+      }
+    },
+    "receive": {}
+  },
+  "examples": {
+    "minimal": {
+      "send": {
+        "course_id": "11111111-1111-1111-1111-111111111111",
+        "course_name": "Intro to React",
+        "course_type": "trainer",
+        "status": "active"
+      }
+    },
+    "full": {
+      "send": {
+        "course_id": "11111111-1111-1111-1111-111111111111",
+        "course_name": "Advanced React Development",
+        "course_type": "trainer",
+        "status": "active",
+        "level": "advanced",
+        "duration_hours": 40,
+        "structure": {
+          "topics_count": 5,
+          "topics": [
+            {
+              "topic_id": "22222222-2222-2222-2222-222222222222",
+              "topic_name": "React Hooks",
+              "skills": ["react", "hooks", "useState", "useEffect"]
+            },
+            {
+              "topic_id": "33333333-3333-3333-3333-333333333333",
+              "topic_name": "State Management",
+              "skills": ["react", "context", "reducer"]
+            }
+          ]
+        },
+        "enrollment": {
+          "total_enrollments": 150,
+          "active_enrollments": 75,
+          "completed_enrollments": 50
+        },
+        "feedback": {
+          "total_feedback": 45,
+          "average_rating": 4.6,
+          "feedbacks": [
+            {
+              "learner_id": "44444444-4444-4444-4444-444444444444",
+              "rating": 5,
+              "comment": "Great course!",
+              "submitted_at": "2025-11-13T10:00:00Z"
+            }
+          ]
+        },
+        "assessments": {
+          "total_assessments": 50,
+          "passed_count": 42,
+          "average_grade": 85.5
+        },
+        "created_at": "2025-01-01T00:00:00Z",
+        "updated_at": "2025-11-13T10:00:00Z"
+      }
+    }
+  }
+}
+
+

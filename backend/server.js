@@ -6,6 +6,7 @@ import feedbackRoutes from './routes/feedback.routes.js';
 import inputRoutes from './routes/input.routes.js';
 import lessonsRoutes from './routes/lessons.routes.js';
 import integrationRoutes from './routes/integration.routes.js';
+// Old integration routes removed - using unified endpoint only
 import enrichmentRoutes from './routes/enrichmentRoutes.js';
 import enrichmentAssetsRoutes from './routes/enrichmentAssetsRoutes.js';
 import { authenticateRequest } from './middleware/auth.middleware.js';
@@ -39,7 +40,7 @@ const corsOptions = {
     }
 
     const normalizedRequestOrigin = normalizeOrigin(origin);
-
+    
     const isWildcard = allowedOrigins.includes('*');
     const isExplicitMatch = allowedOrigins.includes(normalizedRequestOrigin);
     const isLocalhost = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(normalizedRequestOrigin);
@@ -85,7 +86,8 @@ app.use('/api/v1/courses', coursesRoutes);
 app.use('/api/v1', feedbackRoutes);
 app.use('/api/v1', inputRoutes);
 app.use('/api/v1/lessons', lessonsRoutes);
-app.use('/api/v1/integrations', integrationRoutes);
+// Unified integration endpoint: POST /api/fill-content-metrics
+app.use('/api', integrationRoutes);
 app.use('/api/enrichment', enrichmentRoutes);
 app.use('/api/enrichment', enrichmentAssetsRoutes);
 

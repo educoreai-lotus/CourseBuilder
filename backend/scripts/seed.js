@@ -11,17 +11,34 @@ const __dirname = path.dirname(__filename);
 
 /**
  * Seed database with test data
- * Executes seed.sql to populate tables with test data
+ * 
+ * NOTE: The old seed.sql file has been removed as it was incompatible
+ * with the new database schema. To seed the database, create a new seed.sql
+ * file that matches the new schema structure:
+ * 
+ * - Use 'id' instead of 'course_id'
+ * - Use 'course_type' ('learner_specific' | 'trainer') instead of 'visibility'
+ * - Match the new table structures (courses, topics, modules, lessons, etc.)
+ * 
+ * Or manually insert test data using the repositories/services.
  */
 async function seed() {
   try {
     console.log('🌱 Starting database seeding...');
 
-    // Read seed.sql file
     const seedPath = path.join(__dirname, '..', 'database', 'seed.sql');
-    const seedSQL = fs.readFileSync(seedPath, 'utf8');
+    
+    if (!fs.existsSync(seedPath)) {
+      console.log('⚠️  No seed.sql file found.');
+      console.log('   The old seed.sql was removed as it was incompatible with the new schema.');
+      console.log('   To seed the database:');
+      console.log('   1. Create a new seed.sql file matching the new schema');
+      console.log('   2. Or use the API/repositories to insert test data');
+      console.log('\n✅ Seeding skipped (no seed file)');
+      return;
+    }
 
-    // Execute seed SQL - split statements like in migrate.js
+    const seedSQL = fs.readFileSync(seedPath, 'utf8');
     console.log('📝 Executing seed.sql...');
     
     // Handle dollar-quoted strings properly
@@ -68,48 +85,42 @@ async function seed() {
       statements.push(currentStatement.trim());
     }
     
-    console.log(`   Executing ${statements.length} seed statements...`);
+    let successCount = 0;
+    let skipCount = 0;
     
-    for (const stmt of statements) {
+    for (let i = 0; i < statements.length; i++) {
+      const stmt = statements[i];
       try {
         await db.none(stmt);
+        successCount++;
+        if ((i + 1) % 10 === 0) {
+          console.log(`   ✓ Executed ${i + 1}/${statements.length} statements...`);
+        }
       } catch (err) {
-        // Ignore expected errors (duplicates, already exists, etc.)
-        if (!err.message.includes('already exists') && 
-            !err.message.includes('does not exist') &&
-            !err.message.includes('duplicate key') &&
-            !err.message.includes('violates unique constraint')) {
-          console.error(`   ❌ Error: ${err.message}`);
+        if (err.message.includes('already exists') || 
+            err.message.includes('does not exist')) {
+          skipCount++;
+        } else {
+          console.error(`\n   ❌ Error at statement ${i + 1}:`);
+          console.error(`   ${err.message}`);
+          console.error(`   Statement preview: ${stmt.substring(0, 150)}...\n`);
           throw err;
         }
       }
     }
-
-    // Verify data loaded
-    const courseCount = await db.one('SELECT COUNT(*) as count FROM courses');
-    const moduleCount = await db.one('SELECT COUNT(*) as count FROM modules');
-    const topicCount = await db.one('SELECT COUNT(*) as count FROM topics');
-    const lessonCount = await db.one('SELECT COUNT(*) as count FROM lessons');
-    const registrationCount = await db.one('SELECT COUNT(*) as count FROM registrations');
-    const feedbackCount = await db.one('SELECT COUNT(*) as count FROM feedback');
-    const assessmentCount = await db.one('SELECT COUNT(*) as count FROM assessments');
+    
+    console.log(`\n   ✅ Successfully executed: ${successCount} statements`);
+    if (skipCount > 0) {
+      console.log(`   ⏭️  Skipped (expected): ${skipCount} statements`);
+    }
 
     console.log('✅ Database seeding completed successfully!');
-    console.log('\n📊 Seed data summary:');
-    console.log(`   Courses: ${courseCount.count}`);
-    console.log(`   Modules: ${moduleCount.count}`);
-    console.log(`   Topics: ${topicCount.count}`);
-    console.log(`   Lessons: ${lessonCount.count}`);
-    console.log(`   Registrations: ${registrationCount.count}`);
-    console.log(`   Feedback: ${feedbackCount.count}`);
-    console.log(`   Assessments: ${assessmentCount.count}`);
 
   } catch (error) {
     console.error('❌ Seeding failed:', error.message);
     console.error('Stack:', error.stack);
     process.exit(1);
   } finally {
-    // Close database connection pool
     pgp.end();
   }
 }
@@ -121,4 +132,3 @@ seed().catch(err => {
 });
 
 export default seed;
-

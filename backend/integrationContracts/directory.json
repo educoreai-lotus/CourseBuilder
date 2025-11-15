@@ -1,0 +1,73 @@
+{
+  "send": {
+    "fields": [
+      {
+        "name": "feedback",
+        "type": "object",
+        "required": true,
+        "description": "Feedback object",
+        "properties": {
+          "rating": {
+            "type": "number",
+            "required": true,
+            "description": "Rating (1-5)"
+          },
+          "comment": {
+            "type": "string",
+            "required": false,
+            "description": "Feedback comment"
+          },
+          "submitted_at": {
+            "type": "string (ISO8601)",
+            "required": true,
+            "description": "Submission timestamp"
+          }
+        }
+      },
+      {
+        "name": "course_id",
+        "type": "string (UUID)",
+        "required": true,
+        "description": "Course identifier"
+      },
+      {
+        "name": "course_name",
+        "type": "string",
+        "required": true,
+        "description": "Course name"
+      },
+      {
+        "name": "learner_id",
+        "type": "string (UUID)",
+        "required": true,
+        "description": "Learner identifier"
+      }
+    ],
+    "description": "What Course Builder sends to Directory microservice when feedback is submitted"
+  },
+  "receive": {
+    "fields": [
+      {
+        "name": "employee_id",
+        "type": "string (UUID)",
+        "required": true,
+        "description": "Employee identifier"
+      },
+      {
+        "name": "preferred_language",
+        "type": "string",
+        "required": false,
+        "description": "Employee preferred language"
+      },
+      {
+        "name": "bonus_attempt",
+        "type": "boolean",
+        "required": false,
+        "description": "Whether employee has bonus attempt available"
+      }
+    ],
+    "description": "What Course Builder receives from Directory microservice (employee data)"
+  }
+}
+
+

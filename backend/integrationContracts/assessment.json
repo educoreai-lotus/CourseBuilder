@@ -1,0 +1,92 @@
+{
+  "send": {
+    "fields": [
+      {
+        "name": "learner_id",
+        "type": "string (UUID)",
+        "required": true,
+        "description": "Learner identifier"
+      },
+      {
+        "name": "learner_name",
+        "type": "string",
+        "required": true,
+        "description": "Learner name"
+      },
+      {
+        "name": "course_id",
+        "type": "string (UUID)",
+        "required": true,
+        "description": "Course identifier"
+      },
+      {
+        "name": "course_name",
+        "type": "string",
+        "required": true,
+        "description": "Course name"
+      },
+      {
+        "name": "coverage_map",
+        "type": "array<object>",
+        "required": true,
+        "description": "Coverage map array",
+        "items": {
+          "lesson_id": "string (UUID)",
+          "skills": "array<string>"
+        }
+      }
+    ],
+    "description": "What Course Builder sends to Assessment microservice when redirecting learner for assessment"
+  },
+  "receive": {
+    "fields": [
+      {
+        "name": "learner_id",
+        "type": "string (UUID)",
+        "required": true,
+        "description": "Learner identifier"
+      },
+      {
+        "name": "course_id",
+        "type": "string (UUID)",
+        "required": true,
+        "description": "Course identifier"
+      },
+      {
+        "name": "course_name",
+        "type": "string",
+        "required": true,
+        "description": "Course name"
+      },
+      {
+        "name": "exam_type",
+        "type": "string",
+        "required": true,
+        "description": "Type of exam (e.g., 'postcourse')",
+        "default": "postcourse"
+      },
+      {
+        "name": "passing_grade",
+        "type": "number",
+        "required": true,
+        "description": "Passing grade threshold",
+        "default": 70.00
+      },
+      {
+        "name": "final_grade",
+        "type": "number",
+        "required": false,
+        "description": "Final grade achieved by learner"
+      },
+      {
+        "name": "passed",
+        "type": "boolean",
+        "required": false,
+        "description": "Whether learner passed the assessment"
+      }
+    ],
+    "description": "What Course Builder receives from Assessment microservice after assessment completion"
+  }
+}
+
+

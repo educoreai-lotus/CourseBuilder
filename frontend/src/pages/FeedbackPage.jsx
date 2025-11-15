@@ -276,7 +276,7 @@ export default function FeedbackPage() {
                   <div>
                     <h2 className="text-lg font-semibold text-[var(--text-primary)]">Community sentiment</h2>
                     <p className="text-sm text-[var(--text-secondary)]">
-                      Average rating from {communityStats.total_responses || 'recent'} responses.
+                      Average rating from {communityStats.total_ratings || 'recent'} responses.
                     </p>
                   </div>
                   <div className="flex items-center gap-3 text-2xl font-bold text-[var(--text-primary)]">

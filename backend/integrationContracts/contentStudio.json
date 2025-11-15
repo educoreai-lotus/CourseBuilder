@@ -1,0 +1,189 @@
+{
+  "send": {
+    "fields": [
+      {
+        "name": "learner_id",
+        "type": "string (UUID)",
+        "required": false,
+        "description": "Learner identifier when requesting learner-specific content"
+      },
+      {
+        "name": "learner_company",
+        "type": "string",
+        "required": false,
+        "description": "Company identifier for learner-specific content"
+      },
+      {
+        "name": "skills",
+        "type": "array<string>",
+        "required": true,
+        "description": "Array of skill IDs or names to guide content generation"
+      }
+    ],
+    "description": "What Course Builder sends to Content Studio when requesting content generation"
+  },
+  "receive": {
+    "trainer_course": {
+      "fields": [
+        {
+          "name": "course_id",
+          "type": "string (UUID)",
+          "required": true,
+          "description": "Course identifier"
+        },
+        {
+          "name": "course_name",
+          "type": "string",
+          "required": true,
+          "description": "Course title"
+        },
+        {
+          "name": "course_description",
+          "type": "string",
+          "required": false,
+          "description": "Course description"
+        },
+        {
+          "name": "trainer_id",
+          "type": "string (UUID)",
+          "required": true,
+          "description": "Trainer who created the course"
+        },
+        {
+          "name": "trainer_name",
+          "type": "string",
+          "required": true,
+          "description": "Trainer name"
+        },
+        {
+          "name": "topic_id",
+          "type": "string (UUID)",
+          "required": true,
+          "description": "Topic identifier"
+        },
+        {
+          "name": "topic_name",
+          "type": "string",
+          "required": true,
+          "description": "Topic name"
+        },
+        {
+          "name": "topic_description",
+          "type": "string",
+          "required": false,
+          "description": "Topic description"
+        },
+        {
+          "name": "skills",
+          "type": "array<string>",
+          "required": true,
+          "description": "Skills associated with the topic"
+        },
+        {
+          "name": "content_type",
+          "type": "string",
+          "required": false,
+          "description": "Type of content (video, article, exercise, mixed)"
+        },
+        {
+          "name": "content_data",
+          "type": "object (JSONB)",
+          "required": true,
+          "description": "Raw content from Content Studio"
+        },
+        {
+          "name": "devlab_exercises",
+          "type": "array<object>",
+          "required": true,
+          "description": "DevLab exercises linked to the lesson"
+        }
+      ],
+      "description": "What Course Builder receives from Content Studio for trainer-created courses"
+    },
+    "learner_specific": {
+      "fields": [
+        {
+          "name": "learner_id",
+          "type": "string (UUID)",
+          "required": true,
+          "description": "Learner identifier"
+        },
+        {
+          "name": "learner_name",
+          "type": "string",
+          "required": true,
+          "description": "Learner name"
+        },
+        {
+          "name": "learner_company",
+          "type": "string",
+          "required": false,
+          "description": "Learner company"
+        },
+        {
+          "name": "topic_id",
+          "type": "string (UUID)",
+          "required": true,
+          "description": "Topic identifier"
+        },
+        {
+          "name": "topic_description",
+          "type": "string",
+          "required": false,
+          "description": "Topic description"
+        },
+        {
+          "name": "topic_name",
+          "type": "string",
+          "required": true,
+          "description": "Topic name"
+        },
+        {
+          "name": "topic_language",
+          "type": "string",
+          "required": false,
+          "description": "Topic language"
+        },
+        {
+          "name": "trainer_id",
+          "type": "string (UUID)",
+          "required": false,
+          "description": "Trainer identifier"
+        },
+        {
+          "name": "trainer_name",
+          "type": "string",
+          "required": false,
+          "description": "Trainer name"
+        },
+        {
+          "name": "skills",
+          "type": "array<string>",
+          "required": true,
+          "description": "Skills associated with the topic"
+        },
+        {
+          "name": "content_type",
+          "type": "string",
+          "required": false,
+          "description": "Type of content"
+        },
+        {
+          "name": "content_data",
+          "type": "object (JSONB)",
+          "required": true,
+          "description": "Raw content from Content Studio"
+        },
+        {
+          "name": "devlab_exercises",
+          "type": "array<object>",
+          "required": true,
+          "description": "DevLab exercises"
+        }
+      ],
+      "description": "What Course Builder receives from Content Studio for learner-specific courses"
+    }
+  }
+}
+
+

@@ -1,0 +1,344 @@
+{
+  "send": {
+    "learner_id": {
+      "type": "string (UUID)",
+      "required": false,
+      "description": "Learner identifier when requesting learner-specific content"
+    },
+    "learner_company": {
+      "type": "string",
+      "required": false,
+      "description": "Company identifier for learner-specific content"
+    },
+    "skills": {
+      "type": "array<string>",
+      "required": true,
+      "description": "Array of skill IDs or names to guide content generation"
+    }
+  },
+  "receive": {
+    "trainer_course": {
+      "course_id": {
+        "type": "string (UUID)",
+        "required": true,
+        "description": "Course identifier"
+      },
+      "course_name": {
+        "type": "string",
+        "required": true,
+        "description": "Course title"
+      },
+      "course_description": {
+        "type": "string",
+        "required": false,
+        "description": "Course description"
+      },
+      "trainer_id": {
+        "type": "string (UUID)",
+        "required": true,
+        "description": "Trainer who created the course"
+      },
+      "trainer_name": {
+        "type": "string",
+        "required": true,
+        "description": "Trainer name"
+      },
+      "topic_id": {
+        "type": "string (UUID)",
+        "required": true,
+        "description": "Topic identifier"
+      },
+      "topic_name": {
+        "type": "string",
+        "required": true,
+        "description": "Topic name"
+      },
+      "topic_description": {
+        "type": "string",
+        "required": false,
+        "description": "Topic description"
+      },
+      "skills": {
+        "type": "array<string>",
+        "required": true,
+        "description": "Skills associated with the topic"
+      },
+      "content_type": {
+        "type": "string",
+        "required": false,
+        "description": "Type of content (video, article, exercise, mixed)"
+      },
+      "content_data": {
+        "type": "object (JSONB)",
+        "required": true,
+        "description": "Raw content from Content Studio"
+      },
+      "devlab_exercises": {
+        "type": "array<object>",
+        "required": true,
+        "description": "DevLab exercises linked to the lesson"
+      }
+    },
+    "learner_specific": {
+      "learner_id": {
+        "type": "string (UUID)",
+        "required": true,
+        "description": "Learner identifier"
+      },
+      "learner_name": {
+        "type": "string",
+        "required": true,
+        "description": "Learner name"
+      },
+      "learner_company": {
+        "type": "string",
+        "required": false,
+        "description": "Learner company"
+      },
+      "topic_id": {
+        "type": "string (UUID)",
+        "required": true,
+        "description": "Topic identifier"
+      },
+      "topic_description": {
+        "type": "string",
+        "required": false,
+        "description": "Topic description"
+      },
+      "topic_name": {
+        "type": "string",
+        "required": true,
+        "description": "Topic name"
+      },
+      "topic_language": {
+        "type": "string",
+        "required": false,
+        "description": "Topic language"
+      },
+      "trainer_id": {
+        "type": "string (UUID)",
+        "required": false,
+        "description": "Trainer identifier"
+      },
+      "trainer_name": {
+        "type": "string",
+        "required": false,
+        "description": "Trainer name"
+      },
+      "skills": {
+        "type": "array<string>",
+        "required": true,
+        "description": "Skills associated with the topic"
+      },
+      "content_type": {
+        "type": "string",
+        "required": false,
+        "description": "Type of content"
+      },
+      "content_data": {
+        "type": "object (JSONB)",
+        "required": true,
+        "description": "Raw content from Content Studio"
+      },
+      "devlab_exercises": {
+        "type": "array<object>",
+        "required": true,
+        "description": "DevLab exercises"
+      }
+    }
+  },
+  "source": {
+    "send": {
+      "learner_id": "registrations.learner_id or request parameter",
+      "learner_company": "registrations.company_name or request parameter",
+      "skills": "topics.skills or lessons.skills (aggregated)"
+    },
+    "receive": {
+      "trainer_course": {
+        "course_id": "courses.id (created/updated)",
+        "course_name": "courses.course_name",
+        "course_description": "courses.course_description",
+        "trainer_id": "courses.created_by_user_id",
+        "trainer_name": "request body",
+        "topic_id": "topics.id (created/updated)",
+        "topic_name": "topics.topic_name",
+        "topic_description": "topics.topic_description",
+        "skills": "topics.skills",
+        "content_type": "lessons.content_type",
+        "content_data": "lessons.content_data",
+        "devlab_exercises": "lessons.devlab_exercises"
+      },
+      "learner_specific": {
+        "learner_id": "registrations.learner_id",
+        "learner_name": "registrations.learner_name",
+        "learner_company": "registrations.company_name",
+        "topic_id": "topics.id",
+        "topic_name": "topics.topic_name",
+        "topic_description": "topics.topic_description",
+        "topic_language": "request body",
+        "trainer_id": "lessons.trainer_ids",
+        "trainer_name": "request body",
+        "skills": "topics.skills",
+        "content_type": "lessons.content_type",
+        "content_data": "lessons.content_data",
+        "devlab_exercises": "lessons.devlab_exercises"
+      }
+    }
+  },
+  "derived": {
+    "send": {},
+    "receive": {}
+  },
+  "validation": {
+    "send": {
+      "skills": {
+        "type": "array",
+        "minItems": 0,
+        "items": {
+          "type": "string"
+        }
+      }
+    },
+    "receive": {
+      "trainer_course": {
+        "course_id": {
+          "type": "string",
+          "format": "uuid",
+          "required": true
+        },
+        "course_name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500,
+          "required": true
+        },
+        "skills": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "required": true
+        },
+        "content_data": {
+          "type": "object",
+          "required": true
+        },
+        "devlab_exercises": {
+          "type": "array",
+          "required": true
+        }
+      },
+      "learner_specific": {
+        "learner_id": {
+          "type": "string",
+          "format": "uuid",
+          "required": true
+        },
+        "learner_name": {
+          "type": "string",
+          "required": true
+        },
+        "topic_id": {
+          "type": "string",
+          "format": "uuid",
+          "required": true
+        },
+        "topic_name": {
+          "type": "string",
+          "required": true
+        },
+        "skills": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "required": true
+        },
+        "content_data": {
+          "type": "object",
+          "required": true
+        },
+        "devlab_exercises": {
+          "type": "array",
+          "required": true
+        }
+      }
+    }
+  },
+  "examples": {
+    "minimal": {
+      "send": {
+        "skills": ["react", "javascript"]
+      },
+      "receive": {
+        "trainer_course": {
+          "course_id": "11111111-1111-1111-1111-111111111111",
+          "course_name": "Intro to React",
+          "course_description": "Learn React fundamentals",
+          "trainer_id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+          "trainer_name": "John Trainer",
+          "topic_id": "22222222-2222-2222-2222-222222222222",
+          "topic_name": "React Basics",
+          "topic_description": "Introduction to React",
+          "skills": ["react", "jsx"],
+          "content_type": "video",
+          "content_data": {},
+          "devlab_exercises": []
+        }
+      }
+    },
+    "full": {
+      "send": {
+        "learner_id": "33333333-3333-3333-3333-333333333333",
+        "learner_company": "Acme Corp",
+        "skills": ["react", "javascript", "hooks", "state-management"]
+      },
+      "receive": {
+        "trainer_course": {
+          "course_id": "11111111-1111-1111-1111-111111111111",
+          "course_name": "Advanced React Patterns",
+          "course_description": "Master advanced React patterns and best practices",
+          "trainer_id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+          "trainer_name": "John Trainer",
+          "topic_id": "22222222-2222-2222-2222-222222222222",
+          "topic_name": "React Hooks and State Management",
+          "topic_description": "Deep dive into React Hooks and state management patterns",
+          "skills": ["react", "hooks", "context", "reducer"],
+          "content_type": "mixed",
+          "content_data": {
+            "video_url": "https://example.com/video",
+            "transcript": "...",
+            "summary": "..."
+          },
+          "devlab_exercises": [
+            {
+              "exercise_id": "ex-1",
+              "title": "Build a Todo App",
+              "difficulty": "intermediate"
+            }
+          ]
+        },
+        "learner_specific": {
+          "learner_id": "33333333-3333-3333-3333-333333333333",
+          "learner_name": "Jane Doe",
+          "learner_company": "Acme Corp",
+          "topic_id": "44444444-4444-4444-4444-444444444444",
+          "topic_name": "Personalized React Learning",
+          "topic_description": "Customized React course for Jane Doe",
+          "topic_language": "en",
+          "trainer_id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+          "trainer_name": "John Trainer",
+          "skills": ["react", "javascript"],
+          "content_type": "video",
+          "content_data": {
+            "video_url": "https://example.com/personalized",
+            "summary": "Personalized content"
+          },
+          "devlab_exercises": []
+        }
+      }
+    }
+  }
+}
+
+

@@ -14,7 +14,11 @@ import {
 import Button from './Button.jsx'
 
 const renderContent = (lesson) => {
-  if (!lesson || !lesson.content_data || Object.keys(lesson.content_data).length === 0) {
+  // ⚠️ content_data is Content Studio contents[] array - ALWAYS an array
+  const contentData = lesson?.content_data
+  
+  // Check if content_data exists and is not empty
+  if (!contentData || (Array.isArray(contentData) && contentData.length === 0) || (typeof contentData === 'object' && Object.keys(contentData).length === 0)) {
     return (
       <div className="flex flex-col items-center justify-center gap-4 py-12 text-[var(--text-muted)]">
         <BookOpen className="h-10 w-10" />
@@ -23,88 +27,118 @@ const renderContent = (lesson) => {
     )
   }
 
-  const contentData = lesson.content_data
-
-  if (contentData.content_ref) {
-    return (
-      <div className="space-y-6">
-        <div className="rounded-2xl border border-[rgba(148,163,184,0.14)] bg-[var(--bg-card)]/90 p-4 text-sm shadow-sm backdrop-blur transition-colors">
-          <strong className="text-[var(--text-primary)]">Content Reference:</strong>{' '}
-          <span className="text-[var(--text-secondary)]">{contentData.content_ref}</span>
-        </div>
-        {contentData.text && (
-          <p className="text-base leading-7 text-[var(--text-secondary)] whitespace-pre-wrap">{contentData.text}</p>
-        )}
-        {contentData.html && (
-          <div
-            className="prose prose-slate max-w-none text-[var(--text-secondary)]"
-            dangerouslySetInnerHTML={{ __html: contentData.html }}
-          />
-        )}
-      </div>
-    )
-  }
-
-  if (contentData.text) {
-    return <p className="text-base leading-7 text-[var(--text-secondary)] whitespace-pre-wrap">{contentData.text}</p>
-  }
-
-  if (contentData.html) {
-    return (
-      <div
-        className="prose prose-slate max-w-none text-[var(--text-secondary)]"
-        dangerouslySetInnerHTML={{ __html: contentData.html }}
-      />
-    )
-  }
-
+  // ⚠️ content_data is ALWAYS an array (Content Studio contents[] array)
+  // Each item in the array is a content block (text_audio, code, presentation, audio, mind_map, avatar_video)
   if (Array.isArray(contentData)) {
     return (
       <div className="space-y-6">
         {contentData.map((item, idx) => {
-          if (item.type === 'text' || item.type === 'paragraph') {
+          // Handle different Content Studio content types
+          if (item.type === 'text_audio' || item.type === 'text') {
             return (
-              <p key={idx} className="text-base leading-7 text-[var(--text-secondary)]">
-                {item.content || item.text}
-              </p>
+              <div key={idx} className="space-y-4">
+                {item.text && (
+                  <p className="text-base leading-7 text-[var(--text-secondary)] whitespace-pre-wrap">{item.text}</p>
+                )}
+                {item.html && (
+                  <div
+                    className="prose prose-slate max-w-none text-[var(--text-secondary)]"
+                    dangerouslySetInnerHTML={{ __html: item.html }}
+                  />
+                )}
+                {item.audio && (
+                  <div className="rounded-2xl border border-[rgba(148,163,184,0.14)] bg-[var(--bg-card)]/90 p-4">
+                    <p className="mb-2 text-sm font-semibold text-[var(--text-primary)]">Audio Content</p>
+                    <audio controls className="w-full">
+                      <source src={item.audio} type="audio/mpeg" />
+                      Your browser does not support audio.
+                    </audio>
+                  </div>
+                )}
+              </div>
             )
           }
-          if (item.type?.startsWith('h')) {
-            const HeadingTag = item.type
-            return (
-              <HeadingTag key={idx} className="text-2xl font-semibold text-[var(--text-primary)]">
-                {item.content || item.text}
-              </HeadingTag>
-            )
-          }
-          if (item.type === 'list' || item.type === 'ul' || item.type === 'ol') {
-            const ListTag = item.ordered ? 'ol' : 'ul'
-            return (
-              <ListTag key={idx} className="ml-6 list-disc space-y-2 text-[var(--text-secondary)]">
-                {(item.items || []).map((listItem, listIdx) => (
-                  <li key={listIdx}>{listItem}</li>
-                ))}
-              </ListTag>
-            )
-          }
+          
           if (item.type === 'code' || item.type === 'codeblock') {
             return (
               <pre
                 key={idx}
                 className="overflow-auto rounded-2xl border border-[rgba(148,163,184,0.18)] bg-[var(--bg-secondary)] p-4 text-sm text-[var(--text-primary)]"
               >
-                <code>{item.content || item.code}</code>
+                <code>{item.content || item.code || item.text}</code>
               </pre>
             )
           }
+          
+          if (item.type === 'presentation' || item.type === 'avatar_video') {
+            return (
+              <div key={idx} className="rounded-2xl border border-[rgba(148,163,184,0.14)] bg-[var(--bg-card)]/90 p-4">
+                <p className="mb-2 text-sm font-semibold text-[var(--text-primary)]">
+                  {item.type === 'presentation' ? 'Presentation' : 'Video Content'}
+                </p>
+                {item.url && (
+                  <iframe
+                    src={item.url}
+                    className="h-[400px] w-full rounded-xl"
+                    allowFullScreen
+                    title={item.title || 'Content'}
+                  />
+                )}
+                {item.content && (
+                  <p className="mt-4 text-base leading-7 text-[var(--text-secondary)]">{item.content}</p>
+                )}
+              </div>
+            )
+          }
+          
+          if (item.type === 'paragraph' || item.type === 'text') {
+            return (
+              <p key={idx} className="text-base leading-7 text-[var(--text-secondary)] whitespace-pre-wrap">
+                {item.content || item.text}
+              </p>
+            )
+          }
+          
+          if (item.type === 'list' || item.type === 'ul' || item.type === 'ol') {
+            const ListTag = item.ordered ? 'ol' : 'ul'
+            return (
+              <ListTag key={idx} className="ml-6 list-disc space-y-2 text-[var(--text-secondary)]">
+                {(item.items || item.content || []).map((listItem, listIdx) => (
+                  <li key={listIdx}>{typeof listItem === 'string' ? listItem : listItem.content || JSON.stringify(listItem)}</li>
+                ))}
+              </ListTag>
+            )
+          }
+          
+          // Fallback for unknown content types
           return (
-            <div key={idx} className="text-sm text-[var(--text-secondary)]">
-              {item.content || JSON.stringify(item)}
+            <div key={idx} className="rounded-2xl border border-[rgba(148,163,184,0.14)] bg-[var(--bg-card)]/90 p-4 text-sm text-[var(--text-secondary)]">
+              <p className="mb-2 font-semibold text-[var(--text-primary)]">Content ({item.type || 'unknown'})</p>
+              {item.content && <p>{item.content}</p>}
+              {item.text && <p>{item.text}</p>}
+              {!item.content && !item.text && <pre className="mt-2 overflow-auto text-xs">{JSON.stringify(item, null, 2)}</pre>}
             </div>
           )
         })}
       </div>
     )
+  }
+
+  // Fallback for legacy object format (shouldn't happen with new schema)
+  if (typeof contentData === 'object' && contentData !== null) {
+    if (contentData.content_ref) {
+      return (
+        <div className="space-y-6">
+          <div className="rounded-2xl border border-[rgba(148,163,184,0.14)] bg-[var(--bg-card)]/90 p-4 text-sm shadow-sm backdrop-blur transition-colors">
+            <strong className="text-[var(--text-primary)]">Content Reference:</strong>{' '}
+            <span className="text-[var(--text-secondary)]">{contentData.content_ref}</span>
+          </div>
+          {contentData.text && (
+            <p className="text-base leading-7 text-[var(--text-secondary)] whitespace-pre-wrap">{contentData.text}</p>
+          )}
+        </div>
+      )
+    }
   }
 
   return (

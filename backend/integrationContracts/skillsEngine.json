@@ -1,0 +1,26 @@
+{
+  "send": {
+    "fields": [
+      {
+        "name": "topic",
+        "type": "string",
+        "required": true,
+        "description": "Topic name or competency name"
+      }
+    ],
+    "description": "What Course Builder sends to Skills Engine to get processed skills for a topic/competency"
+  },
+  "receive": {
+    "fields": [
+      {
+        "name": "skills",
+        "type": "array<string>",
+        "required": true,
+        "description": "Final/processed skills array returned by Skills Engine"
+      }
+    ],
+    "description": "What Course Builder receives from Skills Engine with processed skills"
+  }
+}
+
+

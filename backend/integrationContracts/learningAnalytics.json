@@ -1,0 +1,85 @@
+{
+  "send": {
+    "fields": [
+      {
+        "name": "course_id",
+        "type": "string (UUID)",
+        "required": true,
+        "description": "Course identifier"
+      },
+      {
+        "name": "course_name",
+        "type": "string",
+        "required": true,
+        "description": "Course name"
+      },
+      {
+        "name": "course_type",
+        "type": "string",
+        "required": true,
+        "description": "Course type (learner_specific | trainer)"
+      },
+      {
+        "name": "status",
+        "type": "string",
+        "required": true,
+        "description": "Course status (active | archived | draft)"
+      },
+      {
+        "name": "level",
+        "type": "string",
+        "required": false,
+        "description": "Course level (beginner | intermediate | advanced)"
+      },
+      {
+        "name": "duration_hours",
+        "type": "number",
+        "required": false,
+        "description": "Course duration in hours"
+      },
+      {
+        "name": "structure",
+        "type": "object",
+        "required": false,
+        "description": "Course structure with topics and skills"
+      },
+      {
+        "name": "enrollment",
+        "type": "object",
+        "required": false,
+        "description": "Enrollment statistics"
+      },
+      {
+        "name": "feedback",
+        "type": "object",
+        "required": false,
+        "description": "Feedback statistics and data"
+      },
+      {
+        "name": "assessments",
+        "type": "object",
+        "required": false,
+        "description": "Assessment statistics"
+      },
+      {
+        "name": "created_at",
+        "type": "string (ISO8601)",
+        "required": false,
+        "description": "Course creation timestamp"
+      },
+      {
+        "name": "updated_at",
+        "type": "string (ISO8601)",
+        "required": false,
+        "description": "Course update timestamp"
+      }
+    ],
+    "description": "What Course Builder sends to Learning Analytics microservice - complete analytics object with course structure, progress, feedback, skill coverage, etc."
+  },
+  "receive": {
+    "fields": [],
+    "description": "Learning Analytics does not send data back to Course Builder"
+  }
+}
+
+

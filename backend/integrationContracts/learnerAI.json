@@ -1,0 +1,49 @@
+{
+  "send": {
+    "fields": [],
+    "description": "Course Builder does not send data to Learner AI"
+  },
+  "receive": {
+    "fields": [
+      {
+        "name": "user_id",
+        "type": "string (UUID)",
+        "required": true,
+        "description": "User identifier"
+      },
+      {
+        "name": "user_name",
+        "type": "string",
+        "required": true,
+        "description": "User name"
+      },
+      {
+        "name": "company_id",
+        "type": "string (UUID)",
+        "required": false,
+        "description": "Company identifier"
+      },
+      {
+        "name": "company_name",
+        "type": "string",
+        "required": false,
+        "description": "Company name"
+      },
+      {
+        "name": "skills",
+        "type": "array<string>",
+        "required": true,
+        "description": "Skills array for learning path generation"
+      },
+      {
+        "name": "competency_name",
+        "type": "string",
+        "required": false,
+        "description": "Target competency name"
+      }
+    ],
+    "description": "What Course Builder receives from Learner AI microservice to trigger personalized course creation"
+  }
+}
+
+

@@ -1,4 +1,10 @@
 import db from '../config/database.js';
+import courseRepository from '../repositories/CourseRepository.js';
+import registrationRepository from '../repositories/RegistrationRepository.js';
+import lessonRepository from '../repositories/LessonRepository.js';
+import moduleRepository from '../repositories/ModuleRepository.js';
+import topicRepository from '../repositories/TopicRepository.js';
+import versionRepository from '../repositories/VersionRepository.js';
 import { v4 as uuidv4 } from 'uuid';
 
 /**
@@ -13,8 +19,7 @@ export const browseCourses = async ({ search, category, level, sort, page, limit
     const params = [];
 
     if (!isPrivilegedViewer) {
-      filters.push(`(c.visibility = 'public' OR c.visibility = 'scheduled')`);
-      filters.push(`c.status = 'live'`);
+      filters.push(`c.status = 'active'`);
     }
 
     if (search) {
@@ -29,18 +34,12 @@ export const browseCourses = async ({ search, category, level, sort, page, limit
       filters.push(`c.level = $${idx}`);
     }
 
-    if (category) {
-      params.push(category);
-      const idx = params.length;
-      filters.push(`c.metadata->>'category' = $${idx}`);
-    }
-
     const whereClause = filters.length ? `WHERE ${filters.join(' AND ')}` : '';
 
     const sortMap = {
       newest: 'c.created_at DESC',
-      rating: 'c.average_rating DESC',
-      popular: 'c.total_enrollments DESC'
+      rating: '(SELECT AVG(rating)::numeric FROM feedback WHERE course_id = c.id) DESC NULLS LAST',
+      popular: '(SELECT COUNT(*) FROM registrations WHERE course_id = c.id) DESC'
     };
     const sortOrder = sortMap[sort] || sortMap.newest;
 
@@ -51,23 +50,18 @@ export const browseCourses = async ({ search, category, level, sort, page, limit
 
     const query = `
       SELECT 
-        c.course_id as id,
+        c.id,
         c.course_name as title,
         c.course_description as description,
         c.level,
-        COALESCE(c.average_rating, 0) as rating,
-        c.metadata->'tags' as tags,
-        c.metadata->>'category' as category,
-        c.duration,
-        c.metadata->>'thumbnail_url' as thumbnail_url,
+        c.duration_hours as duration,
+        c.status,
+        c.created_by_user_id,
         c.created_at,
         c.updated_at,
-        c.status,
-        c.visibility,
-        c.total_enrollments,
-        c.active_enrollments,
-        c.trainer_id,
-        c.trainer_name
+        (SELECT AVG(rating)::numeric FROM feedback WHERE course_id = c.id) as rating,
+        (SELECT COUNT(*) FROM registrations WHERE course_id = c.id) as total_enrollments,
+        (SELECT COUNT(*) FROM registrations WHERE course_id = c.id AND status = 'in_progress') as active_enrollments
       FROM courses c
       ${whereClause}
       ORDER BY ${sortOrder}
@@ -94,18 +88,13 @@ export const browseCourses = async ({ search, category, level, sort, page, limit
         description: course.description,
         level: course.level,
         rating: parseFloat(course.rating) || 0,
-        tags: course.tags || [],
-        category: course.category || null,
         duration: course.duration,
-        thumbnail_url: course.thumbnail_url,
         created_at: course.created_at?.toISOString?.() || null,
         updated_at: course.updated_at?.toISOString?.() || null,
         status: course.status,
-        visibility: course.visibility,
-        total_enrollments: course.total_enrollments,
-        active_enrollments: course.active_enrollments,
-        trainer_id: course.trainer_id,
-        trainer_name: course.trainer_name
+        total_enrollments: parseInt(course.total_enrollments) || 0,
+        active_enrollments: parseInt(course.active_enrollments) || 0,
+        created_by_user_id: course.created_by_user_id
       }))
     };
   } catch (error) {
@@ -123,92 +112,118 @@ export const getCourseDetails = async (courseId, options = {}) => {
     const normalizedRole = typeof role === 'string' ? role.toLowerCase() : null;
     const isPrivilegedViewer = normalizedRole === 'trainer' || normalizedRole === 'admin';
 
-    const visibilityFilters = [];
-
-    if (!isPrivilegedViewer) {
-      visibilityFilters.push(`(c.visibility = 'public' OR c.visibility = 'scheduled')`);
-      visibilityFilters.push(`c.status = 'live'`);
-    }
-
-    const visibilityClause = visibilityFilters.length ? `AND ${visibilityFilters.join(' AND ')}` : '';
-
-    const course = await db.oneOrNone(
-      `SELECT 
-        c.course_id as id,
-        c.course_name as title,
-        c.course_description as description,
-        c.level,
-        COALESCE(c.average_rating, 0) as rating,
-        c.metadata->'skills' as skills,
-        c.metadata->>'category' as category,
-        c.metadata,
-        c.duration,
-        c.status,
-        c.visibility,
-        c.total_enrollments,
-        c.active_enrollments,
-        c.completion_rate,
-        c.trainer_id,
-        c.trainer_name,
-        c.created_at,
-        c.updated_at,
-        (SELECT version_no FROM versions WHERE course_id = $1 ORDER BY created_at DESC LIMIT 1) as version
-      FROM courses c
-      WHERE c.course_id = $1
-      ${visibilityClause}`,
-      [courseId]
-    );
-
+    const course = await courseRepository.findById(courseId);
     if (!course) {
       return null;
     }
 
-    // Get modules with lessons
-    const modules = await db.any(
-      `SELECT 
-        m.module_id as id,
-        m.name as title,
-        m.order,
-        json_agg(
-          json_build_object(
-            'id', l.lesson_id,
-            'title', l.lesson_name,
-            'order', l.order,
-            'content_ref', l.content_data->>'content_ref'
-          ) ORDER BY l.order
-        ) as lessons
-      FROM modules m
-      LEFT JOIN lessons l ON l.module_id = m.module_id
-      WHERE m.course_id = $1
-      GROUP BY m.module_id, m.name, m.order
-      ORDER BY m.order`,
-      [courseId]
-    );
+    if (!isPrivilegedViewer && course.status !== 'active') {
+      return null;
+    }
+
+    // Get topics with modules and lessons
+    // ⚠️ CRITICAL: Topics and Modules are structural only - Lessons contain ALL content
+    const topics = await topicRepository.findByCourseId(courseId);
+    const topicsData = [];
+    
+    for (const topic of topics) {
+      const modules = await moduleRepository.findByTopicId(topic.id);
+      const modulesData = [];
+      
+      for (const module of modules) {
+        const lessons = await lessonRepository.findByModuleId(module.id);
+        modulesData.push({
+          id: module.id,
+          module_id: module.id,
+          title: module.module_name,
+          module_name: module.module_name,
+          description: module.module_description,
+          module_description: module.module_description,
+          // ⚠️ Modules are structural only - no content
+          lessons: lessons.map(l => ({
+            id: l.id,
+            lesson_id: l.id,
+            title: l.lesson_name,
+            lesson_name: l.lesson_name,
+            description: l.lesson_description,
+            lesson_description: l.lesson_description,
+            content_type: l.content_type,
+            // ⚠️ Lessons contain ALL real content (from Content Studio)
+            // content_data is Content Studio contents[] array (entire array as JSONB)
+            content_data: Array.isArray(l.content_data) ? l.content_data : [],
+            // devlab_exercises from Content Studio (array)
+            devlab_exercises: Array.isArray(l.devlab_exercises) ? l.devlab_exercises : [],
+            // Skills are ONLY stored at Lesson level
+            skills: Array.isArray(l.skills) ? l.skills : [],
+            trainer_ids: Array.isArray(l.trainer_ids) ? l.trainer_ids : []
+          }))
+        });
+      }
+      
+      topicsData.push({
+        id: topic.id,
+        topic_id: topic.id,
+        title: topic.topic_name,
+        topic_name: topic.topic_name,
+        summary: topic.topic_description,
+        topic_description: topic.topic_description,
+        // ⚠️ Topics are structural only - no content, skills computed dynamically
+        modules: modulesData
+      });
+    }
+
+    // Get latest version
+    const latestVersion = await versionRepository.findLatestVersion('course', courseId);
+    const versionNumber = latestVersion ? latestVersion.version_number : 1;
+
+    // Calculate derived stats
+    const [ratingResult, enrollmentsResult, activeEnrollmentsResult] = await Promise.all([
+      db.oneOrNone('SELECT AVG(rating)::numeric as avg FROM feedback WHERE course_id = $1', [courseId]),
+      db.one('SELECT COUNT(*)::int as total FROM registrations WHERE course_id = $1', [courseId]),
+      db.one('SELECT COUNT(*)::int as active FROM registrations WHERE course_id = $1 AND status = $2', [courseId, 'in_progress'])
+    ]);
+
+    const completedEnrollments = await db.one('SELECT COUNT(*)::int as completed FROM registrations WHERE course_id = $1 AND status = $2', [courseId, 'completed']);
+    const completionRate = enrollmentsResult.total > 0 
+      ? (completedEnrollments.completed / enrollmentsResult.total) * 100 
+      : 0;
 
     let learnerProgress = null;
 
     if (learnerId) {
-      const registration = await db.oneOrNone(
-        `SELECT registration_id, progress, status
-         FROM registrations
-         WHERE course_id = $1 AND learner_id = $2`,
-        [courseId, learnerId]
-      );
+      const registration = await registrationRepository.findByLearnerAndCourse(learnerId, courseId);
 
       if (registration) {
-        const completedLessons = await db.any(
-          `SELECT lesson_id
-           FROM lesson_progress
-           WHERE registration_id = $1 AND completed = TRUE`,
-          [registration.registration_id]
+        // Get completed lessons from lesson_completion_dictionary
+        const completionDict = course.lesson_completion_dictionary || {};
+        const completedLessons = [];
+        
+        for (const [lessonId, lessonData] of Object.entries(completionDict)) {
+          if (lessonData[learnerId] && lessonData[learnerId].status === 'completed') {
+            completedLessons.push(lessonId);
+          }
+        }
+
+        // Calculate progress
+        const totalLessons = await db.one(
+          `SELECT COUNT(*)::int as total
+           FROM lessons l
+           JOIN modules m ON m.id = l.module_id
+           JOIN topics t ON t.id = m.topic_id
+           WHERE t.course_id = $1`,
+          [courseId]
         );
+
+        const progress = totalLessons.total > 0 
+          ? (completedLessons.length / totalLessons.total) * 100 
+          : 0;
 
         learnerProgress = {
           is_enrolled: true,
-          registration_id: registration.registration_id,
-          progress: parseFloat(registration.progress) || 0,
+          registration_id: registration.id,
+          progress: Number(progress.toFixed(2)),
           status: registration.status,
-          completed_lessons: completedLessons.map((row) => row.lesson_id)
+          completed_lessons: completedLessons
         };
       } else {
         learnerProgress = {
@@ -220,31 +235,36 @@ export const getCourseDetails = async (courseId, options = {}) => {
 
     return {
       id: course.id,
-      title: course.title,
-      description: course.description,
+      title: course.course_name,
+      description: course.course_description,
       level: course.level,
       status: course.status,
-      visibility: course.visibility,
-      category: course.category || null,
-      duration: course.duration,
-      total_enrollments: course.total_enrollments,
-      active_enrollments: course.active_enrollments,
-      completion_rate: course.completion_rate ? parseFloat(course.completion_rate) : 0,
-      trainer: course.trainer_id ? {
-        id: course.trainer_id,
-        name: course.trainer_name
-      } : null,
+      category: null, // Not in new schema
+      duration: course.duration_hours,
+      total_enrollments: enrollmentsResult.total || 0,
+      active_enrollments: activeEnrollmentsResult.active || 0,
+      completion_rate: Number(completionRate.toFixed(2)),
+      rating: parseFloat(ratingResult?.avg) || 0,
+      created_by_user_id: course.created_by_user_id,
       created_at: course.created_at?.toISOString?.() || null,
       updated_at: course.updated_at?.toISOString?.() || null,
-      modules: modules.map(m => ({
-        id: m.id,
-        title: m.title,
-        order: m.order,
-        lessons: m.lessons.filter(l => l.id !== null) // Remove null lessons
-      })),
-      skills: Array.isArray(course.skills) ? course.skills : (course.skills ? [course.skills] : []),
-      rating: parseFloat(course.rating) || 0,
-      version: course.version?.toString() || '1',
+      // ⚠️ Structure: Course → Topics → Modules → Lessons
+      // Topics and Modules are structural only - Lessons contain ALL content
+      topics: topicsData,
+      modules: topicsData.flatMap(topic => topic.modules || []), // Keep for backward compatibility
+      // Skills are ONLY stored at Lesson level - aggregate from all lessons
+      skills: [...new Set((await Promise.all(
+        topics.flatMap(async (topic) => {
+          const topicModules = await moduleRepository.findByTopicId(topic.id);
+          const topicLessonsArrays = await Promise.all(
+            topicModules.map(async (module) => {
+              return await lessonRepository.findByModuleId(module.id);
+            })
+          );
+          return topicLessonsArrays.flat();
+        })
+      )).flat().flatMap(lesson => Array.isArray(lesson.skills) ? lesson.skills : []))],
+      version: versionNumber.toString(),
       ...(learnerProgress && { learner_progress: learnerProgress })
     };
   } catch (error) {
@@ -258,24 +278,16 @@ export const getCourseDetails = async (courseId, options = {}) => {
  */
 export const registerLearner = async (courseId, { learner_id, learner_name, learner_company, company_id }) => {
   try {
-    // Check if course exists
-    const course = await db.oneOrNone(
-      'SELECT course_id FROM courses WHERE course_id = $1 AND status = $2',
-      [courseId, 'live']
-    );
-
-    if (!course) {
+    // Check if course exists and is active
+    const course = await courseRepository.findById(courseId);
+    if (!course || course.status !== 'active') {
       const error = new Error('Course not found or not available');
       error.status = 404;
       throw error;
     }
 
     // Check if already registered
-    const existing = await db.oneOrNone(
-      'SELECT registration_id FROM registrations WHERE course_id = $1 AND learner_id = $2',
-      [courseId, learner_id]
-    );
-
+    const existing = await registrationRepository.findByLearnerAndCourse(learner_id, courseId);
     if (existing) {
       const error = new Error('Learner is already registered for this course');
       error.code = '23505';
@@ -283,27 +295,31 @@ export const registerLearner = async (courseId, { learner_id, learner_name, lear
     }
 
     // Create registration
-    const registrationId = uuidv4();
-    const finalLearnerName = learner_name || 'Learner';
-    const finalCompany = learner_company || company_id || null;
-    await db.none(
-      `INSERT INTO registrations (registration_id, course_id, learner_id, learner_name, learner_company, progress, status, created_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())`,
-      [registrationId, courseId, learner_id, finalLearnerName, finalCompany, 0, 'in_progress']
-    );
+    const registration = await registrationRepository.create({
+      learner_id,
+      learner_name,
+      learner_company: learner_company || company_id || null,
+      course_id: courseId,
+      company_id: company_id || null,
+      status: 'in_progress'
+    });
 
-    // Update course enrollment count
-    await db.none(
-      'UPDATE courses SET total_enrollments = total_enrollments + 1, active_enrollments = active_enrollments + 1 WHERE course_id = $1',
-      [courseId]
-    );
+    // Update course studentsIDDictionary
+    const studentsDict = course.studentsIDDictionary || {};
+    studentsDict[learner_id] = {
+      status: 'in_progress',
+      enrolled_date: new Date().toISOString(),
+      completed_date: null,
+      completion_reason: null
+    };
+    await courseRepository.update(courseId, { studentsIDDictionary: studentsDict });
 
     return {
       status: 'registered',
-      registration_id: registrationId,
+      registration_id: registration.id,
       course_id: courseId,
       learner_id: learner_id,
-      registered_at: new Date().toISOString(),
+      registered_at: registration.enrolled_date?.toISOString() || new Date().toISOString(),
       progress: 0
     };
   } catch (error) {
@@ -318,99 +334,106 @@ export const registerLearner = async (courseId, { learner_id, learner_name, lear
 export const updateLessonProgress = async (courseId, { learner_id, lesson_id, completed = true }) => {
   try {
     return await db.tx(async (t) => {
-      const course = await t.oneOrNone(
-        'SELECT course_id FROM courses WHERE course_id = $1',
-        [courseId]
-      );
-
+      const course = await courseRepository.findById(courseId);
       if (!course) {
         const error = new Error('Course not found');
         error.status = 404;
         throw error;
       }
 
-      const registration = await t.oneOrNone(
-        `SELECT registration_id, progress, status
-         FROM registrations
-         WHERE course_id = $1 AND learner_id = $2`,
-        [courseId, learner_id]
-      );
-
+      const registration = await registrationRepository.findByLearnerAndCourse(learner_id, courseId);
       if (!registration) {
         const error = new Error('Learner is not registered for this course');
         error.status = 404;
         throw error;
       }
 
-      const lesson = await t.oneOrNone(
-        `SELECT l.lesson_id
-         FROM lessons l
-         JOIN modules m ON m.module_id = l.module_id
-         WHERE l.lesson_id = $1 AND m.course_id = $2`,
-        [lesson_id, courseId]
-      );
-
+      const lesson = await lessonRepository.findById(lesson_id);
       if (!lesson) {
+        const error = new Error('Lesson not found');
+        error.status = 404;
+        throw error;
+      }
+
+      // Verify lesson belongs to course
+      const module = await moduleRepository.findById(lesson.module_id);
+      const topic = await topicRepository.findById(module.topic_id);
+      if (topic.course_id !== courseId) {
         const error = new Error('Lesson not found in course');
         error.status = 404;
         throw error;
       }
 
-      await t.none(
-        `INSERT INTO lesson_progress (registration_id, course_id, lesson_id, completed, completed_at)
-         VALUES ($1, $2, $3, $4, CASE WHEN $4 THEN NOW() ELSE NULL END)
-         ON CONFLICT (registration_id, lesson_id)
-         DO UPDATE SET completed = EXCLUDED.completed,
-                       completed_at = EXCLUDED.completed_at`,
-        [registration.registration_id, courseId, lesson_id, completed]
-      );
+      // Update lesson_completion_dictionary
+      const completionDict = course.lesson_completion_dictionary || {};
+      if (!completionDict[lesson_id]) {
+        completionDict[lesson_id] = {
+          topic_id: lesson.topic_id,
+          topic_name: topic.topic_name,
+          trainer_ids: lesson.trainer_ids || []
+        };
+      }
+      
+      if (!completionDict[lesson_id][learner_id]) {
+        completionDict[lesson_id][learner_id] = {};
+      }
+      
+      completionDict[lesson_id][learner_id] = {
+        status: completed ? 'completed' : 'in_progress',
+        completed_at: completed ? new Date().toISOString() : null
+      };
 
-      const totalLessonsRow = await t.one(
+      await courseRepository.update(courseId, { lesson_completion_dictionary: completionDict });
+
+      // Calculate progress
+      const totalLessons = await t.one(
         `SELECT COUNT(*)::int AS total
          FROM lessons l
-         JOIN modules m ON m.module_id = l.module_id
-         WHERE m.course_id = $1`,
+         JOIN modules m ON m.id = l.module_id
+         JOIN topics t ON t.id = m.topic_id
+         WHERE t.course_id = $1`,
         [courseId]
       );
 
-      const completedLessonsRow = await t.one(
-        `SELECT COUNT(*)::int AS completed
-         FROM lesson_progress
-         WHERE registration_id = $1 AND completed = TRUE`,
-        [registration.registration_id]
-      );
+      const completedCount = Object.values(completionDict).filter(
+        lessonData => lessonData[learner_id] && lessonData[learner_id].status === 'completed'
+      ).length;
 
-      const totalLessons = totalLessonsRow.total;
-      const completedCount = completedLessonsRow.completed;
-      const rawProgress = totalLessons > 0 ? (completedCount / totalLessons) * 100 : 0;
+      const rawProgress = totalLessons.total > 0 ? (completedCount / totalLessons.total) * 100 : 0;
       const progress = Number(rawProgress.toFixed(2));
       const status = progress >= 100 ? 'completed' : 'in_progress';
 
-      await t.none(
-        `UPDATE registrations
-         SET progress = $1, status = $2, updated_at = NOW()
-         WHERE registration_id = $3`,
-        [progress, status, registration.registration_id]
-      );
+      // Update registration
+      await registrationRepository.update(registration.id, {
+        status,
+        completed_date: progress >= 100 ? new Date() : null
+      });
 
-      const completedLessonIds = await t.any(
-        `SELECT lesson_id
-         FROM lesson_progress
-         WHERE registration_id = $1 AND completed = TRUE
-         ORDER BY completed_at ASC NULLS LAST`,
-        [registration.registration_id]
-      );
+      // Update course studentsIDDictionary
+      const studentsDict = course.studentsIDDictionary || {};
+      if (studentsDict[learner_id]) {
+        studentsDict[learner_id].status = status;
+        if (progress >= 100) {
+          studentsDict[learner_id].completed_date = new Date().toISOString();
+          studentsDict[learner_id].completion_reason = 'completed';
+        }
+      }
+      await courseRepository.update(courseId, { studentsIDDictionary: studentsDict });
+
+      const completedLessonIds = Object.entries(completionDict)
+        .filter(([_, lessonData]) => lessonData[learner_id] && lessonData[learner_id].status === 'completed')
+        .map(([lessonId, _]) => lessonId);
 
       return {
         course_id: courseId,
         learner_id,
-        registration_id: registration.registration_id,
+        registration_id: registration.id,
         lesson_id,
         completed,
         progress,
         status,
-        total_lessons: totalLessons,
-        completed_lessons: completedLessonIds.map((row) => row.lesson_id)
+        total_lessons: totalLessons.total,
+        completed_lessons: completedLessonIds
       };
     });
   } catch (error) {
@@ -421,7 +444,6 @@ export const updateLessonProgress = async (courseId, { learner_id, lesson_id, co
 
 /**
  * Get all courses (CRUD: Read all)
- * Alias for browseCourses with default filters
  */
 export const getAllCourses = async (filters = {}) => {
   return browseCourses({
@@ -436,7 +458,6 @@ export const getAllCourses = async (filters = {}) => {
 
 /**
  * Get course by ID (CRUD: Read one)
- * Alias for getCourseDetails
  */
 export const getCourseById = async (courseId, options = {}) => {
   return getCourseDetails(courseId, options);
@@ -447,44 +468,28 @@ export const getCourseById = async (courseId, options = {}) => {
  */
 export const createCourse = async (courseData) => {
   try {
-    const courseId = uuidv4();
-    const {
-      course_name,
-      course_description,
-      level,
-      trainer_id,
-      trainer_name,
-      skills = [],
-      metadata = {}
-    } = courseData;
-
-    await db.none(
-      `INSERT INTO courses (
-        course_id, course_name, course_description, level, 
-        trainer_id, trainer_name, metadata, created_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())`,
-      [
-        courseId,
-        course_name,
-        course_description,
-        level,
-        trainer_id,
-        trainer_name,
-        JSON.stringify({ ...metadata, skills })
-      ]
-    );
+    const course = await courseRepository.create({
+      course_name: courseData.course_name,
+      course_description: courseData.course_description,
+      course_type: courseData.course_type || 'trainer',
+      status: 'draft',
+      level: courseData.level,
+      duration_hours: courseData.duration_hours,
+      created_by_user_id: courseData.created_by_user_id || courseData.trainer_id
+    });
 
     // Create initial version
-    await db.none(
-      `INSERT INTO versions (course_id, version_no, status, created_at)
-       VALUES ($1, $2, $3, NOW())`,
-      [courseId, 1, 'draft']
-    );
+    await versionRepository.create({
+      entity_type: 'course',
+      entity_id: course.id,
+      data: course.toJSON()
+    });
 
     return {
-      course_id: courseId,
+      course_id: course.id,
+      id: course.id,
       status: 'draft',
-      created_at: new Date().toISOString()
+      created_at: course.created_at?.toISOString() || new Date().toISOString()
     };
   } catch (error) {
     console.error('Error creating course:', error);
@@ -497,80 +502,42 @@ export const createCourse = async (courseData) => {
  */
 export const updateCourse = async (courseId, updates) => {
   try {
-    // Check if course exists
-    const course = await db.oneOrNone(
-      'SELECT course_id FROM courses WHERE course_id = $1',
-      [courseId]
-    );
-
+    const course = await courseRepository.findById(courseId);
     if (!course) {
       const error = new Error('Course not found');
       error.status = 404;
       throw error;
     }
 
-    // Build update query dynamically
-    const updateFields = [];
-    const values = [];
-    let paramIndex = 1;
+    const updateData = {};
+    if (updates.course_name !== undefined) updateData.course_name = updates.course_name;
+    if (updates.course_description !== undefined) updateData.course_description = updates.course_description;
+    if (updates.level !== undefined) updateData.level = updates.level;
+    if (updates.duration_hours !== undefined) updateData.duration_hours = updates.duration_hours;
+    if (updates.status !== undefined) updateData.status = updates.status;
 
-    if (updates.course_name) {
-      updateFields.push(`course_name = $${paramIndex++}`);
-      values.push(updates.course_name);
-    }
-    if (updates.course_description) {
-      updateFields.push(`course_description = $${paramIndex++}`);
-      values.push(updates.course_description);
-    }
-    if (updates.level) {
-      updateFields.push(`level = $${paramIndex++}`);
-      values.push(updates.level);
-    }
-    if (updates.skills || updates.metadata) {
-      const currentMetadata = await db.one(
-        'SELECT metadata FROM courses WHERE course_id = $1',
-        [courseId]
-      );
-      const updatedMetadata = {
-        ...currentMetadata.metadata,
-        ...updates.metadata,
-        ...(updates.skills && { skills: updates.skills })
-      };
-      updateFields.push(`metadata = $${paramIndex++}`);
-      values.push(JSON.stringify(updatedMetadata));
+    if (Object.keys(updateData).length === 0) {
+      return { course_id: courseId, id: courseId, status: 'unchanged' };
     }
 
-    if (updateFields.length === 0) {
-      return { course_id: courseId, status: 'unchanged' };
-    }
+    const updatedCourse = await courseRepository.update(courseId, updateData);
 
-    // Add updated_at trigger
-    updateFields.push(`updated_at = NOW()`);
-    values.push(courseId);
-
-    await db.none(
-      `UPDATE courses SET ${updateFields.join(', ')} WHERE course_id = $${paramIndex}`,
-      values
-    );
-
-    // Get latest version and create new version if needed
-    const latestVersion = await db.oneOrNone(
-      'SELECT version_no FROM versions WHERE course_id = $1 ORDER BY created_at DESC LIMIT 1',
-      [courseId]
-    );
-
-    const newVersionNo = latestVersion ? latestVersion.version_no + 1 : 1;
-    await db.none(
-      `INSERT INTO versions (course_id, version_no, status, created_at)
-       VALUES ($1, $2, $3, NOW())`,
-      [courseId, newVersionNo, 'draft']
-    );
+    // Create new version
+    const latestVersion = await versionRepository.findLatestVersion('course', courseId);
+    const versionNumber = latestVersion ? latestVersion.version_number + 1 : 1;
+    
+    await versionRepository.create({
+      entity_type: 'course',
+      entity_id: courseId,
+      data: updatedCourse.toJSON()
+    });
 
     return {
       course_id: courseId,
+      id: courseId,
       status: 'updated',
-      version_no: newVersionNo,
-      updated_at: new Date().toISOString()
+      version_number: versionNumber,
+      updated_at: updatedCourse.updated_at?.toISOString() || new Date().toISOString()
     };
   } catch (error) {
     console.error('Error updating course:', error);
@@ -583,39 +550,33 @@ export const updateCourse = async (courseId, updates) => {
  */
 export const publishCourse = async (courseId) => {
   try {
-    // Check if course exists
-    const course = await db.oneOrNone(
-      'SELECT course_id, status FROM courses WHERE course_id = $1',
-      [courseId]
-    );
-
+    const course = await courseRepository.findById(courseId);
     if (!course) {
       const error = new Error('Course not found');
       error.status = 404;
       throw error;
     }
 
-    // Update course status to live and visibility to public
-    await db.none(
-      `UPDATE courses 
-       SET status = 'live', visibility = 'public', published_at = NOW(), updated_at = NOW()
-       WHERE course_id = $1`,
-      [courseId]
-    );
+    await courseRepository.update(courseId, { status: 'active' });
 
-    // Update latest version status to published
-    await db.none(
-      `UPDATE versions 
-       SET status = 'published', published_at = NOW()
-       WHERE course_id = $1 AND version_no = (
-         SELECT MAX(version_no) FROM versions WHERE course_id = $1
-       )`,
-      [courseId]
-    );
+    // Update latest version
+    const latestVersion = await versionRepository.findLatestVersion('course', courseId);
+    if (latestVersion) {
+      const versionData = latestVersion.data || {};
+      versionData.status = 'published';
+      versionData.published_at = new Date().toISOString();
+      // Note: VersionRepository doesn't have update method, so we create a new version
+      await versionRepository.create({
+        entity_type: 'course',
+        entity_id: courseId,
+        data: versionData
+      });
+    }
 
     return {
       course_id: courseId,
-      status: 'live',
+      id: courseId,
+      status: 'active',
       published_at: new Date().toISOString()
     };
   } catch (error) {
@@ -629,12 +590,7 @@ export const publishCourse = async (courseId) => {
  */
 export const schedulePublishing = async (courseId, publishAt) => {
   try {
-    // Check if course exists
-    const course = await db.oneOrNone(
-      'SELECT course_id FROM courses WHERE course_id = $1',
-      [courseId]
-    );
-
+    const course = await courseRepository.findById(courseId);
     if (!course) {
       const error = new Error('Course not found');
       error.status = 404;
@@ -649,29 +605,22 @@ export const schedulePublishing = async (courseId, publishAt) => {
       throw error;
     }
 
-    // Update course status to scheduled
-    await db.none(
-      `UPDATE courses 
-       SET status = 'scheduled', visibility = 'scheduled', updated_at = NOW()
-       WHERE course_id = $1`,
-      [courseId]
-    );
-
-    // Store scheduled publish time in metadata (or create a scheduled_publish_at column)
-    await db.none(
-      `UPDATE courses 
-       SET metadata = jsonb_set(
-         COALESCE(metadata, '{}'::jsonb),
-         '{scheduled_publish_at}',
-         to_jsonb($1::text)
-       )
-       WHERE course_id = $2`,
-      [publishAt, courseId]
-    );
+    // Store scheduled publish time in learning_path_designation or create a scheduled field
+    // For now, we'll just set status to draft and store in a custom field
+    // Note: This might need a migration to add scheduled_publish_at column
+    await courseRepository.update(courseId, { 
+      status: 'draft',
+      // Store in learning_path_designation temporarily
+      learning_path_designation: {
+        ...(course.learning_path_designation || {}),
+        scheduled_publish_at: publishAt
+      }
+    });
 
     return {
       course_id: courseId,
-      status: 'scheduled',
+      id: courseId,
+      status: 'draft',
       scheduled_at: publishAt
     };
   } catch (error) {
@@ -685,39 +634,19 @@ export const schedulePublishing = async (courseId, publishAt) => {
  */
 export const validateCourse = async (courseId) => {
   try {
-    // Check if course exists
-    const course = await db.oneOrNone(
-      'SELECT course_id, status FROM courses WHERE course_id = $1',
-      [courseId]
-    );
-
+    const course = await courseRepository.findById(courseId);
     if (!course) {
       const error = new Error('Course not found');
       error.status = 404;
       throw error;
     }
 
-    // Update course status to validated
-    await db.none(
-      `UPDATE courses 
-       SET status = 'validated', updated_at = NOW()
-       WHERE course_id = $1`,
-      [courseId]
-    );
-
-    // Update latest version status to validated
-    await db.none(
-      `UPDATE versions 
-       SET status = 'validated'
-       WHERE course_id = $1 AND version_no = (
-         SELECT MAX(version_no) FROM versions WHERE course_id = $1
-       )`,
-      [courseId]
-    );
+    await courseRepository.update(courseId, { status: 'draft' }); // Keep as draft until published
 
     return {
       course_id: courseId,
-      status: 'validated',
+      id: courseId,
+      status: 'draft',
       validated_at: new Date().toISOString()
     };
   } catch (error) {
@@ -731,38 +660,18 @@ export const validateCourse = async (courseId) => {
  */
 export const unpublishCourse = async (courseId) => {
   try {
-    // Check if course exists
-    const course = await db.oneOrNone(
-      'SELECT course_id, status FROM courses WHERE course_id = $1',
-      [courseId]
-    );
-
+    const course = await courseRepository.findById(courseId);
     if (!course) {
       const error = new Error('Course not found');
       error.status = 404;
       throw error;
     }
 
-    // Update course status to archived
-    await db.none(
-      `UPDATE courses 
-       SET status = 'archived', visibility = 'private', updated_at = NOW()
-       WHERE course_id = $1`,
-      [courseId]
-    );
-
-    // Update latest version status to archived
-    await db.none(
-      `UPDATE versions 
-       SET status = 'archived'
-       WHERE course_id = $1 AND version_no = (
-         SELECT MAX(version_no) FROM versions WHERE course_id = $1
-       )`,
-      [courseId]
-    );
+    await courseRepository.update(courseId, { status: 'archived' });
 
     return {
       course_id: courseId,
+      id: courseId,
       status: 'archived',
       unpublished_at: new Date().toISOString()
     };
@@ -777,25 +686,16 @@ export const unpublishCourse = async (courseId) => {
  */
 export const getCourseVersions = async (courseId) => {
   try {
-    const versions = await db.any(
-      `SELECT 
-        version_no,
-        status,
-        created_at,
-        published_at
-      FROM versions
-      WHERE course_id = $1
-      ORDER BY version_no DESC`,
-      [courseId]
-    );
+    const versions = await versionRepository.findByEntity('course', courseId);
 
     return {
       course_id: courseId,
+      id: courseId,
       versions: versions.map(v => ({
-        version_no: v.version_no,
-        status: v.status,
-        created_at: v.created_at.toISOString(),
-        published_at: v.published_at ? v.published_at.toISOString() : null
+        version_number: v.version_number,
+        version_no: v.version_number, // For backward compatibility
+        created_at: v.created_at?.toISOString() || null,
+        data: v.data || {}
       }))
     };
   } catch (error) {
@@ -809,47 +709,33 @@ export const getCourseVersions = async (courseId) => {
  */
 export const getLessonDetails = async (lessonId) => {
   try {
-    const lesson = await db.oneOrNone(
-      `SELECT 
-        l.lesson_id as id,
-        l.lesson_name as title,
-        l.content_type,
-        l.content_data,
-        l.micro_skills,
-        l.nano_skills,
-        l.enrichment_data,
-        l.order,
-        m.module_id as module_id,
-        m.name as module_name,
-        c.course_id as course_id,
-        c.course_name as course_name
-      FROM lessons l
-      JOIN modules m ON m.module_id = l.module_id
-      JOIN courses c ON c.course_id = m.course_id
-      WHERE l.lesson_id = $1`,
-      [lessonId]
-    );
-
+    const lesson = await lessonRepository.findById(lessonId);
     if (!lesson) {
       return null;
     }
 
+    const module = await moduleRepository.findById(lesson.module_id);
+    const topic = await topicRepository.findById(module.topic_id);
+    const course = await courseRepository.findById(topic.course_id);
+
     return {
       id: lesson.id,
-      title: lesson.title,
+      title: lesson.lesson_name,
+      description: lesson.lesson_description,
       content_type: lesson.content_type,
-      content_data: lesson.content_data || {},
-      micro_skills: lesson.micro_skills || [],
-      nano_skills: lesson.nano_skills || [],
-      enrichment_data: lesson.enrichment_data || {},
-      order: lesson.order,
+      // Full lesson content (from Content Studio) - ALWAYS arrays
+      content_data: Array.isArray(lesson.content_data) ? lesson.content_data : [],
+      devlab_exercises: Array.isArray(lesson.devlab_exercises) ? lesson.devlab_exercises : [],
+      skills: Array.isArray(lesson.skills) ? lesson.skills : [],
+      trainer_ids: Array.isArray(lesson.trainer_ids) ? lesson.trainer_ids : [],
       module: {
-        id: lesson.module_id,
-        name: lesson.module_name
+        id: module.id,
+        name: module.module_name
       },
       course: {
-        id: lesson.course_id,
-        name: lesson.course_name
+        id: course.id,
+        title: course.course_name,
+        name: course.course_name // Keep for backward compatibility
       }
     };
   } catch (error) {
@@ -863,36 +749,53 @@ export const getLessonDetails = async (lessonId) => {
  */
 export const getLearnerProgress = async (learnerId) => {
   try {
-    const registrations = await db.any(
-      `SELECT 
-        r.course_id,
-        c.course_name as title,
-        r.progress,
-        r.status,
-        r.created_at as enrolled_at,
-        c.level,
-        c.average_rating as rating,
-        (SELECT COUNT(*)::int 
-         FROM lessons l 
-         JOIN modules m ON m.module_id = l.module_id 
-         WHERE m.course_id = r.course_id) as lessons_total
-      FROM registrations r
-      JOIN courses c ON c.course_id = r.course_id
-      WHERE r.learner_id = $1
-      ORDER BY r.created_at DESC`,
-      [learnerId]
+    const registrations = await registrationRepository.findByLearnerId(learnerId);
+
+    const progressData = await Promise.all(
+      registrations.map(async (reg) => {
+        const course = await courseRepository.findById(reg.course_id);
+        if (!course) return null;
+
+        // Calculate rating from feedback
+        const ratingResult = await db.oneOrNone(
+          'SELECT AVG(rating)::numeric as avg FROM feedback WHERE course_id = $1',
+          [reg.course_id]
+        );
+
+        // Count lessons
+        const lessonsCount = await db.one(
+          `SELECT COUNT(*)::int as total
+           FROM lessons l
+           JOIN modules m ON m.id = l.module_id
+           JOIN topics t ON t.id = m.topic_id
+           WHERE t.course_id = $1`,
+          [reg.course_id]
+        );
+
+        // Calculate progress from lesson_completion_dictionary
+        const completionDict = course.lesson_completion_dictionary || {};
+        const completedLessons = Object.values(completionDict).filter(
+          lessonData => lessonData[learnerId] && lessonData[learnerId].status === 'completed'
+        ).length;
+        const progress = lessonsCount.total > 0 
+          ? (completedLessons / lessonsCount.total) * 100 
+          : 0;
+
+        return {
+          course_id: reg.course_id,
+          id: reg.course_id,
+          title: course.course_name,
+          progress: Number(progress.toFixed(2)),
+          status: reg.status,
+          enrolled_at: reg.enrolled_date?.toISOString() || null,
+          level: course.level,
+          rating: parseFloat(ratingResult?.avg) || 0,
+          lessons_total: lessonsCount.total || 0
+        };
+      })
     );
 
-    return registrations.map(r => ({
-      course_id: r.course_id,
-      title: r.title,
-      progress: parseFloat(r.progress) || 0,
-      status: r.status,
-      enrolled_at: r.enrolled_at.toISOString(),
-      level: r.level,
-      rating: parseFloat(r.rating) || 0,
-      lessons_total: r.lessons_total || 0
-    }));
+    return progressData.filter(Boolean);
   } catch (error) {
     console.error('Error getting learner progress:', error);
     throw error;
@@ -904,16 +807,14 @@ export const getLearnerProgress = async (learnerId) => {
  */
 export const getCourseFilters = async () => {
   try {
-    const [levels, categories, tags] = await Promise.all([
-      db.any(`SELECT DISTINCT level FROM courses WHERE visibility = 'public' AND status = 'live' ORDER BY level`),
-      db.any(`SELECT DISTINCT metadata->>'category' as category FROM courses WHERE visibility = 'public' AND status = 'live' AND metadata->>'category' IS NOT NULL`),
-      db.any(`SELECT DISTINCT jsonb_array_elements_text(metadata->'tags') as tag FROM courses WHERE visibility = 'public' AND status = 'live' AND metadata->'tags' IS NOT NULL`)
+    const [levels] = await Promise.all([
+      db.any(`SELECT DISTINCT level FROM courses WHERE status = 'active' AND level IS NOT NULL ORDER BY level`)
     ]);
 
     return {
       levels: levels.map(l => l.level).filter(Boolean),
-      categories: categories.map(c => c.category).filter(Boolean),
-      tags: tags.map(t => t.tag).filter(Boolean)
+      categories: [], // Not in new schema
+      tags: [] // Not in new schema
     };
   } catch (error) {
     console.error('Error getting course filters:', error);
@@ -939,4 +840,3 @@ export const coursesService = {
   getLessonDetails,
   getLearnerProgress
 };
-

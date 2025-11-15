@@ -60,12 +60,16 @@ describe('Feedback API', () => {
         .get(`/api/v1/feedback/${seededCourseId}`)
         .expect(200);
 
+      // Verify response structure from feedbackService.getAggregatedFeedback
       expect(response.body).toHaveProperty('course_id');
       expect(response.body).toHaveProperty('average_rating');
       expect(response.body).toHaveProperty('total_ratings');
-      expect(response.body).toHaveProperty('tags_breakdown');
       expect(response.body).toHaveProperty('recent_comments');
       expect(Array.isArray(response.body.recent_comments)).toBe(true);
+      // average_rating should be a number
+      expect(typeof response.body.average_rating).toBe('number');
+      // total_ratings should be a number
+      expect(typeof response.body.total_ratings).toBe('number');
     });
   });
 });

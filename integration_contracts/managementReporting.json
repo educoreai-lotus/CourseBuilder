@@ -1,0 +1,198 @@
+{
+  "send": {
+    "course_id": {
+      "type": "string (UUID)",
+      "required": true,
+      "description": "Course identifier"
+    },
+    "course_name": {
+      "type": "string",
+      "required": true,
+      "description": "Course name"
+    },
+    "level": {
+      "type": "string",
+      "required": false,
+      "description": "Course level (beginner | intermediate | advanced)"
+    },
+    "duration": {
+      "type": "number",
+      "required": false,
+      "description": "Course duration in hours"
+    },
+    "totalEnrollments": {
+      "type": "number",
+      "required": true,
+      "description": "Total number of enrollments"
+    },
+    "activeEnrollment": {
+      "type": "number",
+      "required": true,
+      "description": "Number of active enrollments"
+    },
+    "completionRate": {
+      "type": "number",
+      "required": true,
+      "description": "Completion rate percentage"
+    },
+    "averageRating": {
+      "type": "number",
+      "required": true,
+      "description": "Average rating (1-5)"
+    },
+    "createdAt": {
+      "type": "string (ISO8601)",
+      "required": true,
+      "description": "Course creation timestamp"
+    },
+    "feedback": {
+      "type": "array<object>",
+      "required": false,
+      "description": "Array of feedback objects",
+      "items": {
+        "type": "object",
+        "properties": {
+          "learner_id": {
+            "type": "string (UUID)"
+          },
+          "rating": {
+            "type": "number"
+          },
+          "comment": {
+            "type": "string"
+          },
+          "submitted_at": {
+            "type": "string (ISO8601)"
+          }
+        }
+      }
+    }
+  },
+  "receive": {},
+  "source": {
+    "send": {
+      "course_id": "courses.id",
+      "course_name": "courses.course_name",
+      "level": "courses.level",
+      "duration": "courses.duration_hours",
+      "totalEnrollments": "DERIVED from registrations (COUNT)",
+      "activeEnrollment": "DERIVED from registrations (COUNT WHERE status='in_progress')",
+      "completionRate": "DERIVED from registrations (completed/total * 100)",
+      "averageRating": "DERIVED from feedback (AVG rating)",
+      "createdAt": "courses.created_at",
+      "feedback": "DERIVED from feedback table (array of feedback objects)"
+    },
+    "receive": {}
+  },
+  "derived": {
+    "send": {
+      "totalEnrollments": "COUNT(*) FROM registrations WHERE course_id = ?",
+      "activeEnrollment": "COUNT(*) FROM registrations WHERE course_id = ? AND status = 'in_progress'",
+      "completionRate": "(COUNT completed / COUNT total) * 100",
+      "averageRating": "AVG(rating) FROM feedback WHERE course_id = ?",
+      "feedback": "SELECT * FROM feedback WHERE course_id = ?"
+    },
+    "receive": {}
+  },
+  "validation": {
+    "send": {
+      "course_id": {
+        "type": "string",
+        "format": "uuid",
+        "required": true
+      },
+      "course_name": {
+        "type": "string",
+        "minLength": 1,
+        "required": true
+      },
+      "level": {
+        "type": "string",
+        "enum": ["beginner", "intermediate", "advanced"],
+        "required": false
+      },
+      "duration": {
+        "type": "number",
+        "minimum": 0,
+        "required": false
+      },
+      "totalEnrollments": {
+        "type": "number",
+        "minimum": 0,
+        "required": true
+      },
+      "activeEnrollment": {
+        "type": "number",
+        "minimum": 0,
+        "required": true
+      },
+      "completionRate": {
+        "type": "number",
+        "minimum": 0,
+        "maximum": 100,
+        "required": true
+      },
+      "averageRating": {
+        "type": "number",
+        "minimum": 1,
+        "maximum": 5,
+        "required": true
+      },
+      "createdAt": {
+        "type": "string",
+        "format": "date-time",
+        "required": true
+      },
+      "feedback": {
+        "type": "array",
+        "required": false,
+        "items": {
+          "type": "object"
+        }
+      }
+    },
+    "receive": {}
+  },
+  "examples": {
+    "minimal": {
+      "send": {
+        "course_id": "11111111-1111-1111-1111-111111111111",
+        "course_name": "Intro to React",
+        "totalEnrollments": 50,
+        "activeEnrollment": 25,
+        "completionRate": 50.0,
+        "averageRating": 4.5,
+        "createdAt": "2025-01-01T00:00:00Z"
+      }
+    },
+    "full": {
+      "send": {
+        "course_id": "11111111-1111-1111-1111-111111111111",
+        "course_name": "Advanced React Development",
+        "level": "advanced",
+        "duration": 40,
+        "totalEnrollments": 150,
+        "activeEnrollment": 75,
+        "completionRate": 66.67,
+        "averageRating": 4.6,
+        "createdAt": "2025-01-01T00:00:00Z",
+        "feedback": [
+          {
+            "learner_id": "22222222-2222-2222-2222-222222222222",
+            "rating": 5,
+            "comment": "Excellent course!",
+            "submitted_at": "2025-11-13T10:00:00Z"
+          },
+          {
+            "learner_id": "33333333-3333-3333-3333-333333333333",
+            "rating": 4,
+            "comment": "Very comprehensive",
+            "submitted_at": "2025-11-13T11:00:00Z"
+          }
+        ]
+      }
+    }
+  }
+}
+
+

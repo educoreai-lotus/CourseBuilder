@@ -1,9 +1,29 @@
-import { Router } from 'express'
-import { handleIntegrationRequest } from '../controllers/integration.controller.js'
-import { authorizeRoles } from '../middleware/auth.middleware.js'
+/**
+ * Unified Integration Routes
+ * Single endpoint for all microservice integrations
+ */
 
-const router = Router()
+import express from 'express';
+import integrationController from '../controllers/integration.controller.js';
 
-router.post('/', authorizeRoles('service'), handleIntegrationRequest)
+const router = express.Router();
 
-export default router
+/**
+ * POST /api/fill-content-metrics
+ * Unified endpoint for all microservice integrations
+ * 
+ * Body:
+ *   {
+ *     "serviceName": "ContentStudio" | "LearnerAI" | "Assessment" | etc.,
+ *     "payload": "{\"key\": \"value\"}" // stringified JSON
+ *   }
+ * 
+ * Response:
+ *   {
+ *     "serviceName": "<same>",
+ *     "payload": "{\"status\": \"success\", ...}" // stringified JSON
+ *   }
+ */
+router.post('/fill-content-metrics', integrationController.handleFillContentMetrics);
+
+export default router;

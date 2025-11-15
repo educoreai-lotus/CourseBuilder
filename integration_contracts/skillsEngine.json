@@ -1,0 +1,78 @@
+{
+  "send": {
+    "topic": {
+      "type": "string",
+      "required": true,
+      "description": "Topic name or competency name"
+    }
+  },
+  "receive": {
+    "skills": {
+      "type": "array<string>",
+      "required": true,
+      "description": "Final/processed skills array returned by Skills Engine"
+    }
+  },
+  "source": {
+    "send": {
+      "topic": "topics.topic_name or courses.learning_path_designation.target_competency.competency_name"
+    },
+    "receive": {
+      "skills": "Skills Engine processed output -> topics.skills or lessons.skills"
+    }
+  },
+  "derived": {
+    "send": {},
+    "receive": {
+      "skills": "Processed/enriched by Skills Engine from topic name"
+    }
+  },
+  "validation": {
+    "send": {
+      "topic": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 500,
+        "required": true
+      }
+    },
+    "receive": {
+      "skills": {
+        "type": "array",
+        "minItems": 0,
+        "items": {
+          "type": "string"
+        },
+        "required": true
+      }
+    }
+  },
+  "examples": {
+    "minimal": {
+      "send": {
+        "topic": "React"
+      },
+      "receive": {
+        "skills": ["react", "javascript"]
+      }
+    },
+    "full": {
+      "send": {
+        "topic": "Advanced React Performance Optimization"
+      },
+      "receive": {
+        "skills": [
+          "react",
+          "react-hooks",
+          "performance",
+          "memoization",
+          "code-splitting",
+          "lazy-loading",
+          "virtual-dom"
+        ]
+      }
+    }
+  }
+}
+
+
