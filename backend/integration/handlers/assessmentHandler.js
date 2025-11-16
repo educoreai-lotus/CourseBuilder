@@ -9,9 +9,10 @@ import assessmentDTO from '../../dtoBuilders/assessmentDTO.js';
 /**
  * Handle Assessment integration request
  * @param {Object} payloadObject - Parsed payload from Assessment
- * @returns {Promise<Object>} Response payload
+ * @param {Object} responseTemplate - Empty response template to fill
+ * @returns {Promise<Object>} Filled response object matching contract
  */
-export async function handleAssessmentIntegration(payloadObject) {
+export async function handleAssessmentIntegration(payloadObject, responseTemplate) {
   try {
     // Normalize Assessment payload
     const data = assessmentDTO.buildFromReceived(payloadObject);
@@ -33,16 +34,17 @@ export async function handleAssessmentIntegration(payloadObject) {
       assessment = await assessmentRepository.create(data);
     }
 
-    // Return response in unified format
-    return {
-      serviceName: 'Assessment',
-      status: 'success',
-      assessment_id: assessment.id,
-      learner_id: assessment.learner_id,
-      course_id: assessment.course_id,
-      passed: assessment.passed,
-      final_grade: assessment.final_grade
-    };
+    // Fill response template with contract-matching fields
+    responseTemplate.learner_id = assessment.learner_id;
+    responseTemplate.course_id = assessment.course_id;
+    responseTemplate.course_name = payloadObject.course_name || assessment.course_name || '';
+    responseTemplate.exam_type = assessment.exam_type || 'postcourse';
+    responseTemplate.passing_grade = assessment.passing_grade || 70.00;
+    responseTemplate.final_grade = assessment.final_grade || null;
+    responseTemplate.passed = assessment.passed || false;
+    
+    // Return the filled response template
+    return responseTemplate;
   } catch (error) {
     console.error('[Assessment Handler] Error:', error);
     throw error;

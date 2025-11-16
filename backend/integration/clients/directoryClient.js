@@ -15,7 +15,7 @@ function getApiUrl() {
   if (!url) {
     throw new Error('DIRECTORY_API_URL or DIRECTORY_URL must be set in environment variables');
   }
-  return `${url}/api/fill-content-metrics`;
+  return `${url}/api/exchange`;
 }
 
 /**

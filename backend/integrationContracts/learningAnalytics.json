@@ -76,6 +76,11 @@
     ],
     "description": "What Course Builder sends to Learning Analytics microservice - complete analytics object with course structure, progress, feedback, skill coverage, etc."
   },
+  "response": {
+    "description": "Fields in the 'response' object that Learning Analytics fills in and returns. Initially sent empty, Learning Analytics populates them.",
+    "fields": [],
+    "note": "Learning Analytics does not send data back to Course Builder - response remains empty"
+  },
   "receive": {
     "fields": [],
     "description": "Learning Analytics does not send data back to Course Builder"

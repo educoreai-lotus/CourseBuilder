@@ -3,6 +3,47 @@
     "fields": [],
     "description": "Course Builder does not send data to Learner AI"
   },
+  "response": {
+    "description": "Fields in the 'response' object that Learner AI fills in and returns. Initially sent empty, Learner AI populates them.",
+    "fields": [
+      {
+        "name": "user_id",
+        "type": "string",
+        "required": true,
+        "description": "User identifier"
+      },
+      {
+        "name": "user_name",
+        "type": "string",
+        "required": true,
+        "description": "User name"
+      },
+      {
+        "name": "company_id",
+        "type": "string",
+        "required": false,
+        "description": "Company identifier"
+      },
+      {
+        "name": "company_name",
+        "type": "string",
+        "required": false,
+        "description": "Company name"
+      },
+      {
+        "name": "skills",
+        "type": "array<string>",
+        "required": true,
+        "description": "Skills array for learning path generation"
+      },
+      {
+        "name": "competency_name",
+        "type": "string",
+        "required": false,
+        "description": "Target competency name"
+      }
+    ]
+  },
   "receive": {
     "fields": [
       {

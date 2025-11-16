@@ -64,6 +64,11 @@
     ],
     "description": "What Course Builder sends to Management Reporting microservice for reporting and analytics"
   },
+  "response": {
+    "description": "Fields in the 'response' object that Management Reporting fills in and returns. Initially sent empty, Management Reporting populates them.",
+    "fields": [],
+    "note": "Management Reporting does not send data back to Course Builder - response remains empty"
+  },
   "receive": {
     "fields": [],
     "description": "Management Reporting does not send data back to Course Builder"

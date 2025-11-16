@@ -10,6 +10,17 @@
     ],
     "description": "What Course Builder sends to Skills Engine to get processed skills for a topic/competency"
   },
+  "response": {
+    "description": "Fields in the 'response' object that Skills Engine fills in and returns. Initially sent empty, Skills Engine populates them.",
+    "fields": [
+      {
+        "name": "skills",
+        "type": "array<string>",
+        "required": true,
+        "description": "Final/processed skills array returned by Skills Engine"
+      }
+    ]
+  },
   "receive": {
     "fields": [
       {

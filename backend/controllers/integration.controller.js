@@ -7,10 +7,31 @@
 import { dispatchIntegrationRequest } from '../integration/dispatcher.js';
 
 /**
- * Map external requester_service values to internal dispatcher service names
+ * Normalize service name to internal format
+ * Supports both serviceName and requester_service for backward compatibility
  */
-function mapRequesterToServiceName(requesterService) {
-  const key = String(requesterService || '').trim().toLowerCase();
+function normalizeServiceName(serviceName) {
+  if (!serviceName) return null;
+  
+  const key = String(serviceName).trim();
+  
+  // Direct match (case-insensitive)
+  const directMatch = {
+    'ContentStudio': 'ContentStudio',
+    'LearnerAI': 'LearnerAI',
+    'Assessment': 'Assessment',
+    'SkillsEngine': 'SkillsEngine',
+    'Directory': 'Directory',
+    'LearningAnalytics': 'LearningAnalytics',
+    'ManagementReporting': 'ManagementReporting',
+    'Devlab': 'Devlab',
+    'DevLab': 'Devlab'
+  };
+  
+  if (directMatch[key]) return directMatch[key];
+  
+  // Kebab-case and lowercase variants
+  const normalized = key.toLowerCase();
   const mapping = {
     'content-studio': 'ContentStudio',
     'contentstudio': 'ContentStudio',
@@ -27,7 +48,8 @@ function mapRequesterToServiceName(requesterService) {
     'devlab': 'Devlab',
     'dev-lab': 'Devlab'
   };
-  return mapping[key] || null;
+  
+  return mapping[normalized] || null;
 }
 
 /**
@@ -36,58 +58,116 @@ function mapRequesterToServiceName(requesterService) {
  *
  * Contract rules:
  * 1) Request body is a stringified JSON (Express JSON parser will yield a string)
- * 2) Parse with JSON.parse to object: must contain requester_service, payload, response:{answer:""}
- * 3) Route by requester_service, pass payload to handler
- * 4) Put handler result into response.answer (stringified) and return the full object as stringified JSON
- * 5) On parse/validation error: respond 400 with stringified JSON error
+ * 2) Parse with JSON.parse to object: must contain serviceName (string), payload (stringified JSON string), response (stringified JSON string)
+ * 3) Parse both payload and response strings to objects
+ * 4) Route by serviceName, pass parsed payload and response template to handler
+ * 5) Handler fills the response template and returns it
+ * 6) Stringify response back and return the full envelope as stringified JSON
+ * 7) On parse/validation error: respond 400 with stringified JSON error
  */
 export async function handleFillContentMetrics(req, res) {
   try {
-    // Body may arrive as a string (stringified JSON) per contract.
-    const rawBody = typeof req.body === 'string' ? req.body : JSON.stringify(req.body);
-
+    // Body may arrive as:
+    // 1. A string (stringified JSON) - if Express.json() middleware is not used or body is sent as text
+    // 2. An object (already parsed by Express.json() middleware)
     let envelope;
-    try {
-      envelope = JSON.parse(rawBody);
-    } catch (parseError) {
+    if (typeof req.body === 'string') {
+      // Body is a string - parse it
+      try {
+        envelope = JSON.parse(req.body);
+      } catch (parseError) {
+        const errorPayload = {
+          error: 'Bad Request',
+          message: 'Failed to parse request body as JSON',
+          details: parseError.message
+        };
+        res.setHeader('Content-Type', 'text/plain');
+      return res.status(400).send(JSON.stringify(errorPayload));
+      }
+    } else if (typeof req.body === 'object' && req.body !== null) {
+      // Body is already parsed by Express.json() - use it directly
+      envelope = req.body;
+    } else {
+      // Invalid body type
       const errorPayload = {
         error: 'Bad Request',
-        message: 'Failed to parse request body as JSON',
-        details: parseError.message
+        message: 'Request body must be a valid JSON object or stringified JSON'
       };
+      res.setHeader('Content-Type', 'text/plain');
       return res.status(400).send(JSON.stringify(errorPayload));
     }
 
     // Validate required fields and structure
-    const hasRequester = typeof envelope.requester_service === 'string' && envelope.requester_service.trim().length > 0;
-    const hasPayload = envelope.payload && typeof envelope.payload === 'object';
-    const hasResponse = envelope.response && typeof envelope.response === 'object' && typeof envelope.response.answer === 'string';
+    // Support both serviceName and requester_service for backward compatibility
+    const serviceNameInput = envelope.serviceName || envelope.requester_service;
+    const hasServiceName = typeof serviceNameInput === 'string' && serviceNameInput.trim().length > 0;
+    const hasPayload = envelope.payload && typeof envelope.payload === 'string';
+    const hasResponse = envelope.response && typeof envelope.response === 'string';
 
-    if (!hasRequester || !hasPayload || !hasResponse) {
+    if (!hasServiceName || !hasPayload || !hasResponse) {
       const errorPayload = {
         error: 'Bad Request',
-        message: 'Envelope must include "requester_service" (string), "payload" (object), and "response" (object with "answer" string)'
+        message: 'Envelope must include "serviceName" (string), "payload" (stringified JSON string), and "response" (stringified JSON string)'
       };
+      res.setHeader('Content-Type', 'text/plain');
       return res.status(400).send(JSON.stringify(errorPayload));
     }
 
-    // Route to appropriate handler based on requester_service
-    const serviceName = mapRequesterToServiceName(envelope.requester_service);
+    // Normalize service name to internal format
+    const serviceName = normalizeServiceName(serviceNameInput);
     if (!serviceName) {
       const errorPayload = {
         error: 'Bad Request',
-        message: `Unsupported requester_service: ${envelope.requester_service}`
+        message: `Unsupported serviceName: ${serviceNameInput}`
       };
+      res.setHeader('Content-Type', 'text/plain');
+      return res.status(400).send(JSON.stringify(errorPayload));
+    }
+    
+    // Ensure envelope has serviceName (normalize from requester_service if needed)
+    envelope.serviceName = serviceName;
+
+    // Parse payload (it's a stringified JSON)
+    let payloadObject;
+    try {
+      payloadObject = JSON.parse(envelope.payload);
+    } catch (parseError) {
+      const errorPayload = {
+        error: 'Bad Request',
+        message: 'Failed to parse payload as JSON',
+        details: parseError.message
+      };
+      res.setHeader('Content-Type', 'text/plain');
       return res.status(400).send(JSON.stringify(errorPayload));
     }
 
-    // Call dispatcher with the payload
-    const resultObject = await dispatchIntegrationRequest(serviceName, envelope.payload);
+    // Parse response (it's a stringified JSON)
+    let responseObject;
+    try {
+      responseObject = JSON.parse(envelope.response);
+    } catch (parseError) {
+      const errorPayload = {
+        error: 'Bad Request',
+        message: 'Failed to parse response as JSON',
+        details: parseError.message
+      };
+      res.setHeader('Content-Type', 'text/plain');
+      return res.status(400).send(JSON.stringify(errorPayload));
+    }
 
-    // Place result as stringified JSON into response.answer, preserve overall structure
-    envelope.response.answer = JSON.stringify(resultObject ?? {});
+    // Call dispatcher with serviceName, payload, and response template
+    const filledResponse = await dispatchIntegrationRequest(serviceName, payloadObject, responseObject);
 
-    // Return the full object as stringified JSON
+    // Handler returns the filled response object
+    // Stringify response back to string
+    envelope.response = JSON.stringify(filledResponse);
+    
+    // Ensure serviceName is in the response envelope
+    envelope.serviceName = serviceName;
+
+    // Return the full envelope as stringified JSON
+    // Set Content-Type to text/plain since we're sending stringified JSON
+    res.setHeader('Content-Type', 'text/plain');
     return res.status(200).send(JSON.stringify(envelope));
   } catch (error) {
     console.error('[Integration Controller] Error:', error);
@@ -96,6 +176,7 @@ export async function handleFillContentMetrics(req, res) {
       error: status === 500 ? 'Internal Server Error' : 'Error',
       message: error.message || 'Unhandled error'
     };
+    res.setHeader('Content-Type', 'text/plain');
     return res.status(status).send(JSON.stringify(errorPayload));
   }
 }

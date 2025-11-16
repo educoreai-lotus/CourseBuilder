@@ -8,9 +8,10 @@ import skillsEngineDTO from '../../dtoBuilders/skillsEngineDTO.js';
 /**
  * Handle Skills Engine integration request
  * @param {Object} payloadObject - Parsed payload from Skills Engine
- * @returns {Promise<Object>} Response payload
+ * @param {Object} responseTemplate - Empty response template to fill
+ * @returns {Promise<Object>} Filled response object matching contract
  */
-export async function handleSkillsIntegration(payloadObject) {
+export async function handleSkillsIntegration(payloadObject, responseTemplate) {
   try {
     // Normalize Skills Engine payload
     const data = skillsEngineDTO.buildFromReceived(payloadObject);
@@ -23,13 +24,11 @@ export async function handleSkillsIntegration(payloadObject) {
     // Skills can be associated with lessons when updating course structure
     // This is typically used when updating course structure
     
-    // Return response in unified format
-    return {
-      serviceName: 'SkillsEngine',
-      status: 'received',
-      skills_count: data.skills?.length || 0,
-      skills: data.skills || []
-    };
+    // Fill response template with contract-matching fields
+    responseTemplate.skills = data.skills || [];
+    
+    // Return the filled response template
+    return responseTemplate;
   } catch (error) {
     console.error('[SkillsEngine Handler] Error:', error);
     throw error;

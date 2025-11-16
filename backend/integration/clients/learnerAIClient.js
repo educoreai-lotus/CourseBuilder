@@ -14,7 +14,7 @@ function getApiUrl() {
   if (!url) {
     throw new Error('LEARNER_AI_API_URL or LEARNER_AI_URL must be set in environment variables');
   }
-  return `${url}/api/fill-content-metrics`;
+  return `${url}/api/fill-learner-ai-fields`;
 }
 
 /**

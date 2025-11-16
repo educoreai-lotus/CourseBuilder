@@ -9,9 +9,10 @@ import learnerAIDTO from '../../dtoBuilders/learnerAIDTO.js';
 /**
  * Handle Learner AI integration request
  * @param {Object} payloadObject - Parsed payload from Learner AI
- * @returns {Promise<Object>} Response payload
+ * @param {Object} responseTemplate - Empty response template to fill
+ * @returns {Promise<Object>} Filled response object matching contract
  */
-export async function handleLearnerAIIntegration(payloadObject) {
+export async function handleLearnerAIIntegration(payloadObject, responseTemplate) {
   try {
     // Normalize Learner AI payload
     const data = learnerAIDTO.buildFromReceived(payloadObject);
@@ -26,16 +27,16 @@ export async function handleLearnerAIIntegration(payloadObject) {
       competency_name: data.competency_name
     });
 
-    // Return response in unified format
-    // This triggers course creation flow which will request lessons from Content Studio
-    return {
-      serviceName: 'LearnerAI',
-      status: 'received',
-      user_id: data.user_id,
-      skills_count: data.skills?.length || 0,
-      competency_name: data.competency_name,
-      message: 'Learner AI data received. Course creation will be triggered.'
-    };
+    // Fill response template with contract-matching fields
+    responseTemplate.user_id = data.user_id;
+    responseTemplate.user_name = data.user_name || '';
+    responseTemplate.company_id = data.company_id || null;
+    responseTemplate.company_name = data.company_name || null;
+    responseTemplate.skills = data.skills || [];
+    responseTemplate.competency_name = data.competency_name || null;
+    
+    // Return the filled response template
+    return responseTemplate;
   } catch (error) {
     console.error('[LearnerAI Handler] Error:', error);
     throw error;

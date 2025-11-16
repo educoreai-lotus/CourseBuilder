@@ -38,6 +38,55 @@
     ],
     "description": "What Course Builder sends to Assessment microservice when redirecting learner for assessment"
   },
+  "response": {
+    "description": "Fields in the 'response' object that Assessment fills in and returns. Initially sent empty, Assessment populates them.",
+    "fields": [
+      {
+        "name": "learner_id",
+        "type": "string",
+        "required": true,
+        "description": "Learner identifier"
+      },
+      {
+        "name": "course_id",
+        "type": "string",
+        "required": true,
+        "description": "Course identifier"
+      },
+      {
+        "name": "course_name",
+        "type": "string",
+        "required": true,
+        "description": "Course name"
+      },
+      {
+        "name": "exam_type",
+        "type": "string",
+        "required": true,
+        "description": "Type of exam (e.g., 'postcourse')",
+        "default": "postcourse"
+      },
+      {
+        "name": "passing_grade",
+        "type": "number",
+        "required": true,
+        "description": "Passing grade threshold",
+        "default": 70.00
+      },
+      {
+        "name": "final_grade",
+        "type": "number",
+        "required": false,
+        "description": "Final grade achieved by learner"
+      },
+      {
+        "name": "passed",
+        "type": "boolean",
+        "required": false,
+        "description": "Whether learner passed the assessment"
+      }
+    ]
+  },
   "receive": {
     "fields": [
       {

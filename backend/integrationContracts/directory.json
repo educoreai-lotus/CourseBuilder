@@ -45,6 +45,29 @@
     ],
     "description": "What Course Builder sends to Directory microservice when feedback is submitted"
   },
+  "response": {
+    "description": "Fields in the 'response' object that Directory fills in and returns. Initially sent empty, Directory populates them.",
+    "fields": [
+      {
+        "name": "employee_id",
+        "type": "string",
+        "required": true,
+        "description": "Employee identifier"
+      },
+      {
+        "name": "preferred_language",
+        "type": "string",
+        "required": false,
+        "description": "Employee preferred language"
+      },
+      {
+        "name": "bonus_attempt",
+        "type": "boolean",
+        "required": false,
+        "description": "Whether employee has bonus attempt available"
+      }
+    ]
+  },
   "receive": {
     "fields": [
       {

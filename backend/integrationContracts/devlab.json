@@ -22,6 +22,11 @@
     ],
     "description": "What Course Builder sends to DevLab microservice"
   },
+  "response": {
+    "description": "Fields in the 'response' object that DevLab fills in and returns. Initially sent empty, DevLab populates them.",
+    "fields": [],
+    "note": "DevLab does not send data back to Course Builder (exercises are stored in lessons.devlab_exercises) - response remains empty"
+  },
   "receive": {
     "fields": [],
     "description": "DevLab does not send data back to Course Builder (exercises are stored in lessons.devlab_exercises)"

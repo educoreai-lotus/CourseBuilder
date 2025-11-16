@@ -56,11 +56,21 @@ export function normalizeLessonData(lessonData) {
     trainer_ids = [lessonData.trainer_id];
   }
 
+  // Derive content_type - MUST always exist
+  let content_type = lessonData.content_type;
+  if (!content_type && Array.isArray(content_data) && content_data.length > 0) {
+    // If not provided at topic level, infer from first content block
+    content_type = content_data[0]?.content_type || 'mixed';
+  }
+  if (!content_type) {
+    content_type = 'mixed';
+  }
+
   return {
     // Content Studio topic fields → Course Builder lesson fields
     lesson_name: lessonData.topic_name || lessonData.lesson_name || '',
     lesson_description: lessonData.topic_description || lessonData.lesson_description || null,
-    content_type: lessonData.content_type || null,
+    content_type,
     content_data, // Normalized array
     devlab_exercises, // Normalized array
     skills, // Normalized array

@@ -13,9 +13,10 @@ import { normalizeContentStudioPayload } from '../../services/contentStudioNorma
 /**
  * Handle Content Studio integration request
  * @param {Object} payloadObject - Parsed payload from Content Studio
- * @returns {Promise<Object>} Response payload
+ * @param {Object} responseTemplate - Empty response template to fill
+ * @returns {Promise<Object>} Filled response object matching contract
  */
-export async function handleContentStudioIntegration(payloadObject) {
+export async function handleContentStudioIntegration(payloadObject, responseTemplate) {
   try {
     // Normalize Content Studio payload (topics[] → lessons[])
     const normalized = normalizeContentStudioPayload(payloadObject);
@@ -88,16 +89,25 @@ export async function handleContentStudioIntegration(payloadObject) {
       createdLessons.push(lesson);
     }
 
-    // Return response in unified format
-    return {
-      serviceName: 'ContentStudio',
-      status: 'success',
-      course_id: course.id,
-      topic_id: topic.id,
-      module_id: module.id,
-      lessons_created: createdLessons.length,
-      lesson_ids: createdLessons.map(l => l.id)
-    };
+    // Fill response template with contract-matching fields
+    // Always include topics from the payload (Content Studio sends topics)
+    if (Array.isArray(payloadObject.topics)) {
+      responseTemplate.topics = payloadObject.topics;
+    } else if (payloadObject.topics) {
+      responseTemplate.topics = [payloadObject.topics];
+    } else {
+      responseTemplate.topics = [];
+    }
+    
+    // For learner-specific courses: also fill learner fields
+    if (!isTrainerCourse && payloadObject.learner_id) {
+      responseTemplate.learner_id = payloadObject.learner_id;
+      responseTemplate.learner_name = payloadObject.learner_name || '';
+      responseTemplate.learner_company = payloadObject.learner_company || '';
+    }
+    
+    // Return the filled response template
+    return responseTemplate;
   } catch (error) {
     console.error('[ContentStudio Handler] Error:', error);
     throw error;

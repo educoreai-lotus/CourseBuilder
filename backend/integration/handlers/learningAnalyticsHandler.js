@@ -7,21 +7,18 @@
 /**
  * Handle Learning Analytics integration request
  * @param {Object} payloadObject - Parsed payload from Learning Analytics
- * @returns {Promise<Object>} Response payload
+ * @param {Object} responseTemplate - Empty response template to fill
+ * @returns {Promise<Object>} Filled response object matching contract
  */
-export async function handleLearningAnalyticsIntegration(payloadObject) {
+export async function handleLearningAnalyticsIntegration(payloadObject, responseTemplate) {
   try {
     console.log('[LearningAnalytics Handler] Received:', payloadObject);
 
     // Learning Analytics typically only receives data from Course Builder
     // If it sends data back, handle it here
     
-    // Return response in unified format
-    return {
-      serviceName: 'LearningAnalytics',
-      status: 'received',
-      data: payloadObject
-    };
+    // Learning Analytics doesn't send data back - return empty response template
+    return responseTemplate;
   } catch (error) {
     console.error('[LearningAnalytics Handler] Error:', error);
     throw error;

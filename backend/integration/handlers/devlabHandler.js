@@ -6,21 +6,19 @@
 /**
  * Handle DevLab integration request
  * @param {Object} payloadObject - Parsed payload from DevLab
- * @returns {Promise<Object>} Response payload
+ * @param {Object} responseTemplate - Empty response template to fill
+ * @returns {Promise<Object>} Filled response object matching contract
  */
-export async function handleDevlabIntegration(payloadObject) {
+export async function handleDevlabIntegration(payloadObject, responseTemplate) {
   try {
     console.log('[DevLab Handler] Received:', payloadObject);
 
     // DevLab sends exercise completion data
     // Handle it here if needed
     
-    // Return response in unified format
-    return {
-      serviceName: 'DevLab',
-      status: 'received',
-      data: payloadObject
-    };
+    // DevLab doesn't send data back - exercises stored in lessons.devlab_exercises
+    // Return empty response template
+    return responseTemplate;
   } catch (error) {
     console.error('[DevLab Handler] Error:', error);
     throw error;
