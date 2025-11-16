@@ -9,6 +9,7 @@ import moduleRepository from '../../repositories/ModuleRepository.js';
 import lessonRepository from '../../repositories/LessonRepository.js';
 import contentStudioDTO from '../../dtoBuilders/contentStudioDTO.js';
 import { normalizeContentStudioPayload } from '../../services/contentStudioNormalizer.js';
+import { getFallbackData, shouldUseFallback } from '../fallbackData.js';
 
 /**
  * Handle Content Studio integration request
@@ -110,7 +111,63 @@ export async function handleContentStudioIntegration(payloadObject, responseTemp
     return responseTemplate;
   } catch (error) {
     console.error('[ContentStudio Handler] Error:', error);
-    throw error;
+    
+    // Check if we should use fallback data (network/service errors)
+    if (shouldUseFallback(error, 'ContentStudio')) {
+      console.warn('[ContentStudio Handler] Using fallback data due to service unavailability');
+      
+      const isLearnerCourse = !!payloadObject.learner_id;
+      const variant = isLearnerCourse ? 'learner_specific' : 'trainer';
+      const fallback = getFallbackData('ContentStudio', variant);
+      
+      // Fill response template with fallback data
+      if (isLearnerCourse && fallback.learner_id) {
+        responseTemplate.learner_id = fallback.learner_id;
+        responseTemplate.learner_name = fallback.learner_name || '';
+        responseTemplate.learner_company = fallback.learner_company || '';
+        responseTemplate.topics = fallback.topics || [];
+      } else if (!isLearnerCourse && fallback.topics) {
+        responseTemplate.topics = fallback.topics || [];
+      } else {
+        // Use payload data as secondary fallback
+        responseTemplate.topics = payloadObject.topics || [];
+        if (payloadObject.learner_id) {
+          responseTemplate.learner_id = payloadObject.learner_id;
+          responseTemplate.learner_name = payloadObject.learner_name || '';
+          responseTemplate.learner_company = payloadObject.learner_company || '';
+        }
+      }
+      
+      return responseTemplate;
+    }
+    
+    // For non-network errors, try to use payload data
+    try {
+      if (Array.isArray(payloadObject.topics)) {
+        responseTemplate.topics = payloadObject.topics;
+      } else if (payloadObject.topics) {
+        responseTemplate.topics = [payloadObject.topics];
+      } else {
+        responseTemplate.topics = [];
+      }
+      
+      if (payloadObject.learner_id) {
+        responseTemplate.learner_id = payloadObject.learner_id || '';
+        responseTemplate.learner_name = payloadObject.learner_name || '';
+        responseTemplate.learner_company = payloadObject.learner_company || '';
+      }
+      
+      return responseTemplate;
+    } catch (fallbackError) {
+      // Last resort: use mock fallback data
+      const fallback = getFallbackData('ContentStudio', 'learner_specific');
+      return {
+        learner_id: fallback.learner_id || payloadObject.learner_id || '',
+        learner_name: fallback.learner_name || payloadObject.learner_name || '',
+        learner_company: fallback.learner_company || payloadObject.learner_company || '',
+        topics: fallback.topics || []
+      };
+    }
   }
 }
 

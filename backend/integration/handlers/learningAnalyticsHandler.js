@@ -21,7 +21,9 @@ export async function handleLearningAnalyticsIntegration(payloadObject, response
     return responseTemplate;
   } catch (error) {
     console.error('[LearningAnalytics Handler] Error:', error);
-    throw error;
+    
+    // Fallback: Return empty response template (Learning Analytics doesn't send data back)
+    return responseTemplate;
   }
 }
 

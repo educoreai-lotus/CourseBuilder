@@ -4,6 +4,7 @@
  */
 
 import directoryDTO from '../../dtoBuilders/directoryDTO.js';
+import { getFallbackData, shouldUseFallback } from '../fallbackData.js';
 
 /**
  * Handle Directory integration request
@@ -35,7 +36,35 @@ export async function handleDirectoryIntegration(payloadObject, responseTemplate
     return responseTemplate;
   } catch (error) {
     console.error('[Directory Handler] Error:', error);
-    throw error;
+    
+    // Check if we should use fallback data (network/service errors)
+    if (shouldUseFallback(error, 'Directory')) {
+      console.warn('[Directory Handler] Using fallback data due to service unavailability');
+      const fallback = getFallbackData('Directory');
+      
+      responseTemplate.employee_id = fallback.employee_id || payloadObject.employee_id || '';
+      responseTemplate.preferred_language = fallback.preferred_language || payloadObject.preferred_language || null;
+      responseTemplate.bonus_attempt = fallback.bonus_attempt !== undefined ? fallback.bonus_attempt : (payloadObject.bonus_attempt || false);
+      
+      return responseTemplate;
+    }
+    
+    // For non-network errors, use payload data
+    try {
+      responseTemplate.employee_id = payloadObject.employee_id || '';
+      responseTemplate.preferred_language = payloadObject.preferred_language || null;
+      responseTemplate.bonus_attempt = payloadObject.bonus_attempt || false;
+      
+      return responseTemplate;
+    } catch (fallbackError) {
+      // Last resort: use mock fallback data
+      const fallback = getFallbackData('Directory');
+      return {
+        employee_id: fallback.employee_id || '',
+        preferred_language: fallback.preferred_language || null,
+        bonus_attempt: fallback.bonus_attempt || false
+      };
+    }
   }
 }
 

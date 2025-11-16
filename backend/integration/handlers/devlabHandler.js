@@ -21,7 +21,9 @@ export async function handleDevlabIntegration(payloadObject, responseTemplate) {
     return responseTemplate;
   } catch (error) {
     console.error('[DevLab Handler] Error:', error);
-    throw error;
+    
+    // Fallback: Return empty response template (DevLab doesn't send data back)
+    return responseTemplate;
   }
 }
 

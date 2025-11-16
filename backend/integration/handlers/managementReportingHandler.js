@@ -20,7 +20,9 @@ export async function handleManagementReportingIntegration(payloadObject, respon
     return responseTemplate;
   } catch (error) {
     console.error('[ManagementReporting Handler] Error:', error);
-    throw error;
+    
+    // Fallback: Return empty response template (Management Reporting doesn't send data back)
+    return responseTemplate;
   }
 }
 

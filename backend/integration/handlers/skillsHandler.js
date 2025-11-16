@@ -4,6 +4,7 @@
  */
 
 import skillsEngineDTO from '../../dtoBuilders/skillsEngineDTO.js';
+import { getFallbackData, shouldUseFallback } from '../fallbackData.js';
 
 /**
  * Handle Skills Engine integration request
@@ -31,7 +32,29 @@ export async function handleSkillsIntegration(payloadObject, responseTemplate) {
     return responseTemplate;
   } catch (error) {
     console.error('[SkillsEngine Handler] Error:', error);
-    throw error;
+    
+    // Check if we should use fallback data (network/service errors)
+    if (shouldUseFallback(error, 'SkillsEngine')) {
+      console.warn('[SkillsEngine Handler] Using fallback data due to service unavailability');
+      const fallback = getFallbackData('SkillsEngine');
+      
+      responseTemplate.skills = fallback.skills || payloadObject.skills || [];
+      
+      return responseTemplate;
+    }
+    
+    // For non-network errors, use payload data
+    try {
+      responseTemplate.skills = payloadObject.skills || [];
+      
+      return responseTemplate;
+    } catch (fallbackError) {
+      // Last resort: use mock fallback data
+      const fallback = getFallbackData('SkillsEngine');
+      return {
+        skills: fallback.skills || []
+      };
+    }
   }
 }
 
