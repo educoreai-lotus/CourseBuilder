@@ -6,8 +6,11 @@ This file contains example request bodies for each microservice integration endp
 
 **Important:** 
 - The entire request body must be a **stringified JSON**
-- `payload` must be a **stringified JSON string**
-- `response` must be a **stringified JSON string** (initially empty, filled by the service)
+- Request body contains **only three fields**: `requester_service`, `payload`, `response`
+- `requester_service` must always be `"CourseBuilder"` (identifies who is making the request)
+- `payload` must be a **stringified JSON string** (data sent to target microservice)
+- `response` must be a **stringified JSON string** (template for expected response structure, initially empty, filled by the service)
+- Routing to target microservice is determined **internally** from payload structure - no routing fields in request/response
 
 ---
 
@@ -18,7 +21,7 @@ This file contains example request bodies for each microservice integration endp
 **Request Structure (as JSON objects - for understanding):**
 ```json
 {
-  "serviceName": "ContentStudio",
+  "requester_service": "CourseBuilder",
   "payload": {
     "learner_id": "00000000-0000-0000-0000-000000000001",
     "learner_name": "Alex Doe",
@@ -37,7 +40,7 @@ This file contains example request bodies for each microservice integration endp
 **Request Body (as stringified JSON - actual HTTP request):**
 ```json
 {
-  "serviceName": "ContentStudio",
+  "requester_service": "CourseBuilder",
   "payload": "{\"learner_id\":\"00000000-0000-0000-0000-000000000001\",\"learner_name\":\"Alex Doe\",\"learner_company\":\"Acme Corp\",\"skills\":[\"react-hooks\",\"javascript\",\"frontend\"]}",
   "response": "{\"learner_id\":\"\",\"learner_name\":\"\",\"learner_company\":\"\",\"topics\":[]}"
 }
@@ -46,7 +49,7 @@ This file contains example request bodies for each microservice integration endp
 **Expected Response Structure (as JSON objects - for understanding):**
 ```json
 {
-  "serviceName": "ContentStudio",
+  "requester_service": "CourseBuilder",
   "payload": {
     "learner_id": "00000000-0000-0000-0000-000000000001",
     "learner_name": "Alex Doe",
@@ -87,7 +90,7 @@ This file contains example request bodies for each microservice integration endp
 **Expected Response (as stringified JSON - actual HTTP response):**
 ```json
 {
-  "serviceName": "ContentStudio",
+  "requester_service": "CourseBuilder",
   "payload": "{\"learner_id\":\"00000000-0000-0000-0000-000000000001\",\"learner_name\":\"Alex Doe\",\"learner_company\":\"Acme Corp\",\"skills\":[\"react-hooks\",\"javascript\",\"frontend\"]}",
   "response": "{\"learner_id\":\"00000000-0000-0000-0000-000000000001\",\"learner_name\":\"Alex Doe\",\"learner_company\":\"Acme Corp\",\"topics\":[{\"topic_id\":\"t-1\",\"topic_name\":\"Mastering React Hooks\",\"topic_description\":\"...\",\"contents\":[...],\"devlab_exercises\":\"\"}]}"
 }
@@ -100,7 +103,7 @@ This file contains example request bodies for each microservice integration endp
 **Request Structure (as JSON objects - for understanding):**
 ```json
 {
-  "serviceName": "LearnerAI",
+  "requester_service": "CourseBuilder", "LearnerAI",
   "payload": {},
   "response": {
     "user_id": "",
@@ -116,7 +119,7 @@ This file contains example request bodies for each microservice integration endp
 **Request Body (as stringified JSON - actual HTTP request):**
 ```json
 {
-  "serviceName": "LearnerAI",
+  "requester_service": "CourseBuilder", "LearnerAI",
   "payload": "{}",
   "response": "{\"user_id\":\"\",\"user_name\":\"\",\"company_id\":\"\",\"company_name\":\"\",\"skills\":[],\"competency_name\":\"\"}"
 }
@@ -125,7 +128,7 @@ This file contains example request bodies for each microservice integration endp
 **Expected Response Structure (as JSON objects - for understanding):**
 ```json
 {
-  "serviceName": "LearnerAI",
+  "requester_service": "CourseBuilder", "LearnerAI",
   "payload": {},
   "response": {
     "user_id": "00000000-0000-0000-0000-000000000001",
@@ -141,7 +144,7 @@ This file contains example request bodies for each microservice integration endp
 **Expected Response (as stringified JSON - actual HTTP response):**
 ```json
 {
-  "serviceName": "LearnerAI",
+  "requester_service": "CourseBuilder", "LearnerAI",
   "payload": "{}",
   "response": "{\"user_id\":\"00000000-0000-0000-0000-000000000001\",\"user_name\":\"Alex Doe\",\"company_id\":\"company-123\",\"company_name\":\"Acme Corp\",\"skills\":[\"react-hooks\",\"javascript\"],\"competency_name\":\"Frontend Development\"}"
 }
@@ -154,7 +157,7 @@ This file contains example request bodies for each microservice integration endp
 **Request Structure (as JSON objects - for understanding):**
 ```json
 {
-  "serviceName": "Assessment",
+  "requester_service": "CourseBuilder", "Assessment",
   "payload": {
     "learner_id": "00000000-0000-0000-0000-000000000001",
     "learner_name": "Alex Doe",
@@ -182,7 +185,7 @@ This file contains example request bodies for each microservice integration endp
 **Request Body (as stringified JSON - actual HTTP request):**
 ```json
 {
-  "serviceName": "Assessment",
+  "requester_service": "CourseBuilder", "Assessment",
   "payload": "{\"learner_id\":\"00000000-0000-0000-0000-000000000001\",\"learner_name\":\"Alex Doe\",\"course_id\":\"11111111-1111-1111-1111-111111111111\",\"course_name\":\"React Fundamentals\",\"coverage_map\":[{\"lesson_id\":\"l-1\",\"skills\":[\"react-hooks\"]}]}",
   "response": "{\"learner_id\":\"\",\"course_id\":\"\",\"course_name\":\"\",\"exam_type\":\"\",\"passing_grade\":0,\"final_grade\":0,\"passed\":false}"
 }
@@ -191,7 +194,7 @@ This file contains example request bodies for each microservice integration endp
 **Expected Response Structure (as JSON objects - for understanding):**
 ```json
 {
-  "serviceName": "Assessment",
+  "requester_service": "CourseBuilder", "Assessment",
   "payload": {
     "learner_id": "00000000-0000-0000-0000-000000000001",
     "learner_name": "Alex Doe",
@@ -219,7 +222,7 @@ This file contains example request bodies for each microservice integration endp
 **Expected Response (as stringified JSON - actual HTTP response):**
 ```json
 {
-  "serviceName": "Assessment",
+  "requester_service": "CourseBuilder", "Assessment",
   "payload": "{\"learner_id\":\"00000000-0000-0000-0000-000000000001\",\"learner_name\":\"Alex Doe\",\"course_id\":\"11111111-1111-1111-1111-111111111111\",\"course_name\":\"React Fundamentals\",\"coverage_map\":[{\"lesson_id\":\"l-1\",\"skills\":[\"react-hooks\"]}]}",
   "response": "{\"learner_id\":\"00000000-0000-0000-0000-000000000001\",\"course_id\":\"11111111-1111-1111-1111-111111111111\",\"course_name\":\"React Fundamentals\",\"exam_type\":\"postcourse\",\"passing_grade\":70.0,\"final_grade\":85.5,\"passed\":true}"
 }
@@ -232,7 +235,7 @@ This file contains example request bodies for each microservice integration endp
 **Request Structure (as JSON objects - for understanding):**
 ```json
 {
-  "serviceName": "Directory",
+  "requester_service": "CourseBuilder", "Directory",
   "payload": {
     "feedback": {
       "rating": 5,
@@ -254,7 +257,7 @@ This file contains example request bodies for each microservice integration endp
 **Request Body (as stringified JSON - actual HTTP request):**
 ```json
 {
-  "serviceName": "Directory",
+  "requester_service": "CourseBuilder", "Directory",
   "payload": "{\"feedback\":{\"rating\":5,\"comment\":\"Great course!\",\"submitted_at\":\"2024-01-15T10:00:00Z\"},\"course_id\":\"11111111-1111-1111-1111-111111111111\",\"course_name\":\"React Fundamentals\",\"learner_id\":\"00000000-0000-0000-0000-000000000001\"}",
   "response": "{\"employee_id\":\"\",\"preferred_language\":\"\",\"bonus_attempt\":false}"
 }
@@ -263,7 +266,7 @@ This file contains example request bodies for each microservice integration endp
 **Expected Response Structure (as JSON objects - for understanding):**
 ```json
 {
-  "serviceName": "Directory",
+  "requester_service": "CourseBuilder", "Directory",
   "payload": {
     "feedback": {
       "rating": 5,
@@ -285,7 +288,7 @@ This file contains example request bodies for each microservice integration endp
 **Expected Response (as stringified JSON - actual HTTP response):**
 ```json
 {
-  "serviceName": "Directory",
+  "requester_service": "CourseBuilder", "Directory",
   "payload": "{\"feedback\":{\"rating\":5,\"comment\":\"Great course!\",\"submitted_at\":\"2024-01-15T10:00:00Z\"},\"course_id\":\"11111111-1111-1111-1111-111111111111\",\"course_name\":\"React Fundamentals\",\"learner_id\":\"00000000-0000-0000-0000-000000000001\"}",
   "response": "{\"employee_id\":\"emp-123\",\"preferred_language\":\"en-US\",\"bonus_attempt\":true}"
 }
@@ -298,7 +301,7 @@ This file contains example request bodies for each microservice integration endp
 **Request Structure (as JSON objects - for understanding):**
 ```json
 {
-  "serviceName": "SkillsEngine",
+  "requester_service": "CourseBuilder", "SkillsEngine",
   "payload": {
     "topic": "React Hooks"
   },
@@ -311,7 +314,7 @@ This file contains example request bodies for each microservice integration endp
 **Request Body (as stringified JSON - actual HTTP request):**
 ```json
 {
-  "serviceName": "SkillsEngine",
+  "requester_service": "CourseBuilder", "SkillsEngine",
   "payload": "{\"topic\":\"React Hooks\"}",
   "response": "{\"skills\":[]}"
 }
@@ -320,7 +323,7 @@ This file contains example request bodies for each microservice integration endp
 **Expected Response Structure (as JSON objects - for understanding):**
 ```json
 {
-  "serviceName": "SkillsEngine",
+  "requester_service": "CourseBuilder", "SkillsEngine",
   "payload": {
     "topic": "React Hooks"
   },
@@ -333,7 +336,7 @@ This file contains example request bodies for each microservice integration endp
 **Expected Response (as stringified JSON - actual HTTP response):**
 ```json
 {
-  "serviceName": "SkillsEngine",
+  "requester_service": "CourseBuilder", "SkillsEngine",
   "payload": "{\"topic\":\"React Hooks\"}",
   "response": "{\"skills\":[\"useState\",\"useEffect\",\"useContext\",\"useReducer\",\"custom-hooks\"]}"
 }
@@ -346,7 +349,7 @@ This file contains example request bodies for each microservice integration endp
 **Request Structure (as JSON objects - for understanding):**
 ```json
 {
-  "serviceName": "LearningAnalytics",
+  "requester_service": "CourseBuilder", "LearningAnalytics",
   "payload": {
     "course_id": "11111111-1111-1111-1111-111111111111",
     "course_name": "React Fundamentals",
@@ -368,7 +371,7 @@ This file contains example request bodies for each microservice integration endp
 **Request Body (as stringified JSON - actual HTTP request):**
 ```json
 {
-  "serviceName": "LearningAnalytics",
+  "requester_service": "CourseBuilder", "LearningAnalytics",
   "payload": "{\"course_id\":\"11111111-1111-1111-1111-111111111111\",\"course_name\":\"React Fundamentals\",\"course_type\":\"trainer\",\"status\":\"active\",\"level\":\"intermediate\",\"duration_hours\":10,\"structure\":{},\"enrollment\":{},\"feedback\":{},\"assessments\":{},\"created_at\":\"2024-01-01T00:00:00Z\",\"updated_at\":\"2024-01-15T10:00:00Z\"}",
   "response": "{}"
 }
@@ -377,7 +380,7 @@ This file contains example request bodies for each microservice integration endp
 **Expected Response Structure (as JSON objects - for understanding):**
 ```json
 {
-  "serviceName": "LearningAnalytics",
+  "requester_service": "CourseBuilder", "LearningAnalytics",
   "payload": {
     "course_id": "11111111-1111-1111-1111-111111111111",
     "course_name": "React Fundamentals",
@@ -399,7 +402,7 @@ This file contains example request bodies for each microservice integration endp
 **Expected Response (as stringified JSON - actual HTTP response):**
 ```json
 {
-  "serviceName": "LearningAnalytics",
+  "requester_service": "CourseBuilder", "LearningAnalytics",
   "payload": "{\"course_id\":\"11111111-1111-1111-1111-111111111111\",\"course_name\":\"React Fundamentals\",\"course_type\":\"trainer\",\"status\":\"active\",\"level\":\"intermediate\",\"duration_hours\":10,\"structure\":{},\"enrollment\":{},\"feedback\":{},\"assessments\":{},\"created_at\":\"2024-01-01T00:00:00Z\",\"updated_at\":\"2024-01-15T10:00:00Z\"}",
   "response": "{}"
 }
@@ -412,7 +415,7 @@ This file contains example request bodies for each microservice integration endp
 **Request Structure (as JSON objects - for understanding):**
 ```json
 {
-  "serviceName": "ManagementReporting",
+  "requester_service": "CourseBuilder", "ManagementReporting",
   "payload": {
     "course_id": "11111111-1111-1111-1111-111111111111",
     "course_name": "React Fundamentals",
@@ -432,7 +435,7 @@ This file contains example request bodies for each microservice integration endp
 **Request Body (as stringified JSON - actual HTTP request):**
 ```json
 {
-  "serviceName": "ManagementReporting",
+  "requester_service": "CourseBuilder", "ManagementReporting",
   "payload": "{\"course_id\":\"11111111-1111-1111-1111-111111111111\",\"course_name\":\"React Fundamentals\",\"level\":\"intermediate\",\"duration\":10,\"totalEnrollments\":150,\"activeEnrollment\":120,\"completionRate\":75.5,\"averageRating\":4.5,\"createdAt\":\"2024-01-01T00:00:00Z\",\"feedback\":[]}",
   "response": "{}"
 }
@@ -441,7 +444,7 @@ This file contains example request bodies for each microservice integration endp
 **Expected Response Structure (as JSON objects - for understanding):**
 ```json
 {
-  "serviceName": "ManagementReporting",
+  "requester_service": "CourseBuilder", "ManagementReporting",
   "payload": {
     "course_id": "11111111-1111-1111-1111-111111111111",
     "course_name": "React Fundamentals",
@@ -461,7 +464,7 @@ This file contains example request bodies for each microservice integration endp
 **Expected Response (as stringified JSON - actual HTTP response):**
 ```json
 {
-  "serviceName": "ManagementReporting",
+  "requester_service": "CourseBuilder", "ManagementReporting",
   "payload": "{\"course_id\":\"11111111-1111-1111-1111-111111111111\",\"course_name\":\"React Fundamentals\",\"level\":\"intermediate\",\"duration\":10,\"totalEnrollments\":150,\"activeEnrollment\":120,\"completionRate\":75.5,\"averageRating\":4.5,\"createdAt\":\"2024-01-01T00:00:00Z\",\"feedback\":[]}",
   "response": "{}"
 }
@@ -474,7 +477,7 @@ This file contains example request bodies for each microservice integration endp
 **Request Structure (as JSON objects - for understanding):**
 ```json
 {
-  "serviceName": "Devlab",
+  "requester_service": "CourseBuilder", "Devlab",
   "payload": {
     "course_id": "11111111-1111-1111-1111-111111111111",
     "learner_id": "00000000-0000-0000-0000-000000000001",
@@ -487,7 +490,7 @@ This file contains example request bodies for each microservice integration endp
 **Request Body (as stringified JSON - actual HTTP request):**
 ```json
 {
-  "serviceName": "Devlab",
+  "requester_service": "CourseBuilder", "Devlab",
   "payload": "{\"course_id\":\"11111111-1111-1111-1111-111111111111\",\"learner_id\":\"00000000-0000-0000-0000-000000000001\",\"course_name\":\"React Fundamentals\"}",
   "response": "{}"
 }
@@ -496,7 +499,7 @@ This file contains example request bodies for each microservice integration endp
 **Expected Response Structure (as JSON objects - for understanding):**
 ```json
 {
-  "serviceName": "Devlab",
+  "requester_service": "CourseBuilder", "Devlab",
   "payload": {
     "course_id": "11111111-1111-1111-1111-111111111111",
     "learner_id": "00000000-0000-0000-0000-000000000001",
@@ -509,7 +512,7 @@ This file contains example request bodies for each microservice integration endp
 **Expected Response (as stringified JSON - actual HTTP response):**
 ```json
 {
-  "serviceName": "Devlab",
+  "requester_service": "CourseBuilder", "Devlab",
   "payload": "{\"course_id\":\"11111111-1111-1111-1111-111111111111\",\"learner_id\":\"00000000-0000-0000-0000-000000000001\",\"course_name\":\"React Fundamentals\"}",
   "response": "{}"
 }
@@ -535,7 +538,7 @@ POST https://your-api.com/api/fill-content-metrics
 Content-Type: application/json
 
 {
-  "serviceName": "ContentStudio",
+  "requester_service": "CourseBuilder",
   "payload": "{\"learner_id\":\"00000000-0000-0000-0000-000000000001\",\"learner_name\":\"Alex Doe\",\"learner_company\":\"Acme Corp\",\"skills\":[\"react-hooks\",\"javascript\",\"frontend\"]}",
   "response": "{\"learner_id\":\"\",\"learner_name\":\"\",\"learner_company\":\"\",\"topics\":[]}"
 }
@@ -545,9 +548,10 @@ Content-Type: application/json
 
 ## Notes
 
-- All `serviceName` values are case-insensitive and support kebab-case, camelCase, or lowercase
-- For backward compatibility, `requester_service` is also accepted and will be normalized to `serviceName`
+- Request body contains **only three fields**: `requester_service`, `payload`, `response`
+- `requester_service` must always be `"CourseBuilder"`
+- Routing to target microservice is determined **internally** from payload structure
 - `payload` and `response` must be valid JSON strings (stringified)
 - Empty response objects will be populated by the microservice
-- The entire response envelope is returned as a stringified JSON
+- The entire response envelope is returned as a stringified JSON (only the three fields)
 

@@ -6,7 +6,7 @@ const endpoint = '/api/fill-content-metrics'
 describe('Integration Gateway Endpoint', () => {
   it('should process a known service payload and return unified response', async () => {
     const payload = {
-      serviceName: 'ContentStudio',
+      requester_service: 'CourseBuilder',
       payload: JSON.stringify({
         learner_id: '00000000-0000-0000-0000-000000000001',
         learner_name: 'Test Learner',
@@ -40,9 +40,12 @@ describe('Integration Gateway Endpoint', () => {
       responseBody = JSON.parse(response.text || '{}');
     }
 
-    expect(responseBody).toHaveProperty('serviceName', 'ContentStudio')
+    // Response should only contain the three required fields
+    expect(responseBody).toHaveProperty('requester_service', 'CourseBuilder')
     expect(responseBody).toHaveProperty('payload')
     expect(responseBody).toHaveProperty('response')
+    expect(responseBody).not.toHaveProperty('target_service')
+    expect(responseBody).not.toHaveProperty('serviceName')
     expect(typeof responseBody.payload).toBe('string')
     expect(typeof responseBody.response).toBe('string')
     
@@ -53,12 +56,12 @@ describe('Integration Gateway Endpoint', () => {
     expect(parsedResponse).toHaveProperty('topics')
   })
 
-  it('should return 400 for unsupported services with unified error response', async () => {
+  it('should return 400 if payload structure cannot be matched to a service', async () => {
     const response = await request(app)
       .post(endpoint)
       .send({ 
-        serviceName: 'UnknownService',
-        payload: JSON.stringify({}),
+        requester_service: 'CourseBuilder',
+        payload: JSON.stringify({ unknown_field: 'value' }),
         response: JSON.stringify({})
       })
       .expect(400)
@@ -72,15 +75,18 @@ describe('Integration Gateway Endpoint', () => {
     }
       
     expect(responseBody).toHaveProperty('error')
-    expect(responseBody.error).toBeDefined()
+    expect(responseBody.message).toContain('target service')
   })
   
   it('should return 400 if response template is missing', async () => {
     const response = await request(app)
       .post(endpoint)
       .send({ 
-        serviceName: 'ContentStudio',
-        payload: JSON.stringify({})
+        requester_service: 'CourseBuilder',
+        payload: JSON.stringify({
+          learner_id: '00000000-0000-0000-0000-000000000001',
+          skills: ['JavaScript']
+        })
       })
       .expect(400)
 
@@ -95,4 +101,29 @@ describe('Integration Gateway Endpoint', () => {
     expect(responseBody).toHaveProperty('error')
     expect(responseBody.message).toContain('response')
   })
+  
+  it('should return 400 if requester_service is not CourseBuilder', async () => {
+    const response = await request(app)
+      .post(endpoint)
+      .send({ 
+        requester_service: 'OtherService',
+        payload: JSON.stringify({
+          learner_id: '00000000-0000-0000-0000-000000000001',
+          skills: ['JavaScript']
+        }),
+        response: JSON.stringify({})
+      })
+      .expect(400)
+
+    let responseBody;
+    if (typeof response.text === 'string') {
+      responseBody = JSON.parse(response.text);
+    } else {
+      responseBody = response.body || {};
+    }
+      
+    expect(responseBody).toHaveProperty('error')
+    expect(responseBody.message).toContain('CourseBuilder')
+  })
+
 })

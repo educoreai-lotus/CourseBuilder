@@ -7,50 +7,55 @@
 import { dispatchIntegrationRequest } from '../integration/dispatcher.js';
 
 /**
- * Normalize service name to internal format
- * Supports both serviceName and requester_service for backward compatibility
+ * Infer target service from payload structure
+ * Routing logic is internal - determines which microservice to route to based on payload content
  */
-function normalizeServiceName(serviceName) {
-  if (!serviceName) return null;
+function inferTargetServiceFromPayload(payloadObject) {
+  if (!payloadObject || typeof payloadObject !== 'object') return null;
   
-  const key = String(serviceName).trim();
+  // ContentStudio: has topics[] or learner_id + skills
+  if (payloadObject.topics || (payloadObject.learner_id && payloadObject.skills)) {
+    return 'ContentStudio';
+  }
   
-  // Direct match (case-insensitive)
-  const directMatch = {
-    'ContentStudio': 'ContentStudio',
-    'LearnerAI': 'LearnerAI',
-    'Assessment': 'Assessment',
-    'SkillsEngine': 'SkillsEngine',
-    'Directory': 'Directory',
-    'LearningAnalytics': 'LearningAnalytics',
-    'ManagementReporting': 'ManagementReporting',
-    'Devlab': 'Devlab',
-    'DevLab': 'Devlab'
-  };
+  // LearnerAI: has user_id, company_id, skills, competency_name
+  if (payloadObject.user_id || payloadObject.competency_name) {
+    return 'LearnerAI';
+  }
   
-  if (directMatch[key]) return directMatch[key];
+  // Assessment: has coverage_map
+  if (payloadObject.coverage_map) {
+    return 'Assessment';
+  }
   
-  // Kebab-case and lowercase variants
-  const normalized = key.toLowerCase();
-  const mapping = {
-    'content-studio': 'ContentStudio',
-    'contentstudio': 'ContentStudio',
-    'learner-ai': 'LearnerAI',
-    'learnerai': 'LearnerAI',
-    'assessment': 'Assessment',
-    'skills-engine': 'SkillsEngine',
-    'skillsengine': 'SkillsEngine',
-    'directory': 'Directory',
-    'learning-analytics': 'LearningAnalytics',
-    'learninganalytics': 'LearningAnalytics',
-    'management-reporting': 'ManagementReporting',
-    'managementreporting': 'ManagementReporting',
-    'devlab': 'Devlab',
-    'dev-lab': 'Devlab'
-  };
+  // Directory: has feedback object
+  if (payloadObject.feedback && typeof payloadObject.feedback === 'object') {
+    return 'Directory';
+  }
   
-  return mapping[normalized] || null;
+  // SkillsEngine: has topic (string)
+  if (payloadObject.topic && typeof payloadObject.topic === 'string') {
+    return 'SkillsEngine';
+  }
+  
+  // LearningAnalytics: has course_type, enrollment, feedback, assessments
+  if (payloadObject.course_type || payloadObject.enrollment || payloadObject.assessments) {
+    return 'LearningAnalytics';
+  }
+  
+  // ManagementReporting: has totalEnrollments, activeEnrollment, completionRate
+  if (payloadObject.totalEnrollments !== undefined || payloadObject.completionRate !== undefined) {
+    return 'ManagementReporting';
+  }
+  
+  // Devlab: has course_id, learner_id, course_name (minimal payload)
+  if (payloadObject.course_id && payloadObject.learner_id && payloadObject.course_name) {
+    return 'Devlab';
+  }
+  
+  return null;
 }
+
 
 /**
  * Unified integration endpoint handler
@@ -58,12 +63,13 @@ function normalizeServiceName(serviceName) {
  *
  * Contract rules:
  * 1) Request body is a stringified JSON (Express JSON parser will yield a string)
- * 2) Parse with JSON.parse to object: must contain serviceName (string), payload (stringified JSON string), response (stringified JSON string)
+ * 2) Parse with JSON.parse to object: must contain requester_service (string, always "CourseBuilder"), payload (stringified JSON string), response (stringified JSON string)
  * 3) Parse both payload and response strings to objects
- * 4) Route by serviceName, pass parsed payload and response template to handler
- * 5) Handler fills the response template and returns it
- * 6) Stringify response back and return the full envelope as stringified JSON
- * 7) On parse/validation error: respond 400 with stringified JSON error
+ * 4) Infer target service from payload structure (routing is internal)
+ * 5) Route to appropriate handler, pass parsed payload and response template
+ * 6) Handler fills the response template and returns it
+ * 7) Stringify response back and return the full envelope as stringified JSON (only requester_service, payload, response)
+ * 8) On parse/validation error: respond 400 with stringified JSON error
  */
 export async function handleFillContentMetrics(req, res) {
   try {
@@ -98,34 +104,23 @@ export async function handleFillContentMetrics(req, res) {
     }
 
     // Validate required fields and structure
-    // Support both serviceName and requester_service for backward compatibility
-    const serviceNameInput = envelope.serviceName || envelope.requester_service;
-    const hasServiceName = typeof serviceNameInput === 'string' && serviceNameInput.trim().length > 0;
+    // Only three fields allowed: requester_service, payload, response
+    const requesterService = envelope.requester_service;
+    const hasRequesterService = typeof requesterService === 'string' && requesterService.trim() === 'CourseBuilder';
     const hasPayload = envelope.payload && typeof envelope.payload === 'string';
     const hasResponse = envelope.response && typeof envelope.response === 'string';
 
-    if (!hasServiceName || !hasPayload || !hasResponse) {
+    if (!hasRequesterService || !hasPayload || !hasResponse) {
       const errorPayload = {
         error: 'Bad Request',
-        message: 'Envelope must include "serviceName" (string), "payload" (stringified JSON string), and "response" (stringified JSON string)'
+        message: 'Envelope must include only "requester_service" (string, must be "CourseBuilder"), "payload" (stringified JSON string), and "response" (stringified JSON string)'
       };
       res.setHeader('Content-Type', 'text/plain');
       return res.status(400).send(JSON.stringify(errorPayload));
     }
 
-    // Normalize service name to internal format
-    const serviceName = normalizeServiceName(serviceNameInput);
-    if (!serviceName) {
-      const errorPayload = {
-        error: 'Bad Request',
-        message: `Unsupported serviceName: ${serviceNameInput}`
-      };
-      res.setHeader('Content-Type', 'text/plain');
-      return res.status(400).send(JSON.stringify(errorPayload));
-    }
-    
-    // Ensure envelope has serviceName (normalize from requester_service if needed)
-    envelope.serviceName = serviceName;
+    // Ensure requester_service is set correctly
+    envelope.requester_service = 'CourseBuilder';
 
     // Parse payload (it's a stringified JSON)
     let payloadObject;
@@ -155,22 +150,38 @@ export async function handleFillContentMetrics(req, res) {
       return res.status(400).send(JSON.stringify(errorPayload));
     }
 
-    // Call dispatcher with serviceName, payload, and response template
-    const filledResponse = await dispatchIntegrationRequest(serviceName, payloadObject, responseObject);
+    // Infer target service from payload structure (routing is internal)
+    const targetService = inferTargetServiceFromPayload(payloadObject);
+    if (!targetService) {
+      const errorPayload = {
+        error: 'Bad Request',
+        message: 'Could not determine target service from payload structure. Please ensure payload matches a known service pattern.'
+      };
+      res.setHeader('Content-Type', 'text/plain');
+      return res.status(400).send(JSON.stringify(errorPayload));
+    }
+
+    // Call dispatcher with target service, payload, and response template
+    const filledResponse = await dispatchIntegrationRequest(targetService, payloadObject, responseObject);
 
     // Handler returns the filled response object
     // Stringify response back to string
     envelope.response = JSON.stringify(filledResponse);
     
-    // Ensure serviceName is in the response envelope
-    envelope.serviceName = serviceName;
+    // Return only the three required fields: requester_service, payload, response
+    // Routing information (target_service) is internal and not exposed
+    const responseEnvelope = {
+      requester_service: 'CourseBuilder',
+      payload: envelope.payload,
+      response: envelope.response
+    };
 
     // Return the full envelope as stringified JSON
     // Set Content-Type to text/plain since we're sending stringified JSON
     res.setHeader('Content-Type', 'text/plain');
-    return res.status(200).send(JSON.stringify(envelope));
+    return res.status(200).send(JSON.stringify(responseEnvelope));
   } catch (error) {
-    console.error('[Integration Controller] Error:', error);
+    console.error('[Integration Controller] Error processing request from CourseBuilder:', error);
     const status = error.status || 500;
     const errorPayload = {
       error: status === 500 ? 'Internal Server Error' : 'Error',
