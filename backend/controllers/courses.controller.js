@@ -497,6 +497,7 @@ export const coursesController = {
   getCourseVersions,
   getCourseFilters,
   getLessonDetails,
+  getLessonExercises,
   getLearnerProgress
 };
 
