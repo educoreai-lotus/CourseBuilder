@@ -90,9 +90,15 @@ export default function LearnerForYou() {
   const loadCourses = async () => {
     setLoading(true)
     try {
-      const data = await getCourses({ limit: 50 })
+      const data = await getCourses({ limit: 100 })
       const personalised = (data.courses || [])
         .filter((course) => {
+          // Primary check: learner_specific course type (personalized courses)
+          if (course.course_type === 'learner_specific') {
+            return true
+          }
+          
+          // Fallback: check metadata for backward compatibility
           const meta = course.metadata || {}
           return meta.personalized === true || meta.source === 'learner_ai'
         })

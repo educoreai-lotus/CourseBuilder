@@ -56,6 +56,7 @@ export const browseCourses = async ({ search, category, level, sort, page, limit
         c.level,
         c.duration_hours as duration,
         c.status,
+        c.course_type,
         c.created_by_user_id,
         c.created_at,
         c.updated_at,
@@ -85,13 +86,16 @@ export const browseCourses = async ({ search, category, level, sort, page, limit
       courses: courses.map(course => ({
         id: course.id,
         title: course.title,
+        course_name: course.title, // Keep for backward compatibility
         description: course.description,
+        course_description: course.description, // Keep for backward compatibility
         level: course.level,
         rating: parseFloat(course.rating) || 0,
         duration: course.duration,
         created_at: course.created_at?.toISOString?.() || null,
         updated_at: course.updated_at?.toISOString?.() || null,
         status: course.status,
+        course_type: course.course_type || 'trainer', // Include course_type
         total_enrollments: parseInt(course.total_enrollments) || 0,
         active_enrollments: parseInt(course.active_enrollments) || 0,
         created_by_user_id: course.created_by_user_id
