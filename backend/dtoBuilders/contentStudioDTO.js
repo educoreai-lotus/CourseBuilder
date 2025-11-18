@@ -12,6 +12,7 @@
 export function buildSendPayload(learnerData = {}, skills = []) {
   return {
     learner_id: learnerData.learner_id || null,
+    learner_name: learnerData.learner_name || null,
     learner_company: learnerData.learner_company || null,
     skills: Array.isArray(skills) ? skills : []
   };

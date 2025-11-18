@@ -26,7 +26,7 @@ export class LessonRepository {
       INSERT INTO lessons (
         id, module_id, topic_id, lesson_name, lesson_description,
         skills, trainer_ids, content_type, content_data, devlab_exercises
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7::uuid[], $8, $9, $10)
       RETURNING *
     `;
     const values = [
@@ -36,7 +36,7 @@ export class LessonRepository {
       lessonData.lesson_name,
       lessonData.lesson_description || null,
       JSON.stringify(skills),
-      trainer_ids,
+      trainer_ids.length > 0 ? trainer_ids : [], // Cast to UUID[] in query
       lessonData.content_type || null,
       JSON.stringify(content_data),
       JSON.stringify(devlab_exercises)

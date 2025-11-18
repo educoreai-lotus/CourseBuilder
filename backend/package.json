@@ -13,6 +13,7 @@
     "db:setup": "node scripts/setup-database.js",
     "migrate": "node scripts/migrate.js",
     "seed": "node scripts/seed.js",
+    "seed:mock": "node scripts/seedMockData.js",
     "db:reset": "npm run migrate && npm run seed",
     "db:init": "npm run db:setup && npm run migrate && npm run seed",
     "db:push-supabase": "node scripts/push-to-supabase.js",

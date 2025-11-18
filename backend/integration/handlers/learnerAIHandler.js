@@ -1,10 +1,12 @@
 /**
  * Learner AI Integration Handler
  * Handles incoming data from Learner AI microservice
- * Note: Learner AI sends skill path + metadata, not content
+ * Flow: Learner AI → Course Builder → Content Studio → Course Builder (creates course)
  */
 
 import learnerAIDTO from '../../dtoBuilders/learnerAIDTO.js';
+import { sendToContentStudio } from '../clients/contentStudioClient.js';
+import { handleContentStudioIntegration } from './contentStudioHandler.js';
 import { getFallbackData, shouldUseFallback } from '../fallbackData.js';
 
 /**
@@ -18,17 +20,77 @@ export async function handleLearnerAIIntegration(payloadObject, responseTemplate
     // Normalize Learner AI payload
     const data = learnerAIDTO.buildFromReceived(payloadObject);
 
-    // Learner AI sends skill path + metadata
-    // Course Builder extracts metadata and sends to Content Studio
-    // Content Studio generates the actual lessons
-    
-    console.log('[LearnerAI Handler] Received:', {
+    console.log('[LearnerAI Handler] Received from Learner AI:', {
       user_id: data.user_id,
+      user_name: data.user_name,
       skills: data.skills,
       competency_name: data.competency_name
     });
 
-    // Fill response template with contract-matching fields
+    // Step 1: Call Content Studio to generate personalized lessons
+    // Content Studio needs: learner_id, learner_name, learner_company, skills
+    console.log('[LearnerAI Handler] Calling Content Studio to generate lessons...');
+    
+    const contentStudioPayload = {
+      learnerData: {
+        learner_id: data.user_id, // Learner AI user_id = Content Studio learner_id
+        learner_name: data.user_name,
+        learner_company: data.company_name || ''
+      },
+      skills: data.skills || []
+    };
+
+    let contentStudioResponse;
+    try {
+      contentStudioResponse = await sendToContentStudio(contentStudioPayload);
+      console.log('[LearnerAI Handler] Content Studio returned topics:', 
+        contentStudioResponse.topics?.length || 0);
+    } catch (contentStudioError) {
+      console.error('[LearnerAI Handler] Content Studio call failed:', contentStudioError.message);
+      
+      // If Content Studio fails, use fallback data
+      if (shouldUseFallback(contentStudioError, 'ContentStudio')) {
+        console.warn('[LearnerAI Handler] Using fallback data for Content Studio');
+        const fallback = getFallbackData('ContentStudio', 'learner_specific');
+        contentStudioResponse = {
+          learner_id: data.user_id,
+          learner_name: data.user_name,
+          learner_company: data.company_name || '',
+          topics: fallback.topics || []
+        };
+      } else {
+        throw contentStudioError;
+      }
+    }
+
+    // Step 2: Create course structure using Content Studio handler
+    // The Content Studio handler will create the course, topics, modules, and lessons
+    if (contentStudioResponse.topics && contentStudioResponse.topics.length > 0) {
+      console.log('[LearnerAI Handler] Creating course structure from Content Studio response...');
+      
+      const contentStudioResponseTemplate = {
+        learner_id: contentStudioResponse.learner_id || data.user_id,
+        learner_name: contentStudioResponse.learner_name || data.user_name,
+        learner_company: contentStudioResponse.learner_company || data.company_name || '',
+        topics: contentStudioResponse.topics
+      };
+
+      // Create the course structure (this will create course, topics, modules, lessons)
+      await handleContentStudioIntegration(
+        {
+          learner_id: contentStudioResponse.learner_id || data.user_id,
+          learner_name: contentStudioResponse.learner_name || data.user_name,
+          learner_company: contentStudioResponse.learner_company || data.company_name || '',
+          skills: data.skills || [],
+          topics: contentStudioResponse.topics
+        },
+        contentStudioResponseTemplate
+      );
+      
+      console.log('[LearnerAI Handler] Course structure created successfully');
+    }
+
+    // Step 3: Fill response template with Learner AI contract fields
     responseTemplate.user_id = data.user_id;
     responseTemplate.user_name = data.user_name || '';
     responseTemplate.company_id = data.company_id || null;
