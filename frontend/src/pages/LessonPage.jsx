@@ -282,6 +282,7 @@ export default function LessonPage() {
       onEnrichmentError={handleEnrichmentError}
       course={course}
       courseId={courseId}
+      userRole={userRole}
     />
   )
 }

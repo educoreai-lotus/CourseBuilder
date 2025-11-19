@@ -37,7 +37,8 @@ export default function LessonView({
   onEnrichmentLoading = null,
   onEnrichmentError = null,
   course = null,
-  courseId = null
+  courseId = null,
+  userRole = null
 }) {
   const navigate = useNavigate()
   
@@ -69,48 +70,54 @@ export default function LessonView({
   return (
     <div className="page-surface bg-[var(--bg-primary)] transition-colors">
       <Container>
-        <div className="flex flex-col gap-10 py-10">
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3 text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
-              {structureHref && (
-                <Link to={structureHref} className="inline-flex items-center gap-2 hover:text-[var(--primary-cyan)]">
-                  <ArrowLeft size={16} />
-                  Structure
-                </Link>
-              )}
-              <span className="text-[var(--text-muted)]">›</span>
-              {overviewHref && (
-                <Link to={overviewHref} className="hover:text-[var(--primary-cyan)]">
-                  Overview
-                </Link>
-              )}
-              <span className="text-[var(--text-muted)]">›</span>
-              <span className="font-semibold text-[var(--text-primary)]">{lessonTitle}</span>
-            </div>
-            <div className="text-sm font-semibold uppercase tracking-widest text-[var(--text-muted)]">
-              Lesson · Exercise · Assessment
-            </div>
-          </div>
-
-          {/* Course Structure Sidebar */}
+        <div className="flex flex-col gap-10 py-10 lg:flex-row lg:items-start">
+          {/* Course Structure Sidebar - Compact */}
           {course && (course.modules || course.topics) && (
-            <section className="rounded-3xl border border-[rgba(148,163,184,0.18)] bg-[var(--bg-card)] p-6 shadow-sm backdrop-blur">
-              <header className="mb-4 flex items-center justify-between gap-3">
-                <h2 className="text-xl font-semibold text-[var(--text-primary)]">Course Structure</h2>
-              </header>
-              <CourseTreeView 
-                modules={course.modules || (course.topics?.[0]?.modules) || []} 
-                courseId={courseId}
-                onLessonClick={(lesson) => {
-                  if (courseId && lesson?.id) {
-                    navigate(`/course/${courseId}/lesson/${lesson.id || lesson.lesson_id}`)
-                  }
-                }}
-              />
-            </section>
+            <aside className="w-full lg:w-64 lg:shrink-0 lg:sticky lg:top-4">
+              <section className="rounded-2xl border border-[rgba(148,163,184,0.18)] bg-[var(--bg-card)] p-4 shadow-sm backdrop-blur">
+                <header className="mb-3">
+                  <h2 className="text-sm font-semibold text-[var(--text-primary)]">Course Structure</h2>
+                </header>
+                <div className="max-h-[600px] overflow-y-auto">
+                  <CourseTreeView 
+                    modules={course.modules || (course.topics?.[0]?.modules) || []} 
+                    courseId={courseId}
+                    onLessonClick={(lesson) => {
+                      if (courseId && lesson?.id) {
+                        navigate(`/course/${courseId}/lesson/${lesson.id || lesson.lesson_id}`)
+                      }
+                    }}
+                  />
+                </div>
+              </section>
+            </aside>
           )}
 
-          <section className="microservice-card refined space-y-6" style={{ textAlign: 'left' }}>
+          {/* Main Content */}
+          <div className="flex-1">
+            <div className="flex items-center justify-between gap-4 mb-6">
+              <div className="flex items-center gap-3 text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
+                {structureHref && (
+                  <Link to={structureHref} className="inline-flex items-center gap-2 hover:text-[var(--primary-cyan)]">
+                    <ArrowLeft size={16} />
+                    Structure
+                  </Link>
+                )}
+                <span className="text-[var(--text-muted)]">›</span>
+                {overviewHref && (
+                  <Link to={overviewHref} className="hover:text-[var(--primary-cyan)]">
+                    Overview
+                  </Link>
+                )}
+                <span className="text-[var(--text-muted)]">›</span>
+                <span className="font-semibold text-[var(--text-primary)]">{lessonTitle}</span>
+              </div>
+              <div className="text-sm font-semibold uppercase tracking-widest text-[var(--text-muted)]">
+                Lesson · Exercise · Assessment
+              </div>
+            </div>
+
+            <section className="microservice-card refined space-y-6" style={{ textAlign: 'left' }}>
             <header className="space-y-4">
               <div className="flex flex-wrap items-center gap-3">
                 <span className="rounded-full bg-[rgba(14,165,233,0.12)] px-3 py-1 text-xs font-semibold uppercase tracking-wide text-[#0f766e]">
@@ -162,31 +169,34 @@ export default function LessonView({
               lesson={lesson}
               onPrevious={onPrevious}
               onNext={isFinalLesson ? undefined : onNext}
-              onComplete={() => onComplete?.(lesson)}
+              onComplete={isFinalLesson ? undefined : (() => onComplete?.(lesson))}
               isCompleted={isCompleted}
               onTakeTest={isFinalLesson ? onTakeTest : undefined}
               canTakeTest={canTakeTest}
               isFinalLesson={isFinalLesson}
             />
 
-            <div className="space-y-4">
-              <div className="flex items-center justify-between gap-4">
-                <h2 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
-                  Learning Resources
-                </h2>
-                {enrichmentAsset && (
-                  <EnrichmentButton
-                    asset={enrichmentAsset}
-                    onResults={onEnrichmentResults || undefined}
-                    onLoading={onEnrichmentLoading || undefined}
-                    onError={onEnrichmentError || undefined}
-                    buttonLabel={enrichmentAssets ? 'Refresh assets' : 'Load AI assets'}
-                    disabled={!enrichmentAsset}
-                  />
-                )}
+            {/* Only show AI assets for trainers, not learners */}
+            {userRole !== 'learner' && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between gap-4">
+                  <h2 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
+                    Learning Resources
+                  </h2>
+                  {enrichmentAsset && (
+                    <EnrichmentButton
+                      asset={enrichmentAsset}
+                      onResults={onEnrichmentResults || undefined}
+                      onLoading={onEnrichmentLoading || undefined}
+                      onError={onEnrichmentError || undefined}
+                      buttonLabel={enrichmentAssets ? 'Refresh assets' : 'Load AI assets'}
+                      disabled={!enrichmentAsset}
+                    />
+                  )}
+                </div>
+                <LessonAssetsPanel assets={enrichmentAssets} loading={enrichmentLoading} error={enrichmentError} />
               </div>
-              <LessonAssetsPanel assets={enrichmentAssets} loading={enrichmentLoading} error={enrichmentError} />
-            </div>
+            )}
 
             <footer className="flex flex-col gap-4 rounded-2xl border border-[rgba(148,163,184,0.16)] bg-[var(--bg-card)]/90 px-6 py-4 text-sm text-[var(--text-secondary)] backdrop-blur transition-colors md:flex-row md:items-center md:justify-between">
               <div className="flex items-center gap-3 text-sm font-medium">
@@ -226,6 +236,7 @@ export default function LessonView({
               )}
             </footer>
           </section>
+          </div>
         </div>
       </Container>
     </div>
