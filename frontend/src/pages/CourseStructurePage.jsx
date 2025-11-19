@@ -55,13 +55,20 @@ export default function CourseStructurePage() {
     loadCourse()
   }, [id, loadCourse])
 
+  // Determine if course is personalized (declare once at component level)
+  const isPersonalized = Boolean(
+    course?.metadata?.personalized ||
+    course?.metadata?.source === 'learner_ai'
+  )
+  const isMarketplace = !isPersonalized
+  const personalized = isPersonalized // Keep for backward compatibility
+
   useEffect(() => {
     // Don't redirect personalized courses - they are auto-enrolled
-    const isPersonalized = Boolean(course?.metadata?.personalized || course?.metadata?.source === 'learner_ai')
     if (!loading && learnerProgress && !learnerProgress.is_enrolled && userRole === 'learner' && !isPersonalized) {
       navigate(`/course/${id}/overview`, { replace: true })
     }
-  }, [id, learnerProgress, loading, navigate, userRole, course])
+  }, [id, learnerProgress, loading, navigate, userRole, isPersonalized])
 
   const flattenedLessons = useMemo(() => {
     if (!course) return []
@@ -100,9 +107,6 @@ export default function CourseStructurePage() {
   const nextLesson = flattenedLessons.find((lesson) => !completedSet.has(String(lesson.id || lesson.lesson_id)))
   const firstLesson = flattenedLessons[0] || null
 
-  const isPersonalized = Boolean(course?.metadata?.personalized) || course?.metadata?.source === 'learner_ai'
-  const isMarketplace = !isPersonalized
-  const personalized = isPersonalized // Keep for backward compatibility
   const selectedBackLink = personalized ? '/learner/personalized' : '/learner/marketplace'
 
   const handleSelectLesson = (lessonId) => {
@@ -111,7 +115,6 @@ export default function CourseStructurePage() {
   }
 
   // Don't block personalized courses - they are auto-enrolled
-  const isPersonalized = Boolean(course?.metadata?.personalized || course?.metadata?.source === 'learner_ai')
   if (userRole === 'learner' && !learnerProgress?.is_enrolled && !loading && !isPersonalized) {
     return null
   }
