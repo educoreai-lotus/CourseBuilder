@@ -569,7 +569,8 @@
 }
 
 .personalized-dashboard {
-  padding: var(--spacing-2xl) 0;
+  padding-top: 0;
+  padding-bottom: var(--spacing-md);
   background: var(--bg-primary);
   display: flex;
   flex-direction: column;
