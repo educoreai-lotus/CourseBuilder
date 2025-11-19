@@ -106,7 +106,7 @@ export default function CourseOverview({
     return null
   }
 
-  const personalized = Boolean(course?.metadata?.personalized)
+  const personalized = Boolean(course?.metadata?.personalized || course?.metadata?.source === 'learner_ai')
   const metadata = getMetadataItems(course)
   const metadataTags = course?.metadata?.tags || course?.metadata?.skills || []
   const tags = course?.tags || course?.skills || metadataTags
@@ -125,8 +125,9 @@ export default function CourseOverview({
   const completedLessons = progressSummary?.completed_lessons?.length || 0
   const coursePrice = course?.price ?? 0
 
+  // For personalized courses, always show "Start learning" - never show enroll button
   const primaryCta = showStructureCta
-    ? personalized || isEnrolled
+    ? personalized
       ? (
           <button
             type="button"
@@ -134,19 +135,30 @@ export default function CourseOverview({
             onClick={onContinue}
           >
             <PlayCircle size={18} />
-            {personalized ? 'Start learning' : 'Continue learning'}
+            Start learning
           </button>
         )
-      : (
-          <button
-            type="button"
-            className="btn btn-primary flex items-center justify-center gap-2"
-            onClick={onEnrollClick}
-          >
-            <Target size={18} />
-            Enroll now
-          </button>
-        )
+      : isEnrolled
+        ? (
+            <button
+              type="button"
+              className="btn btn-primary flex items-center justify-center gap-2"
+              onClick={onContinue}
+            >
+              <PlayCircle size={18} />
+              Continue learning
+            </button>
+          )
+        : (
+            <button
+              type="button"
+              className="btn btn-primary flex items-center justify-center gap-2"
+              onClick={onEnrollClick}
+            >
+              <Target size={18} />
+              Enroll now
+            </button>
+          )
     : null
 
   const secondaryCta = showStructureCta
@@ -288,6 +300,11 @@ export default function CourseOverview({
                     Secure access in one click. Cancel anytime during preview.
                   </p>
                 )}
+                {personalized && showStructureCta && (
+                  <p className="text-center text-xs" style={{ color: 'var(--text-muted)' }}>
+                    Your personalized learning path is ready. Start learning now!
+                  </p>
+                )}
               </div>
 
               {progressSummary?.status && (
@@ -394,7 +411,9 @@ export default function CourseOverview({
                   <div className="text-center py-10">
                     <BookOpen size={28} className="mx-auto mb-3" style={{ color: 'var(--text-muted)' }} />
                     <p style={{ color: 'var(--text-secondary)' }}>
-                      Module breakdown will unlock after enrollment.
+                      {personalized 
+                        ? 'Course curriculum will be available shortly.' 
+                        : 'Module breakdown will unlock after enrollment.'}
                     </p>
                   </div>
                 )}
