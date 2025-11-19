@@ -576,14 +576,16 @@
 }
 
 .dashboard-surface {
-  padding: var(--spacing-lg) 0;
+  padding-top: 0;
+  padding-bottom: var(--spacing-md);
   background: var(--bg-secondary);
   display: flex;
   flex-direction: column;
 }
 
 .page-surface {
-  padding: var(--spacing-lg) 0;
+  padding-top: 0;
+  padding-bottom: var(--spacing-md);
   background: var(--bg-primary);
 }
 
