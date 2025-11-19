@@ -280,6 +280,8 @@ export default function LessonPage() {
       onEnrichmentResults={handleEnrichmentResults}
       onEnrichmentLoading={handleEnrichmentLoading}
       onEnrichmentError={handleEnrichmentError}
+      course={course}
+      courseId={courseId}
     />
   )
 }

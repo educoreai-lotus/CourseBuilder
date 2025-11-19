@@ -429,29 +429,6 @@ export default function LessonViewer({
         )}
       </div>
 
-      <div className="flex flex-col gap-3 border-t border-[rgba(148,163,184,0.14)] pt-6 md:flex-row md:items-center md:justify-between">
-        <div className="flex items-center gap-2 text-sm font-semibold text-[var(--text-secondary)]">
-          <span className="rounded-full bg-[rgba(14,165,233,0.12)] p-2 text-[var(--primary-cyan)]">
-            {completed ? <CheckCircle2 size={16} /> : <PlayCircle size={16} />}
-          </span>
-          {completed ? 'Lesson marked as complete' : 'Mark lesson complete to track progress'}
-        </div>
-        <div className="flex items-center gap-3">
-          <Button variant="primary" onClick={handleComplete} disabled={completed || isProcessing}>
-            {completed ? (
-              <>
-                <CheckCircle2 className="mr-2 h-4 w-4" />
-                Completed
-              </>
-            ) : (
-              <>
-                <CheckCircle2 className="mr-2 h-4 w-4" />
-                Mark complete
-              </>
-            )}
-          </Button>
-        </div>
-      </div>
     </div>
   )
 }

@@ -41,13 +41,20 @@ router.post('/assets', async (req, res) => {
         if (course) {
           await courseRepository.update(course_id, { ai_assets: enrichedResult });
           console.log('[enrichmentAssetsRoutes] Assets saved to course:', course_id);
+          // Add saved flag to response so frontend knows it was saved
+          enrichedResult._savedToCourse = true;
         } else {
           console.warn('[enrichmentAssetsRoutes] Course not found:', course_id);
+          enrichedResult._saveError = 'Course not found';
         }
       } catch (saveError) {
         console.error('[enrichmentAssetsRoutes] Failed to save assets to course:', saveError.message);
-        // Don't fail the request if saving fails
+        console.error('[enrichmentAssetsRoutes] Save error stack:', saveError.stack);
+        enrichedResult._saveError = saveError.message;
+        // Still return the enriched result, but with error flag
       }
+    } else {
+      console.log('[enrichmentAssetsRoutes] No course_id provided, skipping save to course');
     }
 
     console.log('[enrichmentAssetsRoutes] Success:', {

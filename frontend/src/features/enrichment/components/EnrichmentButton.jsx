@@ -105,7 +105,18 @@ export default function EnrichmentButton({
     }
 
     try {
+      console.log('[EnrichmentButton] Sending enrichment request:', { 
+        topic: payload.topic, 
+        course_id: payload.course_id || 'none',
+        skillsCount: payload.skills?.length || 0
+      })
       const response = await enrichAssets(payload)
+      console.log('[EnrichmentButton] Enrichment response:', {
+        savedToCourse: response._savedToCourse,
+        saveError: response._saveError,
+        videosCount: response?.videos?.length || 0,
+        reposCount: response?.repos?.length || 0
+      })
       const mappedItems = mapEnrichedItems(response)
 
       setResults(mappedItems)

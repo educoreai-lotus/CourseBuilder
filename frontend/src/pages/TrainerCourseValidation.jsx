@@ -1,7 +1,7 @@
 import { useParams, useNavigate } from 'react-router-dom'
 import { useState, useEffect, useMemo, useCallback } from 'react'
-import { CheckCircle2, Circle, Layers, ListChecks, Rocket, Pencil, Save, X } from 'lucide-react'
-import { getCourseById, validateCourse, updateCourse } from '../services/apiService.js'
+import { CheckCircle2, Layers, Rocket, Pencil, Save, X } from 'lucide-react'
+import { getCourseById, updateCourse } from '../services/apiService.js'
 import CourseTreeView from '../components/CourseTreeView.jsx'
 import Button from '../components/Button.jsx'
 import LoadingSpinner from '../components/LoadingSpinner.jsx'
@@ -17,7 +17,6 @@ export default function TrainerCourseValidation() {
   const { showToast } = useApp()
   const [course, setCourse] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [validated, setValidated] = useState(false)
   const [selectedLessonId, setSelectedLessonId] = useState('')
   const [assetData, setAssetData] = useState(null)
   const [assetLoading, setAssetLoading] = useState(false)
@@ -42,7 +41,6 @@ export default function TrainerCourseValidation() {
     try {
       const data = await getCourseById(id)
       setCourse(data)
-      setValidated(data.status === 'validated')
       setEditForm({
         course_name: data.course_name || data.title || '',
         course_description: data.course_description || data.description || '',
@@ -93,18 +91,6 @@ export default function TrainerCourseValidation() {
     }
   }
 
-  const handleValidate = async () => {
-    try {
-      await validateCourse(id)
-      setValidated(true)
-      showToast('Course validated successfully! Ready for publishing.', 'success')
-      // Reload course to get updated status
-      await loadCourse()
-    } catch (err) {
-      const message = err.response?.data?.message || err.message || 'Failed to validate course'
-      showToast(message, 'error')
-    }
-  }
 
   const lessons = useMemo(() => flattenLessons(course), [course])
 
@@ -122,18 +108,25 @@ export default function TrainerCourseValidation() {
 
     // For trainer: Use course-level enrichment (save to course, not per lesson)
     // This ensures assets are available to all learners and persist
+    const courseId = course.id || course.course_id || id
+    console.log('[TrainerCourseValidation] Enrichment descriptor:', {
+      courseId,
+      courseIdFromParams: id,
+      courseHasId: !!course.id,
+      courseHasCourseId: !!course.course_id
+    })
     return {
       type: 'course',
       title: course.title || course.course_name,
       description: course.description || course.course_description,
       metadata: {
-        course_id: course.id || course.course_id,
+        course_id: courseId,
         course_title: course.title || course.course_name,
         skills: course?.skills || [],
         tags: []
       }
     }
-  }, [course])
+  }, [course, id])
 
   // Enrichment is now on-demand only (triggered by EnrichmentButton)
   // Removed automatic useEffect that was calling fetchEnrichmentAssets
@@ -143,13 +136,21 @@ export default function TrainerCourseValidation() {
       setAssetData(response)
       setAssetError(null)
       if (response) {
-        // Assets are automatically saved to course by backend when course_id is provided
-        showToast('AI enrichment saved to course successfully.', 'success')
-        // Reload course to get updated ai_assets
-        loadCourse()
+        // Check if assets were saved to course
+        if (response._savedToCourse) {
+          showToast('AI enrichment saved to course successfully.', 'success')
+          // Reload course to get updated ai_assets
+          loadCourse()
+        } else if (response._saveError) {
+          console.error('Failed to save assets to course:', response._saveError)
+          showToast(`AI enrichment generated but failed to save: ${response._saveError}`, 'error')
+        } else {
+          // No course_id was provided, just show success for generation
+          showToast('AI enrichment generated successfully.', 'success')
+        }
       }
     },
-    [showToast]
+    [showToast, loadCourse]
   )
 
   const handleEnrichmentLoading = useCallback((isLoading) => {
@@ -163,31 +164,6 @@ export default function TrainerCourseValidation() {
     }
   }, [])
 
-  const checklist = useMemo(() => {
-    if (!course) return []
-    return [
-      {
-        label: 'Course structure is complete',
-        checked: (course.modules || []).length > 0
-      },
-      {
-        label: 'All modules have supporting lessons',
-        checked: (course.modules || []).every((module) => (module.lessons || []).length > 0)
-      },
-      {
-        label: 'Course description is provided',
-        checked: Boolean(course.description || course.course_description)
-      },
-      {
-        label: 'Difficulty level is assigned',
-        checked: Boolean(course.level)
-      },
-      {
-        label: 'Metadata & enrichment applied',
-        checked: Boolean(course.metadata)
-      }
-    ]
-  }, [course])
 
   if (loading) {
     return (
@@ -318,26 +294,10 @@ export default function TrainerCourseValidation() {
                       <span className="inline-flex items-center gap-2 rounded-full bg-[rgba(99,102,241,0.12)] px-3 py-1 text-xs font-semibold uppercase tracking-widest text-[#4338ca]">
                         {course.level || 'Beginner'}
                       </span>
-                      <span
-                        className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-widest ${
-                          validated
-                            ? 'bg-[rgba(16,185,129,0.16)] text-[#047857]'
-                            : 'bg-[rgba(234,179,8,0.18)] text-[#b45309]'
-                        }`}
-                      >
-                        <CheckCircle2 className="h-3 w-3" />
-                        {validated ? 'Validated' : 'Pending validation'}
-                      </span>
                     </div>
                   </>
                 )}
               </div>
-              {!isEditing && !validated && (
-                <Button variant="primary" onClick={handleValidate} className="self-start shrink-0">
-                  <CheckCircle2 className="mr-2 h-4 w-4" />
-                  Mark as validated
-                </Button>
-              )}
             </div>
 
             <div className="grid gap-4 sm:grid-cols-3">
@@ -406,32 +366,8 @@ export default function TrainerCourseValidation() {
             />
           </section>
 
-          <section className="rounded-3xl border border-[rgba(148,163,184,0.18)] bg-[var(--bg-card)] p-6 shadow-sm backdrop-blur">
-            <header className="mb-4 flex items-center justify-between gap-3">
-              <h2 className="text-xl font-semibold text-[var(--text-primary)]">Validation checklist</h2>
-              <ListChecks className="h-5 w-5 text-[var(--primary-cyan)]" />
-            </header>
-            <ul className="space-y-3">
-              {checklist.map((item) => (
-                <li
-                  key={item.label}
-                  className={`flex items-center gap-3 rounded-2xl border border-[rgba(148,163,184,0.18)] px-4 py-3 text-sm ${
-                    item.checked ? 'bg-[rgba(16,185,129,0.1)] text-[#047857]' : 'bg-[var(--bg-secondary)] text-[var(--text-secondary)]'
-                  }`}
-                >
-                  {item.checked ? (
-                    <CheckCircle2 className="h-4 w-4" />
-                  ) : (
-                    <Circle className="h-4 w-4 text-[var(--text-muted)]" />
-                  )}
-                  <span>{item.label}</span>
-                </li>
-              ))}
-            </ul>
-          </section>
-
           <div className="flex flex-wrap items-center justify-center gap-3">
-            <Button variant="primary" onClick={() => navigate(`/trainer/publish/${id}`)} disabled={!validated}>
+            <Button variant="primary" onClick={() => navigate(`/trainer/publish/${id}`)}>
               <Rocket className="mr-2 h-4 w-4" />
               Proceed to publishing
             </Button>

@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import {
   ArrowLeft,
   BookOpen,
@@ -14,6 +14,7 @@ import LessonViewer from '../LessonViewer.jsx'
 import Container from '../Container.jsx'
 import LessonAssetsPanel from './LessonAssetsPanel.jsx'
 import EnrichmentButton from '../../features/enrichment/components/EnrichmentButton.jsx'
+import CourseTreeView from '../CourseTreeView.jsx'
 
 export default function LessonView({
   courseTitle,
@@ -34,8 +35,12 @@ export default function LessonView({
   enrichmentAsset = null,
   onEnrichmentResults = null,
   onEnrichmentLoading = null,
-  onEnrichmentError = null
+  onEnrichmentError = null,
+  course = null,
+  courseId = null
 }) {
+  const navigate = useNavigate()
+  
   if (!lesson) {
     return (
       <div className="page-surface bg-[var(--bg-primary)] transition-colors">
@@ -86,6 +91,24 @@ export default function LessonView({
               Lesson · Exercise · Assessment
             </div>
           </div>
+
+          {/* Course Structure Sidebar */}
+          {course && (course.modules || course.topics) && (
+            <section className="rounded-3xl border border-[rgba(148,163,184,0.18)] bg-[var(--bg-card)] p-6 shadow-sm backdrop-blur">
+              <header className="mb-4 flex items-center justify-between gap-3">
+                <h2 className="text-xl font-semibold text-[var(--text-primary)]">Course Structure</h2>
+              </header>
+              <CourseTreeView 
+                modules={course.modules || (course.topics?.[0]?.modules) || []} 
+                courseId={courseId}
+                onLessonClick={(lesson) => {
+                  if (courseId && lesson?.id) {
+                    navigate(`/course/${courseId}/lesson/${lesson.id || lesson.lesson_id}`)
+                  }
+                }}
+              />
+            </section>
+          )}
 
           <section className="microservice-card refined space-y-6" style={{ textAlign: 'left' }}>
             <header className="space-y-4">
