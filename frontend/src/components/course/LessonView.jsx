@@ -25,7 +25,6 @@ export default function LessonView({
   isCompleted,
   completionSummary,
   onTakeTest,
-  canTakeTest = false,
   isFinalLesson = false,
   structureHref,
   overviewHref,
@@ -172,7 +171,6 @@ export default function LessonView({
               onComplete={isFinalLesson ? undefined : (() => onComplete?.(lesson))}
               isCompleted={isCompleted}
               onTakeTest={isFinalLesson ? onTakeTest : undefined}
-              canTakeTest={canTakeTest}
               isFinalLesson={isFinalLesson}
             />
 
@@ -217,21 +215,11 @@ export default function LessonView({
               {onTakeTest && (
                 <button
                   type="button"
-                  className={`btn ${canTakeTest ? 'btn-primary' : 'btn-secondary'} shrink-0`}
+                  className="btn btn-primary shrink-0"
                   onClick={onTakeTest}
-                  disabled={!canTakeTest}
                 >
-                  {canTakeTest ? (
-                    <>
-                      <Target size={16} />
-                      Take assessment
-                    </>
-                  ) : (
-                    <>
-                      <Lock size={16} />
-                      Finish lesson to unlock
-                    </>
-                  )}
+                  <Target size={16} />
+                  Take assessment
                 </button>
               )}
             </footer>

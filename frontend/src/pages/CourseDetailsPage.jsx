@@ -50,12 +50,44 @@ export default function CourseDetailsPage() {
           }
         : data
 
-      const personalizedProgress = () => {
+      const personalizedProgress = async () => {
         if (!isPersonalized) {
           return enrichedCourse.learner_progress || null
         }
 
         const existing = enrichedCourse.learner_progress || {}
+        
+        // If personalized course and learner is not enrolled, auto-enroll them
+        if (!existing.is_enrolled && learnerId) {
+          try {
+            await registerLearner(id, {
+              learner_id: learnerId,
+              learner_name: userProfile?.name,
+              learner_company: userProfile?.company
+            })
+            // After enrollment, reload to get updated progress
+            const updatedData = await getCourseById(id, { learner_id: learnerId })
+            return updatedData.learner_progress || {
+              is_enrolled: true,
+              status: 'in_progress',
+              progress: 0,
+              completed_lessons: []
+            }
+          } catch (err) {
+            // If already enrolled (409), just return enrolled status
+            if (err.response?.status === 409) {
+              return {
+                is_enrolled: true,
+                status: existing.status || 'in_progress',
+                progress: existing.progress ?? 0,
+                completed_lessons: existing.completed_lessons || []
+              }
+            }
+            // For other errors, still treat as enrolled for personalized courses
+            console.warn('Auto-enrollment failed for personalized course:', err)
+          }
+        }
+        
         return {
           ...existing,
           is_enrolled: true,
@@ -64,9 +96,11 @@ export default function CourseDetailsPage() {
           completed_lessons: existing.completed_lessons || []
         }
       }
+      
+      const progress = await personalizedProgress()
 
       setCourse(enrichedCourse)
-      setLearnerProgress(personalizedProgress())
+      setLearnerProgress(progress)
     } catch (err) {
       const message = err.message || 'Failed to load course'
       setError(message)
@@ -74,7 +108,7 @@ export default function CourseDetailsPage() {
     } finally {
       setLoading(false)
     }
-  }, [id, learnerId, showToast, isPersonalizedFlow])
+  }, [id, learnerId, showToast, isPersonalizedFlow, userProfile])
 
   useEffect(() => {
     loadCourse()
@@ -82,6 +116,7 @@ export default function CourseDetailsPage() {
 
   const isPersonalizedCourse = isPersonalizedFlow || metadataPersonalized
 
+  // Personalized courses are automatically enrolled - no enrollment needed
   const isEnrolled = isPersonalizedCourse || learnerProgress?.is_enrolled
 
   const handleEnrollment = async () => {

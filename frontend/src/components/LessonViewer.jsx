@@ -157,7 +157,6 @@ export default function LessonViewer({
   onComplete,
   isCompleted = false,
   onTakeTest,
-  canTakeTest = false,
   isFinalLesson = false
 }) {
   const [completed, setCompleted] = useState(isCompleted)
@@ -276,18 +275,9 @@ export default function LessonViewer({
               </Button>
             )}
             {isFinalLesson && onTakeTest && (
-              <Button variant={canTakeTest ? 'primary' : 'secondary'} onClick={onTakeTest} disabled={!canTakeTest}>
-                {canTakeTest ? (
-                  <>
-                    Take assessment
-                    <GraduationCap className="ml-2 h-4 w-4" />
-                  </>
-                ) : (
-                  <>
-                    Complete lesson
-                    <Lock className="ml-2 h-4 w-4" />
-                  </>
-                )}
+              <Button variant="primary" onClick={onTakeTest}>
+                <GraduationCap className="ml-2 h-4 w-4" />
+                Take assessment
               </Button>
             )}
           </div>

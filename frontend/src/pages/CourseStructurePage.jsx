@@ -56,10 +56,12 @@ export default function CourseStructurePage() {
   }, [id, loadCourse])
 
   useEffect(() => {
-    if (!loading && learnerProgress && !learnerProgress.is_enrolled && userRole === 'learner') {
+    // Don't redirect personalized courses - they are auto-enrolled
+    const isPersonalized = Boolean(course?.metadata?.personalized || course?.metadata?.source === 'learner_ai')
+    if (!loading && learnerProgress && !learnerProgress.is_enrolled && userRole === 'learner' && !isPersonalized) {
       navigate(`/course/${id}/overview`, { replace: true })
     }
-  }, [id, learnerProgress, loading, navigate, userRole])
+  }, [id, learnerProgress, loading, navigate, userRole, course])
 
   const flattenedLessons = useMemo(() => {
     if (!course) return []
@@ -106,7 +108,9 @@ export default function CourseStructurePage() {
     navigate(`/course/${id}/lesson/${lessonId}`)
   }
 
-  if (userRole === 'learner' && !learnerProgress?.is_enrolled && !loading) {
+  // Don't block personalized courses - they are auto-enrolled
+  const isPersonalized = Boolean(course?.metadata?.personalized || course?.metadata?.source === 'learner_ai')
+  if (userRole === 'learner' && !learnerProgress?.is_enrolled && !loading && !isPersonalized) {
     return null
   }
 

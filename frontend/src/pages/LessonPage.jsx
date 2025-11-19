@@ -75,13 +75,16 @@ export default function LessonPage() {
   }, [courseId, lessonId, loadData])
 
   useEffect(() => {
-    // Redirect unenrolled learners to course overview
+    // Redirect unenrolled learners to course overview (except personalized courses - auto-enrolled)
     if (!loading && userRole === 'learner') {
-      if (learnerProgress && !learnerProgress.is_enrolled) {
-        navigate(`/course/${courseId}/overview`, { replace: true })
-      } else if (!learnerProgress && course) {
-        // If no progress data but course exists, also redirect to overview
-      navigate(`/course/${courseId}/overview`, { replace: true })
+      const isPersonalized = Boolean(course?.metadata?.personalized || course?.metadata?.source === 'learner_ai')
+      if (!isPersonalized) {
+        if (learnerProgress && !learnerProgress.is_enrolled) {
+          navigate(`/course/${courseId}/overview`, { replace: true })
+        } else if (!learnerProgress && course) {
+          // If no progress data but course exists, also redirect to overview
+          navigate(`/course/${courseId}/overview`, { replace: true })
+        }
       }
     }
   }, [courseId, learnerProgress, loading, navigate, userRole, course])
@@ -239,7 +242,8 @@ export default function LessonPage() {
 
   const hasCompletedCurrent = completedLessons.includes(normalizedLessonId)
   const allLessonsCompleted = flattenedLessons.length > 0 && completedLessons.length >= flattenedLessons.length
-  const canTakeAssessment = isFinalLesson && hasCompletedCurrent
+  // Allow taking assessment in final lesson without requiring completion
+  const canTakeAssessment = isFinalLesson
   const handleTakeTest = () => {
     if (!canTakeAssessment) {
       showToast('Complete the final lesson to unlock the assessment.', 'info')
@@ -248,9 +252,7 @@ export default function LessonPage() {
     navigate(`/course/${courseId}/assessment`)
   }
   const completionSummary = isFinalLesson
-    ? canTakeAssessment
-      ? 'Final assessment ready – take the test when you are ready.'
-      : 'Finish this lesson to unlock the assessment.'
+    ? 'Final assessment ready – take the test when you are ready.'
     : allLessonsCompleted
       ? 'Exercises and assessment unlocked.'
       : 'Complete remaining lessons to unlock exercises and assessment.'
@@ -269,7 +271,6 @@ export default function LessonPage() {
       isCompleted={hasCompletedCurrent}
       completionSummary={completionSummary}
       onTakeTest={isFinalLesson ? handleTakeTest : undefined}
-      canTakeTest={canTakeAssessment}
       isFinalLesson={isFinalLesson}
       structureHref={`/course/${courseId}/structure`}
       overviewHref={`/course/${courseId}/overview`}
