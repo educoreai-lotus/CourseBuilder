@@ -110,7 +110,9 @@ export default function CourseOverview({
     return null
   }
 
-  const personalized = Boolean(course?.metadata?.personalized || course?.metadata?.source === 'learner_ai')
+  const isPersonalized = Boolean(course?.metadata?.personalized) || course?.metadata?.source === 'learner_ai'
+  const isMarketplace = !isPersonalized
+  const personalized = isPersonalized // Keep for backward compatibility
   const metadata = getMetadataItems(course)
   const metadataTags = course?.metadata?.tags || course?.metadata?.skills || []
   const tags = course?.tags || course?.skills || metadataTags
@@ -211,16 +213,29 @@ export default function CourseOverview({
             style={{ textAlign: 'left' }}
           >
             <div className="space-y-6">
-              <div className="flex flex-wrap items-center gap-3">
-                <span
-                  className="rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide"
-                  style={{
-                    background: personalized ? 'rgba(124,58,237,0.14)' : 'rgba(14,165,233,0.14)',
-                    color: personalized ? '#6d28d9' : '#0f766e'
-                  }}
-                >
-                  {personalized ? 'Personalized' : 'Marketplace'}
-                </span>
+                  <div className="flex flex-wrap items-center gap-3">
+                    {isPersonalized && (
+                      <span
+                        className="rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide"
+                        style={{
+                          background: 'rgba(124,58,237,0.14)',
+                          color: '#6d28d9'
+                        }}
+                      >
+                        PERSONALIZED
+                      </span>
+                    )}
+                    {isMarketplace && (
+                      <span
+                        className="rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide"
+                        style={{
+                          background: 'rgba(14,165,233,0.14)',
+                          color: '#0f766e'
+                        }}
+                      >
+                        MARKETPLACE
+                      </span>
+                    )}
                 <span
                   className="rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide"
                   style={{

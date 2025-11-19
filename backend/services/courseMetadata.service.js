@@ -37,7 +37,7 @@ export const generateCourseMetadata = ({
     courseDescription,
     metadata: {
       personalized: Boolean(learnerId),
-      source: learnerId ? 'learner_ai' : 'content_studio',
+      source: learnerId ? 'learner_ai' : 'marketplace',
       skills: normalizedSkills,
       tags: Array.from(tags),
       level,

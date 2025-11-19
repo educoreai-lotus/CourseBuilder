@@ -80,26 +80,51 @@ export const browseCourses = async ({ search, category, level, sort, page, limit
       db.one(countQuery, params)
     ]);
 
+    // Get full course data for metadata extraction
+    const coursesWithMetadata = await Promise.all(
+      courses.map(async (course) => {
+        const courseFull = await courseRepository.findById(course.id).catch(() => null)
+        const learningPathDesignation = courseFull?.learning_path_designation || {}
+        const isPersonalizedCourse = Boolean(learningPathDesignation.personalized) || learningPathDesignation.source === 'learner_ai'
+        
+        // Set metadata with defaults for marketplace courses only
+        const metadata = isPersonalizedCourse
+          ? {
+              personalized: true,
+              source: learningPathDesignation.source || 'learner_ai',
+              ...learningPathDesignation
+            }
+          : {
+              personalized: false,
+              source: 'marketplace',
+              ...learningPathDesignation
+            }
+
+        return {
+          id: course.id,
+          title: course.title,
+          course_name: course.title, // Keep for backward compatibility
+          description: course.description,
+          course_description: course.description, // Keep for backward compatibility
+          level: course.level,
+          rating: parseFloat(course.rating) || 0,
+          duration: course.duration,
+          created_at: course.created_at?.toISOString?.() || null,
+          updated_at: course.updated_at?.toISOString?.() || null,
+          status: course.status,
+          course_type: course.course_type || 'trainer', // Include course_type
+          total_enrollments: parseInt(course.total_enrollments) || 0,
+          active_enrollments: parseInt(course.active_enrollments) || 0,
+          created_by_user_id: course.created_by_user_id,
+          metadata: metadata // Include metadata with proper defaults
+        }
+      })
+    )
+
     return {
       page: parseInt(page, 10),
       total: parseInt(totalResult.total, 10),
-      courses: courses.map(course => ({
-        id: course.id,
-        title: course.title,
-        course_name: course.title, // Keep for backward compatibility
-        description: course.description,
-        course_description: course.description, // Keep for backward compatibility
-        level: course.level,
-        rating: parseFloat(course.rating) || 0,
-        duration: course.duration,
-        created_at: course.created_at?.toISOString?.() || null,
-        updated_at: course.updated_at?.toISOString?.() || null,
-        status: course.status,
-        course_type: course.course_type || 'trainer', // Include course_type
-        total_enrollments: parseInt(course.total_enrollments) || 0,
-        active_enrollments: parseInt(course.active_enrollments) || 0,
-        created_by_user_id: course.created_by_user_id
-      }))
+      courses: coursesWithMetadata
     };
   } catch (error) {
     console.error('Error browsing courses:', error);
@@ -237,14 +262,34 @@ export const getCourseDetails = async (courseId, options = {}) => {
       }
     }
 
+    // Extract metadata from learning_path_designation
+    const learningPathDesignation = course.learning_path_designation || {}
+    const isPersonalizedCourse = Boolean(learningPathDesignation.personalized) || learningPathDesignation.source === 'learner_ai'
+    
+    // Set metadata with defaults for marketplace courses only
+    const metadata = isPersonalizedCourse
+      ? {
+          personalized: true,
+          source: learningPathDesignation.source || 'learner_ai',
+          ...learningPathDesignation
+        }
+      : {
+          personalized: false,
+          source: 'marketplace',
+          ...learningPathDesignation
+        }
+
     return {
       id: course.id,
       title: course.course_name,
+      course_name: course.course_name, // Keep for backward compatibility
       description: course.course_description,
+      course_description: course.course_description, // Keep for backward compatibility
       level: course.level,
       status: course.status,
       category: null, // Not in new schema
       duration: course.duration_hours,
+      duration_hours: course.duration_hours, // Keep for backward compatibility
       total_enrollments: enrollmentsResult.total || 0,
       active_enrollments: activeEnrollmentsResult.active || 0,
       completion_rate: Number(completionRate.toFixed(2)),
@@ -252,6 +297,7 @@ export const getCourseDetails = async (courseId, options = {}) => {
       created_by_user_id: course.created_by_user_id,
       created_at: course.created_at?.toISOString?.() || null,
       updated_at: course.updated_at?.toISOString?.() || null,
+      course_type: course.course_type || 'trainer', // Include course_type
       // ⚠️ Structure: Course → Topics → Modules → Lessons
       // Topics and Modules are structural only - Lessons contain ALL content
       topics: topicsData,
@@ -270,6 +316,7 @@ export const getCourseDetails = async (courseId, options = {}) => {
       )).flat().flatMap(lesson => Array.isArray(lesson.skills) ? lesson.skills : []))],
       version: versionNumber.toString(),
       ai_assets: course.ai_assets || {}, // Include course-level AI assets
+      metadata: metadata, // Include metadata with proper defaults
       ...(learnerProgress && { learner_progress: learnerProgress })
     };
   } catch (error) {
@@ -473,6 +520,13 @@ export const getCourseById = async (courseId, options = {}) => {
  */
 export const createCourse = async (courseData) => {
   try {
+    // Set default metadata for marketplace courses (trainer-created)
+    const defaultMetadata = {
+      personalized: false,
+      source: 'marketplace',
+      ...(courseData.metadata || {})
+    }
+    
     const course = await courseRepository.create({
       course_name: courseData.course_name,
       course_description: courseData.course_description,
@@ -480,7 +534,8 @@ export const createCourse = async (courseData) => {
       status: 'draft',
       level: courseData.level,
       duration_hours: courseData.duration_hours,
-      created_by_user_id: courseData.created_by_user_id || courseData.trainer_id
+      created_by_user_id: courseData.created_by_user_id || courseData.trainer_id,
+      learning_path_designation: defaultMetadata // Store metadata in learning_path_designation
     });
 
     // Create initial version

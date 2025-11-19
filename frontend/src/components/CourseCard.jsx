@@ -12,6 +12,7 @@ export default function CourseCard({ course, showProgress = false, progress = 0,
   const destination = to ?? `/courses/${courseId}`
   const metadata = course.metadata || {}
   const isPersonalized = Boolean(metadata.personalized) || metadata.source === 'learner_ai'
+  const isMarketplace = !isPersonalized
   const skillChips = Array.isArray(metadata.skills) ? metadata.skills.slice(0, 4) : []
 
   return (
@@ -27,7 +28,12 @@ export default function CourseCard({ course, showProgress = false, progress = 0,
             </span>
             {isPersonalized && (
               <span className="rounded-full bg-[rgba(124,58,237,0.16)] px-3 py-1 text-xs font-semibold uppercase tracking-wide text-[#6d28d9]">
-                AI Path
+                PERSONALIZED
+              </span>
+            )}
+            {isMarketplace && (
+              <span className="rounded-full bg-[rgba(14,165,233,0.12)] px-3 py-1 text-xs font-semibold uppercase tracking-wide text-[#0f766e]">
+                MARKETPLACE
               </span>
             )}
             {status !== 'live' && (

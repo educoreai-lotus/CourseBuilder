@@ -100,7 +100,9 @@ export default function CourseStructurePage() {
   const nextLesson = flattenedLessons.find((lesson) => !completedSet.has(String(lesson.id || lesson.lesson_id)))
   const firstLesson = flattenedLessons[0] || null
 
-  const personalized = Boolean(course?.metadata?.personalized)
+  const isPersonalized = Boolean(course?.metadata?.personalized) || course?.metadata?.source === 'learner_ai'
+  const isMarketplace = !isPersonalized
+  const personalized = isPersonalized // Keep for backward compatibility
   const selectedBackLink = personalized ? '/learner/personalized' : '/learner/marketplace'
 
   const handleSelectLesson = (lessonId) => {

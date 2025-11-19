@@ -172,7 +172,11 @@ export default function LearnerDashboard() {
                     </div>
                   </div>
                   <div className="stack-md">
-                    {recommended.slice(0, 3).map((course) => (
+                    {recommended.slice(0, 3).map((course) => {
+                      const metadata = course.metadata || {}
+                      const isPersonalized = Boolean(metadata.personalized) || metadata.source === 'learner_ai'
+                      const isMarketplace = !isPersonalized
+                      return (
                       <div key={course.id || course.course_id} className="course-card compact">
                         <div className="flex items-start justify-between gap-4">
                           <div className="space-y-1">
@@ -183,7 +187,8 @@ export default function LearnerDashboard() {
                                 'Build practical skills with guided lessons and projects.'}
                             </p>
                           </div>
-                          <span className="badge badge-purple">Personalized</span>
+                          {isPersonalized && <span className="badge badge-purple">PERSONALIZED</span>}
+                          {isMarketplace && <span className="badge badge-blue">MARKETPLACE</span>}
                         </div>
                         <div className="flex items-center justify-between text-xs text-[var(--text-muted)]">
                           <span>{course.duration ? `${course.duration} mins` : 'Approx. 45 mins'}</span>
@@ -196,7 +201,8 @@ export default function LearnerDashboard() {
                           </Link>
                         </div>
                       </div>
-                    ))}
+                      )
+                    })}
                   </div>
                 </article>
 
@@ -211,7 +217,11 @@ export default function LearnerDashboard() {
                     </div>
                   </div>
                   <div className="stack-md">
-                    {recommended.slice(3, 6).map((course) => (
+                    {recommended.slice(3, 6).map((course) => {
+                      const metadata = course.metadata || {}
+                      const isPersonalized = Boolean(metadata.personalized) || metadata.source === 'learner_ai'
+                      const isMarketplace = !isPersonalized
+                      return (
                       <div key={`market-${course.id || course.course_id}`} className="course-card compact">
                         <div className="flex items-start justify-between gap-4">
                           <div className="space-y-1">
@@ -222,7 +232,8 @@ export default function LearnerDashboard() {
                                 'Learn from specialists with real-world experience.'}
                             </p>
                           </div>
-                          <span className="badge badge-blue">Marketplace</span>
+                          {isPersonalized && <span className="badge badge-purple">PERSONALIZED</span>}
+                          {isMarketplace && <span className="badge badge-blue">MARKETPLACE</span>}
                         </div>
                         <div className="flex items-center justify-between text-xs text-[var(--text-muted)]">
                           <span>{(course.rating || course.average_rating || 4.6).toFixed(1)} rating</span>
@@ -231,7 +242,8 @@ export default function LearnerDashboard() {
                           </Link>
                         </div>
                       </div>
-                    ))}
+                      )
+                    })}
                   </div>
                 </article>
               </section>
