@@ -85,7 +85,11 @@ export const browseCourses = async ({ search, category, level, sort, page, limit
       courses.map(async (course) => {
         const courseFull = await courseRepository.findById(course.id).catch(() => null)
         const learningPathDesignation = courseFull?.learning_path_designation || {}
-        const isPersonalizedCourse = Boolean(learningPathDesignation.personalized) || learningPathDesignation.source === 'learner_ai'
+        
+        // Check if course is personalized: primary check is course_type, fallback to learning_path_designation
+        const isPersonalizedByType = course.course_type === 'learner_specific'
+        const isPersonalizedByMetadata = Boolean(learningPathDesignation.personalized) || learningPathDesignation.source === 'learner_ai'
+        const isPersonalizedCourse = isPersonalizedByType || isPersonalizedByMetadata
         
         // Set metadata with defaults for marketplace courses only
         const metadata = isPersonalizedCourse
@@ -264,7 +268,11 @@ export const getCourseDetails = async (courseId, options = {}) => {
 
     // Extract metadata from learning_path_designation
     const learningPathDesignation = course.learning_path_designation || {}
-    const isPersonalizedCourse = Boolean(learningPathDesignation.personalized) || learningPathDesignation.source === 'learner_ai'
+    
+    // Check if course is personalized: primary check is course_type, fallback to learning_path_designation
+    const isPersonalizedByType = course.course_type === 'learner_specific'
+    const isPersonalizedByMetadata = Boolean(learningPathDesignation.personalized) || learningPathDesignation.source === 'learner_ai'
+    const isPersonalizedCourse = isPersonalizedByType || isPersonalizedByMetadata
     
     // Set metadata with defaults for marketplace courses only
     const metadata = isPersonalizedCourse
