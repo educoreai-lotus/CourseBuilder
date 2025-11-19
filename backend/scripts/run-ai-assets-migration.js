@@ -1,12 +1,9 @@
 /**
- * Migration script to add ai_assets column to courses table
- * Run this script to update existing database schema
- * 
- * Usage: npm run migrate:ai-assets
- * Or: node backend/scripts/add-ai-assets-column.js
+ * Quick migration script to add ai_assets column to courses table
+ * Run with: node backend/scripts/run-ai-assets-migration.js
  */
 
-import db, { pgp } from '../config/database.js';
+import db from '../config/database.js';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -19,8 +16,7 @@ async function addAiAssetsColumn() {
     const checkQuery = `
       SELECT column_name 
       FROM information_schema.columns 
-      WHERE table_schema = 'public'
-      AND table_name = 'courses' 
+      WHERE table_name = 'courses' 
       AND column_name = 'ai_assets';
     `;
     
@@ -28,13 +24,12 @@ async function addAiAssetsColumn() {
     
     if (existingColumn) {
       console.log('✅ Column ai_assets already exists. Migration not needed.');
-      await pgp.end();
       process.exit(0);
       return;
     }
 
     // Add the ai_assets column
-    console.log('📝 Adding ai_assets column to courses table...');
+    console.log('📝 Adding ai_assets column...');
     const alterQuery = `
       ALTER TABLE courses 
       ADD COLUMN ai_assets JSONB DEFAULT '{}'::jsonb;
@@ -54,26 +49,16 @@ async function addAiAssetsColumn() {
     console.log('✅ Added documentation comment to ai_assets column.\n');
 
     console.log('🎉 Migration completed successfully!');
-    console.log('💡 The ai_assets column is now available for storing course-level AI enrichment assets.');
+    process.exit(0);
   } catch (error) {
     console.error('❌ Migration failed:', error.message);
-    if (error.stack) {
-      console.error('Stack:', error.stack);
-    }
-    throw error;
+    console.error(error.stack);
+    process.exit(1);
   } finally {
-    await pgp.end();
+    // Don't close the connection - let the process exit handle it
   }
 }
 
 // Run migration
-addAiAssetsColumn()
-  .then(() => {
-    console.log('\n✅ Migration script completed successfully.');
-    process.exit(0);
-  })
-  .catch((error) => {
-    console.error('\n❌ Migration script failed:', error.message);
-    process.exit(1);
-  });
+addAiAssetsColumn();
 
