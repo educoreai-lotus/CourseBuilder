@@ -1,7 +1,7 @@
 import { useParams, useNavigate } from 'react-router-dom'
 import { useState, useEffect } from 'react'
 import { ArrowLeft, MessageSquare, Star, TrendingUp, Users } from 'lucide-react'
-import { getCourseById, getFeedbackAnalytics } from '../services/apiService.js'
+import { getCourseById, getFeedback } from '../services/apiService.js'
 import Button from '../components/Button.jsx'
 import LoadingSpinner from '../components/LoadingSpinner.jsx'
 import Container from '../components/Container.jsx'
@@ -22,9 +22,13 @@ export default function TrainerFeedbackAnalytics() {
   const loadData = async () => {
     setLoading(true)
     try {
-      const [courseData, analyticsData] = await Promise.all([getCourseById(id), getFeedbackAnalytics(id).catch(() => null)])
+      // Use aggregated feedback endpoint for trainers (GET /api/v1/feedback/:courseId)
+      const [courseData, feedbackData] = await Promise.all([
+        getCourseById(id),
+        getFeedback(id).catch(() => null)
+      ])
       setCourse(courseData)
-      setFeedback(analyticsData)
+      setFeedback(feedbackData)
     } catch (err) {
       showToast('Failed to load data', 'error')
     } finally {
