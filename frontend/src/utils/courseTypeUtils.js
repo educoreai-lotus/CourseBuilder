@@ -42,13 +42,18 @@ export function isPersonalized(course) {
 export function isMarketplace(course) {
   if (!course) return false
   
-  // Must not be personalized
-  if (isPersonalized(course)) {
+  // Must be trainer course type
+  if (course.course_type !== 'trainer') {
     return false
   }
   
-  // Must be trainer course type
-  return course.course_type === 'trainer'
+  // Must not be personalized (check inline to avoid circular dependency issues)
+  const metadata = course.metadata || {}
+  if (metadata.personalized === true || metadata.source === 'learner_ai') {
+    return false
+  }
+  
+  return true
 }
 
 /**
@@ -106,4 +111,3 @@ export function filterTrainerCourses(courses, trainerId) {
   if (!Array.isArray(courses)) return []
   return courses.filter(course => belongsToTrainer(course, trainerId))
 }
-
