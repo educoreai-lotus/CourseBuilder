@@ -89,14 +89,21 @@ export default function CourseDetailsPage() {
       const isEnrolledCheck = courseIsPersonalized || progress?.is_enrolled
 
       // Check if learner has existing feedback
+      // 404 is normal when no feedback exists yet - handle gracefully
       let feedbackExists = false
       if (learnerId && isEnrolledCheck) {
         try {
-          const feedback = await getMyFeedback(id)
-          feedbackExists = Boolean(feedback)
+          const feedbackData = await getMyFeedback(id)
+          feedbackExists = Boolean(feedbackData)
         } catch (err) {
-          // No feedback exists or error - treat as no feedback
-          feedbackExists = false
+          // 404 is normal - learner hasn't submitted feedback yet
+          if (err.response?.status === 404) {
+            feedbackExists = false
+          } else {
+            // Other errors - log but don't break the UI
+            console.warn('Failed to load feedback:', err)
+            feedbackExists = false
+          }
         }
       }
 

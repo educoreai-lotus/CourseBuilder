@@ -88,22 +88,37 @@ export default function FeedbackPage() {
     const bootstrap = async () => {
       setPageLoading(true)
       try {
-        const [courseData, learnerFeedback, aggregated] = await Promise.all([
-          getCourseById(actualCourseId).catch(() => null),
-          getMyFeedback(actualCourseId).catch(() => null),
-          getFeedback(actualCourseId).catch(() => null)
+        const [courseData, learnerFeedbackResult, aggregatedResult] = await Promise.allSettled([
+          getCourseById(actualCourseId),
+          getMyFeedback(actualCourseId),
+          getFeedback(actualCourseId)
         ])
 
         if (!isMounted) return
 
-        if (courseData) {
-          setCourse(courseData)
+        // Handle course data
+        if (courseData.status === 'fulfilled' && courseData.value) {
+          setCourse(courseData.value)
         }
 
-        if (aggregated && aggregated.average_rating) {
-          setCommunityStats(aggregated)
+        // Handle aggregated feedback (optional, 404 is OK)
+        if (aggregatedResult.status === 'fulfilled' && aggregatedResult.value?.average_rating) {
+          setCommunityStats(aggregatedResult.value)
         } else {
           setCommunityStats(null)
+        }
+
+        // Handle learner feedback - 404 is normal when no feedback exists yet
+        let learnerFeedback = null
+        if (learnerFeedbackResult.status === 'fulfilled' && learnerFeedbackResult.value) {
+          learnerFeedback = learnerFeedbackResult.value
+        } else if (learnerFeedbackResult.status === 'rejected') {
+          // 404 is normal - learner hasn't submitted feedback yet
+          if (learnerFeedbackResult.reason?.response?.status !== 404) {
+            // Only log non-404 errors
+            console.warn('Failed to load learner feedback:', learnerFeedbackResult.reason)
+          }
+          learnerFeedback = null
         }
 
         if (learnerFeedback) {
@@ -132,8 +147,9 @@ export default function FeedbackPage() {
           setIsEditing(true) // Start in edit mode for new feedback
         }
       } catch (error) {
+        // This should not happen with Promise.allSettled, but handle just in case
         if (isMounted) {
-          showToast('Unable to load feedback details. Please try again later.', 'error')
+          console.error('Unexpected error loading feedback page:', error)
         }
       } finally {
         if (isMounted) {
