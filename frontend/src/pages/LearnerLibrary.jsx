@@ -251,30 +251,29 @@ export default function LearnerLibrary() {
             <span className="text-sm font-medium text-[var(--text-muted)]">
               {filtered.length} course{filtered.length === 1 ? '' : 's'} visible
             </span>
-          </div>
-        </div>
-      </Container>
+            </div>
+          </section>
 
-      <Container>
-        {filtered.length === 0 ? (
-          <section className="section-panel">
-            <div className="surface-card soft space-y-4 text-center">
-              <i className="fa-solid fa-books text-3xl text-[var(--primary-cyan)]" />
-              <h2 className="text-xl font-semibold text-[var(--text-primary)]">No courses found for this filter</h2>
-              <p className="text-sm text-[var(--text-secondary)]">
-                Browse the marketplace to add new courses to your learning library.
-              </p>
-            </div>
-          </section>
-        ) : (
-          <section className="section-panel">
-            <div className="space-y-6">
-              {filtered.map((course) => (
-                <LibraryCourseCard key={course.id} course={course} />
-              ))}
-            </div>
-          </section>
-        )}
+          {filtered.length === 0 ? (
+            <section className="surface-card space-y-6">
+              <div className="text-center space-y-4">
+                <i className="fa-solid fa-books text-3xl text-[var(--primary-cyan)]" />
+                <h2 className="text-xl font-semibold text-[var(--text-primary)]">No courses found for this filter</h2>
+                <p className="text-sm text-[var(--text-secondary)]">
+                  Browse the marketplace to add new courses to your learning library.
+                </p>
+              </div>
+            </section>
+          ) : (
+            <section className="surface-card space-y-6">
+              <div className="course-grid">
+                {filtered.map((course) => (
+                  <LibraryCourseCard key={course.id} course={course} />
+                ))}
+              </div>
+            </section>
+          )}
+        </div>
       </Container>
     </div>
   )
