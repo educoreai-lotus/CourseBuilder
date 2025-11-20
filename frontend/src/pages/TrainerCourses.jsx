@@ -9,7 +9,7 @@ import Container from '../components/Container.jsx'
 const STATUS_FILTERS = ['all', 'draft', 'live', 'archived']
 
 export default function TrainerCourses() {
-  const { showToast } = useApp()
+  const { showToast, userProfile } = useApp()
   const [courses, setCourses] = useState([])
   const [loading, setLoading] = useState(true)
   const [statusFilter, setStatusFilter] = useState('all')
@@ -23,7 +23,16 @@ export default function TrainerCourses() {
     setLoading(true)
     try {
       const data = await getCourses({ limit: 100 })
-      setCourses(data.courses || [])
+      const allCourses = data.courses || []
+      
+      // Filter courses to show only the trainer's own courses
+      // Match by created_by_user_id (temporary until JWT auth is implemented)
+      const trainerId = userProfile?.id
+      const trainerCourses = trainerId
+        ? allCourses.filter((course) => course.created_by_user_id === trainerId || course.created_by === trainerId)
+        : allCourses
+      
+      setCourses(trainerCourses)
     } catch (err) {
       showToast('Failed to load trainer courses', 'error')
     } finally {
@@ -32,8 +41,11 @@ export default function TrainerCourses() {
   }
 
   const filteredCourses = useMemo(() => {
-    if (statusFilter === 'all') return courses
-    return courses.filter((course) => (course.status || 'draft') === statusFilter)
+    let result = courses
+    if (statusFilter !== 'all') {
+      result = result.filter((course) => (course.status || 'draft') === statusFilter)
+    }
+    return result
   }, [courses, statusFilter])
 
   const handleArchiveCourse = async (courseId) => {

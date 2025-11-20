@@ -174,27 +174,25 @@ export default function LessonView({
               isFinalLesson={isFinalLesson}
             />
 
-            {/* Only show AI assets for trainers, not learners */}
-            {userRole !== 'learner' && (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between gap-4">
-                  <h2 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
-                    Learning Resources
-                  </h2>
-                  {enrichmentAsset && (
-                    <EnrichmentButton
-                      asset={enrichmentAsset}
-                      onResults={onEnrichmentResults || undefined}
-                      onLoading={onEnrichmentLoading || undefined}
-                      onError={onEnrichmentError || undefined}
-                      buttonLabel={enrichmentAssets ? 'Refresh assets' : 'Load AI assets'}
-                      disabled={!enrichmentAsset}
-                    />
-                  )}
-                </div>
-                <LessonAssetsPanel assets={enrichmentAssets} loading={enrichmentLoading} error={enrichmentError} />
+            {/* Show AI enrichment button for both trainers and learners */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between gap-4">
+                <h2 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
+                  Learning Resources
+                </h2>
+                {enrichmentAsset && (
+                  <EnrichmentButton
+                    asset={enrichmentAsset}
+                    onResults={onEnrichmentResults || undefined}
+                    onLoading={onEnrichmentLoading || undefined}
+                    onError={onEnrichmentError || undefined}
+                    buttonLabel={userRole === 'learner' ? 'AI Enrich Lesson' : (enrichmentAssets ? 'Refresh assets' : 'Load AI assets')}
+                    disabled={!enrichmentAsset}
+                  />
+                )}
               </div>
-            )}
+              <LessonAssetsPanel assets={enrichmentAssets} loading={enrichmentLoading} error={enrichmentError} />
+            </div>
 
             <footer className="flex flex-col gap-4 rounded-2xl border border-[rgba(148,163,184,0.16)] bg-[var(--bg-card)]/90 px-6 py-4 text-sm text-[var(--text-secondary)] backdrop-blur transition-colors md:flex-row md:items-center md:justify-between">
               <div className="flex items-center gap-3 text-sm font-medium">

@@ -27,7 +27,7 @@ const getActiveLearners = (courses) =>
   courses.reduce((acc, course) => acc + Number(course.active_enrollments || course.total_enrollments || 0), 0)
 
 export default function TrainerDashboard() {
-  const { showToast } = useApp()
+  const { showToast, userProfile } = useApp()
   const [courses, setCourses] = useState([])
   const [loading, setLoading] = useState(true)
   const [publishing, setPublishing] = useState(false)
@@ -40,7 +40,16 @@ export default function TrainerDashboard() {
     setLoading(true)
     try {
       const data = await getCourses({ limit: 50 })
-      setCourses(data.courses || [])
+      const allCourses = data.courses || []
+      
+      // Filter courses to show only the trainer's own courses
+      // Match by created_by_user_id (temporary until JWT auth is implemented)
+      const trainerId = userProfile?.id
+      const trainerCourses = trainerId
+        ? allCourses.filter((course) => course.created_by_user_id === trainerId || course.created_by === trainerId)
+        : allCourses
+      
+      setCourses(trainerCourses)
     } catch (err) {
       showToast('Failed to load courses', 'error')
     } finally {

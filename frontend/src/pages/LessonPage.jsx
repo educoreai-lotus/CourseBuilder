@@ -167,12 +167,8 @@ export default function LessonPage() {
     }
   }, [lesson, course, userRole])
 
-  // Load course-level assets for learners
-  useEffect(() => {
-    if (userRole === 'learner' && course?.ai_assets && Object.keys(course.ai_assets).length > 0) {
-      setEnrichmentAssets(course.ai_assets)
-    }
-  }, [course, userRole])
+  // Note: Removed auto-loading of enrichment assets for learners
+  // Learners must click the "AI Enrich Lesson" button to load enrichment
 
   const handleComplete = async () => {
     if (!lessonId) return
