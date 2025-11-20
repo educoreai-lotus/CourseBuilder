@@ -89,7 +89,7 @@ export default function CourseDetailsPage() {
       const isEnrolledCheck = courseIsPersonalized || progress?.is_enrolled
 
       // Check if learner has existing feedback
-      // 404 is normal when no feedback exists yet - handle gracefully
+      // 404 is normal when no feedback exists yet - getMyFeedback returns null for 404
       let feedbackExists = false
       if (learnerId && isEnrolledCheck) {
         try {
@@ -98,9 +98,8 @@ export default function CourseDetailsPage() {
             feedbackExists = true
           }
         } catch (err) {
-          // All errors (including 404) mean no feedback exists yet
-          // This is normal behavior - don't treat 404 as an error
-          // Silently handle all errors - no feedback exists
+          // Other errors (non-404) - log but don't break UI
+          console.warn('Failed to load feedback:', err)
           feedbackExists = false
         }
       }

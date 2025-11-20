@@ -79,7 +79,17 @@ export function getFeedback(courseId) {
 }
 
 export function getMyFeedback(courseId) {
-  return api.get(`/courses/${courseId}/feedback/self`).then(r => r.data)
+  return api.get(`/courses/${courseId}/feedback/self`)
+    .then(r => r.data)
+    .catch(err => {
+      // 404 is normal - learner hasn't submitted feedback yet
+      // Return null instead of throwing to avoid initialization errors
+      if (err?.response?.status === 404) {
+        return null
+      }
+      // Re-throw other errors
+      throw err
+    })
 }
 
 export function updateFeedback(courseId, body) {
