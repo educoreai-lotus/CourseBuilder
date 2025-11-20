@@ -8,6 +8,7 @@ import {
 import EnrichmentButton from '../features/enrichment/components/EnrichmentButton.jsx'
 import LoadingSpinner from '../components/LoadingSpinner.jsx'
 import LessonView from '../components/course/LessonView.jsx'
+import CourseStructureSidebar from '../components/course/CourseStructureSidebar.jsx'
 import { useApp } from '../context/AppContext'
 import Container from '../components/Container.jsx'
 import { isPersonalized } from '../utils/courseTypeUtils.js'
@@ -65,7 +66,7 @@ export default function LessonPage() {
       }
     } catch (err) {
       showToast('Unable to load lesson. Please try again later.', 'error')
-      navigate(`/course/${courseId}/structure`, { replace: true })
+      navigate(`/course/${courseId}/overview`, { replace: true })
     } finally {
       setLoading(false)
     }
@@ -223,10 +224,10 @@ export default function LessonPage() {
             <p className="text-lg font-semibold text-[var(--text-primary)]">Lesson not found</p>
             <p className="text-sm text-[var(--text-secondary)]">Unable to load lesson data. Please try again.</p>
             <button
-              onClick={() => navigate(`/course/${courseId}/structure`)}
+              onClick={() => navigate(`/course/${courseId}/overview`)}
               className="mt-4 rounded-full bg-[var(--primary-cyan)] px-6 py-2 text-sm font-semibold text-white transition-colors hover:bg-[var(--primary-cyan-strong)]"
             >
-              Back to Course Structure
+              Back to Course Overview
             </button>
           </div>
         </Container>
@@ -254,33 +255,52 @@ export default function LessonPage() {
       ? 'Exercises and assessment unlocked.'
       : 'Complete remaining lessons to unlock exercises and assessment.'
 
+  // Determine if course is personalized
+  const isPersonalizedCourse = isPersonalized(course)
+
   // Early returns AFTER all hooks have been called
   // This ensures hooks are always called in the same order
   return (
-    <LessonView
-      courseTitle={course?.title || course?.course_name}
-      lesson={lesson}
-      onPrevious={previousLesson ? () => navigate(`/course/${courseId}/lesson/${previousLesson.id || previousLesson.lesson_id}`) : undefined}
-      onNext={
-        nextLesson ? () => navigate(`/course/${courseId}/lesson/${nextLesson.id || nextLesson.lesson_id}`) : undefined
-      }
-      onComplete={handleComplete}
-      isCompleted={hasCompletedCurrent}
-      completionSummary={completionSummary}
-      onTakeTest={isFinalLesson ? handleTakeTest : undefined}
-      isFinalLesson={isFinalLesson}
-      structureHref={`/course/${courseId}/structure`}
-      overviewHref={`/course/${courseId}/overview`}
-      enrichmentAssets={enrichmentAssets}
-      enrichmentLoading={enrichmentLoading}
-      enrichmentError={enrichmentError}
-      enrichmentAsset={enrichmentAssetDescriptor}
-      onEnrichmentResults={handleEnrichmentResults}
-      onEnrichmentLoading={handleEnrichmentLoading}
-      onEnrichmentError={handleEnrichmentError}
-      course={course}
-      courseId={courseId}
-      userRole={userRole}
-    />
+    <div className="page-surface bg-[var(--bg-primary)] transition-colors">
+      <Container>
+        <div className="grid gap-6 lg:grid-cols-[minmax(260px,320px),1fr] py-10">
+          <CourseStructureSidebar
+            course={course}
+            learnerProgress={learnerProgress}
+            currentLessonId={normalizedLessonId}
+            userRole={userRole}
+            onSelectLesson={(targetLessonId) => navigate(`/course/${courseId}/lesson/${targetLessonId}`)}
+            onGoToAssessment={() => navigate(`/course/${courseId}/assessment`)}
+            onGoToFeedback={() => navigate(`/course/${courseId}/feedback`)}
+          />
+
+          <LessonView
+            courseTitle={course?.title || course?.course_name}
+            lesson={lesson}
+            onPrevious={previousLesson ? () => navigate(`/course/${courseId}/lesson/${previousLesson.id || previousLesson.lesson_id}`) : undefined}
+            onNext={
+              nextLesson ? () => navigate(`/course/${courseId}/lesson/${nextLesson.id || nextLesson.lesson_id}`) : undefined
+            }
+            onComplete={handleComplete}
+            isCompleted={hasCompletedCurrent}
+            completionSummary={completionSummary}
+            onTakeTest={isFinalLesson ? handleTakeTest : undefined}
+            isFinalLesson={isFinalLesson}
+            structureHref={`/course/${courseId}/overview`}
+            overviewHref={`/course/${courseId}/overview`}
+            enrichmentAssets={enrichmentAssets}
+            enrichmentLoading={enrichmentLoading}
+            enrichmentError={enrichmentError}
+            enrichmentAsset={enrichmentAssetDescriptor}
+            onEnrichmentResults={handleEnrichmentResults}
+            onEnrichmentLoading={handleEnrichmentLoading}
+            onEnrichmentError={handleEnrichmentError}
+            course={course}
+            courseId={courseId}
+            userRole={userRole}
+          />
+        </div>
+      </Container>
+    </div>
   )
 }

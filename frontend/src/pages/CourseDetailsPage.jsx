@@ -3,6 +3,7 @@ import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { getCourseById, registerLearner, getMyFeedback } from '../services/apiService.js'
 import LoadingSpinner from '../components/LoadingSpinner.jsx'
 import CourseOverview from '../components/course/CourseOverview.jsx'
+import CourseStructureSidebar from '../components/course/CourseStructureSidebar.jsx'
 import EnrollModal from '../components/course/EnrollModal.jsx'
 import { useApp } from '../context/AppContext'
 import Container from '../components/Container.jsx'
@@ -115,26 +116,34 @@ export default function CourseDetailsPage() {
       setLoading(false)
     }
   }, [id, learnerId, showToast, isPersonalizedFlow, userProfile])
-  
-  // Determine if course is personalized
-  const isPersonalizedCourse = isPersonalizedFlow || metadataPersonalized
 
   useEffect(() => {
     loadCourse()
   }, [id, loadCourse])
 
+  // Determine if course is personalized (declare once)
+  const isPersonalizedCourse = isPersonalizedFlow || metadataPersonalized
+
   // Personalized courses are automatically enrolled - no enrollment needed
   const isEnrolled = isPersonalizedCourse || learnerProgress?.is_enrolled
 
   const handleEnrollment = async () => {
-    // Personalized courses: Navigate directly to course structure (no enrollment API call)
+    // Personalized courses: Navigate directly to first lesson (no enrollment API call)
     if (isPersonalizedCourse) {
-      navigate(`/course/${id}/structure`)
+      if (firstLessonId) {
+        navigate(`/course/${id}/lesson/${firstLessonId}`)
+      } else {
+        navigate(`/course/${id}/overview`)
+      }
       return
     }
 
     if (isEnrolled) {
-      navigate(`/course/${id}/structure`)
+      if (firstLessonId) {
+        navigate(`/course/${id}/lesson/${firstLessonId}`)
+      } else {
+        navigate(`/course/${id}/overview`)
+      }
       return
     }
 
@@ -159,7 +168,11 @@ export default function CourseDetailsPage() {
       })
       showToast('Enrollment confirmed! You can now explore the full course structure.', 'success')
       setModalOpen(false)
-      navigate(`/course/${id}/structure`)
+      if (firstLessonId) {
+        navigate(`/course/${id}/lesson/${firstLessonId}`)
+      } else {
+        navigate(`/course/${id}/overview`)
+      }
     } catch (err) {
       // Safely check error properties to avoid initialization errors
       let is409 = false
@@ -197,7 +210,11 @@ export default function CourseDetailsPage() {
           completed_lessons: []
         })
         setModalOpen(false)
-        navigate(`/course/${id}/structure`)
+        if (firstLessonId) {
+          navigate(`/course/${id}/lesson/${firstLessonId}`)
+        } else {
+          navigate(`/course/${id}/overview`)
+        }
       } else {
         setError(errorMsg)
         showToast(errorMsg, 'error')
@@ -243,20 +260,60 @@ export default function CourseDetailsPage() {
 
   const learnerName = userRole === 'learner' ? userProfile?.name : null
 
+  // Get first lesson ID for navigation
+  const flattenedLessons = useMemo(() => {
+    if (!course) return []
+    const topics = Array.isArray(course.topics) ? course.topics : []
+    if (topics.length > 0) {
+      const lessons = topics.flatMap((topic) => (topic.modules || []).flatMap((module) => module.lessons || []))
+      return lessons
+    }
+    if (Array.isArray(course.modules)) {
+      return course.modules.flatMap((module) => module.lessons || [])
+    }
+    if (Array.isArray(course.lessons)) {
+      return course.lessons
+    }
+    return []
+  }, [course])
+
+  const firstLesson = flattenedLessons[0]
+  const firstLessonId = firstLesson?.id || firstLesson?.lesson_id
+
   return (
     <>
-      <CourseOverview
-        course={course}
-        isEnrolled={isEnrolled}
-        onEnrollClick={() => setModalOpen(true)}
-        onContinue={() => navigate(`/course/${id}/structure`)}
-        showStructureCta={userRole === 'learner'}
-        learnerProfile={userProfile}
-        progressSummary={learnerProgress}
-        backLink={isPersonalizedFlow ? '/learner/personalized' : '/learner/marketplace'}
-        hasFeedback={hasFeedback}
-        courseId={id}
-      />
+      <div className="page-surface bg-[var(--bg-primary)] transition-colors">
+        <Container>
+          <div className="grid gap-6 lg:grid-cols-[minmax(260px,320px),1fr] py-10">
+            <CourseStructureSidebar
+              course={course}
+              learnerProgress={learnerProgress}
+              currentLessonId={null}
+              userRole={userRole}
+              onSelectLesson={(lessonId) => navigate(`/course/${id}/lesson/${lessonId}`)}
+              onGoToAssessment={() => navigate(`/course/${id}/assessment`)}
+              onGoToFeedback={() => navigate(`/course/${id}/feedback`)}
+            />
+
+            <CourseOverview
+              course={course}
+              isEnrolled={isEnrolled}
+              onEnrollClick={() => setModalOpen(true)}
+              onContinue={
+                firstLessonId
+                  ? () => navigate(`/course/${id}/lesson/${firstLessonId}`)
+                  : () => navigate(`/course/${id}/overview`)
+              }
+              showStructureCta={userRole === 'learner'}
+              learnerProfile={userProfile}
+              progressSummary={learnerProgress}
+              backLink={isPersonalizedFlow ? '/learner/personalized' : '/learner/marketplace'}
+              hasFeedback={hasFeedback}
+              courseId={id}
+            />
+          </div>
+        </Container>
+      </div>
 
       {!isPersonalizedFlow && (
         <EnrollModal

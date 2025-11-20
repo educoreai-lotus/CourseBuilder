@@ -68,9 +68,9 @@ export default function AssessmentPage() {
       <Container>
         <div className="mx-auto flex max-w-4xl flex-col gap-10 py-10">
           <div className="flex items-center justify-between gap-4">
-            <Button variant="secondary" onClick={() => navigate(`/course/${id}/structure`)}>
+            <Button variant="secondary" onClick={() => navigate(`/course/${id}/overview`)}>
               <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to structure
+              Back to overview
             </Button>
             <div className="text-sm font-semibold uppercase tracking-widest text-[var(--text-muted)]">
               Assessment · Feedback
@@ -166,8 +166,8 @@ export default function AssessmentPage() {
                   </>
                 )}
               </Button>
-              <Button variant="secondary" onClick={() => navigate(`/course/${id}/structure`)} disabled={redirecting}>
-                Review structure
+              <Button variant="secondary" onClick={() => navigate(`/course/${id}/overview`)} disabled={redirecting}>
+                Review overview
               </Button>
             </div>
 

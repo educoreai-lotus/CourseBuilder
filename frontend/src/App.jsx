@@ -6,7 +6,6 @@ import ChatbotWidget from './components/ChatbotWidget.jsx'
 import Toast from './components/Toast.jsx'
 import CoursesPage from './pages/CoursesPage.jsx'
 import CourseDetailsPage from './pages/CourseDetailsPage.jsx'
-import CourseStructurePage from './pages/CourseStructurePage.jsx'
 import LessonPage from './pages/LessonPage.jsx'
 import TrainerDashboard from './pages/TrainerDashboard.jsx'
 import FeedbackPage from './pages/FeedbackPage.jsx'
@@ -51,7 +50,6 @@ function AppShell() {
 
           {/* Shared */}
           <Route path="/course/:id/overview" element={<CourseDetailsPage />} />
-          <Route path="/course/:id/structure" element={<CourseStructurePage />} />
           <Route path="/course/:id/lesson/:lessonId" element={<LessonPage />} />
           <Route path="/courses/:id" element={<LegacyCourseRedirect />} />
           <Route path="/lessons/:id" element={<LegacyLessonRedirect />} />
