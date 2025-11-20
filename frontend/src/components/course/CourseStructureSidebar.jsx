@@ -287,7 +287,7 @@ export default function CourseStructureSidebar({
                           </button>
 
                           {moduleExpanded && (
-                            <ul className="space-y-1 px-3 pb-3">
+                            <ul className="space-y-1 px-4 pb-3 pt-1">
                               {(module.lessons || []).map((lesson) => {
                                 const lessonId = String(lesson.id)
                                 const { completed, accessible } = getLessonState(
@@ -303,16 +303,16 @@ export default function CourseStructureSidebar({
                                   <li key={lessonId}>
                                     <button
                                       type="button"
-                                      className={`flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-left transition-all duration-200 ${
+                                      className={`flex w-full items-center gap-3 rounded-lg px-3.5 py-2.5 text-left transition-all duration-200 ${
                                         disabled ? 'cursor-not-allowed opacity-60' : ''
-                                      } ${isActive ? 'shadow-sm' : ''}`}
+                                      } ${isActive ? 'shadow-md scale-[1.02]' : 'hover:scale-[1.01]'}`}
                                       style={{
                                         background: isActive
                                           ? 'var(--chip-surface, rgba(56, 189, 248, 0.16))'
                                           : completed
                                             ? 'var(--bg-tertiary)'
                                             : 'transparent',
-                                        border: isActive ? '1px solid var(--primary-cyan)' : '1px solid transparent',
+                                        border: isActive ? '2px solid var(--primary-cyan)' : '1px solid transparent',
                                         color: 'var(--text-primary)'
                                       }}
                                       onClick={() => handleLessonClick(lessonId)}
@@ -341,9 +341,9 @@ export default function CourseStructureSidebar({
                                           <Lock size={16} style={{ color: 'var(--text-muted)' }} />
                                         )}
                                       </span>
-                                      <span className="flex-1 text-xs font-medium leading-relaxed" style={{ color: 'var(--text-primary)' }}>{lesson.title}</span>
+                                      <span className="flex-1 text-xs font-medium leading-tight truncate">{lesson.title}</span>
                                       {completed && (
-                                        <CheckCircle2 size={14} className="flex-shrink-0" style={{ color: 'var(--badge-color, var(--accent-green))' }} />
+                                        <CheckCircle2 size={12} className="flex-shrink-0" style={{ color: 'var(--badge-color, var(--accent-green))' }} />
                                       )}
                                     </button>
                                   </li>
