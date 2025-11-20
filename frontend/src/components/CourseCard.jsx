@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom'
 import { isPersonalized, isMarketplace } from '../utils/courseTypeUtils.js'
 
-export default function CourseCard({ course, showProgress = false, progress = 0, to }) {
+export default function CourseCard({ course, showProgress = false, progress = 0, to, isLibrary = false }) {
   const courseId = course.id || course.course_id
   const title = course.title || course.course_name
   const description = course.description || course.course_description
@@ -15,6 +15,7 @@ export default function CourseCard({ course, showProgress = false, progress = 0,
   const courseIsPersonalized = isPersonalized(course)
   const courseIsMarketplace = isMarketplace(course)
   const skillChips = Array.isArray(metadata.skills) ? metadata.skills.slice(0, 4) : []
+  const isInProgress = isLibrary && progress > 0 && progress < 100
 
   return (
     <Link
@@ -24,23 +25,41 @@ export default function CourseCard({ course, showProgress = false, progress = 0,
       <div className="flex flex-col gap-6">
         <div className="flex flex-col gap-3">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="rounded-full bg-[rgba(15,118,110,0.12)] px-3 py-1 text-xs font-semibold uppercase tracking-wide text-[var(--primary-cyan)]">
-              {level}
-            </span>
-            {courseIsPersonalized && (
-              <span className="badge badge-purple">
-                PERSONALIZED
-              </span>
-            )}
-            {courseIsMarketplace && (
-              <span className="badge badge-cyan">
-                MARKETPLACE
-              </span>
-            )}
-            {status !== 'live' && (
-              <span className="rounded-full bg-[rgba(148,163,184,0.18)] px-3 py-1 text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">
-                {status}
-              </span>
+            {isLibrary ? (
+              <>
+                <span className="badge badge-purple">
+                  ENROLLED
+                </span>
+                <span className="rounded-full bg-[rgba(15,118,110,0.12)] px-3 py-1 text-xs font-semibold uppercase tracking-wide text-[var(--primary-cyan)]">
+                  {level.toUpperCase()}
+                </span>
+                {isInProgress && (
+                  <span className="badge badge-cyan">
+                    IN PROGRESS
+                  </span>
+                )}
+              </>
+            ) : (
+              <>
+                <span className="rounded-full bg-[rgba(15,118,110,0.12)] px-3 py-1 text-xs font-semibold uppercase tracking-wide text-[var(--primary-cyan)]">
+                  {level}
+                </span>
+                {courseIsPersonalized && (
+                  <span className="badge badge-purple">
+                    PERSONALIZED
+                  </span>
+                )}
+                {courseIsMarketplace && (
+                  <span className="badge badge-cyan">
+                    MARKETPLACE
+                  </span>
+                )}
+                {status !== 'live' && (
+                  <span className="rounded-full bg-[rgba(148,163,184,0.18)] px-3 py-1 text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">
+                    {status}
+                  </span>
+                )}
+              </>
             )}
           </div>
           <h3 className="text-xl font-semibold text-[var(--text-primary)] leading-snug">{title}</h3>
