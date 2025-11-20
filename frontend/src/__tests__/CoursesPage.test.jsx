@@ -12,10 +12,13 @@ jest.mock('../../src/services/apiService.js', () => ({
       courses: [
         {
           id: '1',
+          course_id: '1',
           title: 'AI Fundamentals',
-          description: 'Intro',
+          description: 'Introduction to AI fundamentals',
           level: 'beginner',
-          rating: 4.5
+          rating: 4.5,
+          course_type: 'trainer', // Required for marketplace course filter
+          created_by_user_id: '20000000-0000-0000-0000-000000000001'
         }
       ]
     })
