@@ -55,8 +55,9 @@ export async function sendToContentStudio(payloadObject) {
     };
 
     // Send using unified endpoint format (three-field structure)
+    // Content Studio API expects 'serviceName' instead of 'requester_service'
     const requestBody = {
-      requester_service: 'CourseBuilder',
+      serviceName: 'CourseBuilder',
       payload: JSON.stringify(sendPayload),
       response: JSON.stringify(responseTemplate)
     };
