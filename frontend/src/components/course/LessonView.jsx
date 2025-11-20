@@ -14,7 +14,6 @@ import LessonViewer from '../LessonViewer.jsx'
 import Container from '../Container.jsx'
 import LessonAssetsPanel from './LessonAssetsPanel.jsx'
 import EnrichmentButton from '../../features/enrichment/components/EnrichmentButton.jsx'
-import CourseTreeView from '../CourseTreeView.jsx'
 
 export default function LessonView({
   courseTitle,
@@ -69,42 +68,14 @@ export default function LessonView({
   return (
     <div className="page-surface bg-[var(--bg-primary)] transition-colors">
       <Container>
-        <div className="flex flex-col gap-10 py-10 lg:flex-row lg:items-start">
-          {/* Course Structure Sidebar - Compact */}
-          {course && (course.modules || course.topics) && (
-            <aside className="w-full lg:w-64 lg:shrink-0 lg:sticky lg:top-4">
-              <section className="rounded-2xl border border-[rgba(148,163,184,0.18)] bg-[var(--bg-card)] p-4 shadow-sm backdrop-blur">
-                <header className="mb-3">
-                  <h2 className="text-sm font-semibold text-[var(--text-primary)]">Course Structure</h2>
-                </header>
-                <div className="max-h-[600px] overflow-y-auto">
-                  <CourseTreeView 
-                    modules={course.modules || (course.topics?.[0]?.modules) || []} 
-                    courseId={courseId}
-                    onLessonClick={(lesson) => {
-                      if (courseId && lesson?.id) {
-                        navigate(`/course/${courseId}/lesson/${lesson.id || lesson.lesson_id}`)
-                      }
-                    }}
-                  />
-                </div>
-              </section>
-            </aside>
-          )}
-
+        <div className="flex flex-col gap-10 py-6">
           {/* Main Content */}
           <div className="flex-1">
             <div className="flex items-center justify-between gap-4 mb-6">
               <div className="flex items-center gap-3 text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
-                {structureHref && (
-                  <Link to={structureHref} className="inline-flex items-center gap-2 hover:text-[var(--primary-cyan)]">
-                    <ArrowLeft size={16} />
-                    Structure
-                  </Link>
-                )}
-                <span className="text-[var(--text-muted)]">›</span>
                 {overviewHref && (
-                  <Link to={overviewHref} className="hover:text-[var(--primary-cyan)]">
+                  <Link to={overviewHref} className="inline-flex items-center gap-2 hover:text-[var(--primary-cyan)]">
+                    <ArrowLeft size={16} />
                     Overview
                   </Link>
                 )}

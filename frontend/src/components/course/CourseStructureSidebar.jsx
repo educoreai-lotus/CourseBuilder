@@ -7,11 +7,7 @@ import {
   BookOpen,
   CheckCircle2,
   PlayCircle,
-  Lock,
-  Circle,
-  Clock,
-  Target,
-  MessageSquare
+  Lock
 } from 'lucide-react'
 import { isPersonalized } from '../../utils/courseTypeUtils.js'
 import { useApp } from '../../context/AppContext.jsx'
@@ -78,9 +74,7 @@ export default function CourseStructureSidebar({
   learnerProgress = null,
   currentLessonId = null,
   userRole = 'learner',
-  onSelectLesson,
-  onGoToAssessment,
-  onGoToFeedback
+  onSelectLesson
 }) {
   const { showToast } = useApp()
 
@@ -130,7 +124,7 @@ export default function CourseStructureSidebar({
 
   const handleLessonClick = (lessonId) => {
     if (!canAccessLessons && userRole === 'learner') {
-      showToast('Enroll in the course to access lessons.', 'info')
+      showToast('Enroll to access lessons', 'info')
       return
     }
     if (onSelectLesson) {
@@ -140,8 +134,11 @@ export default function CourseStructureSidebar({
 
   if (hierarchy.length === 0) {
     return (
-      <div className="rounded-2xl border border-[rgba(148,163,184,0.18)] bg-[var(--bg-card)]/90 p-6 text-center shadow-sm backdrop-blur transition-colors">
-        <BookOpen className="mx-auto mb-3 h-6 w-6 text-[var(--text-muted)]" />
+      <div className="rounded-xl border p-4 text-center" style={{ 
+        borderColor: 'var(--border-color, rgba(148,163,184,0.18))',
+        backgroundColor: 'var(--bg-card, var(--bg-primary))'
+      }}>
+        <BookOpen className="mx-auto mb-3 h-6 w-6" style={{ color: 'var(--text-muted)' }} />
         <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
           Modules will appear here once the course publisher adds structured content.
         </p>
@@ -152,23 +149,39 @@ export default function CourseStructureSidebar({
   const normalizedCurrentLessonId = currentLessonId ? String(currentLessonId) : null
 
   return (
-    <div className="space-y-4">
-      <div className="rounded-2xl border border-[rgba(148,163,184,0.18)] bg-[var(--bg-card)]/90 p-4 shadow-sm backdrop-blur transition-colors">
+    <div className="h-full">
+      <div className="rounded-xl border p-4 shadow-sm transition-colors sticky top-4" style={{
+        borderColor: 'var(--border-color, rgba(148,163,184,0.18))',
+        backgroundColor: 'var(--bg-card, var(--bg-primary))'
+      }}>
         <h3 className="mb-4 text-sm font-semibold uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>
           Course Structure
         </h3>
-        <div className="space-y-3">
+        <div className="space-y-3 max-h-[calc(100vh-200px)] overflow-y-auto">
           {hierarchy.map((topic) => {
             const topicExpanded = expandedTopics.has(topic.id)
             return (
               <div
                 key={topic.id}
-                className="rounded-xl border border-[rgba(148,163,184,0.12)] bg-[var(--bg-secondary)]/40 transition-colors"
+                className="rounded-lg border transition-colors"
+                style={{
+                  borderColor: 'var(--border-color, rgba(148,163,184,0.12))',
+                  backgroundColor: 'var(--bg-secondary)'
+                }}
               >
                 <button
                   type="button"
                   onClick={() => toggleTopic(topic.id)}
-                  className="flex w-full items-center justify-between gap-2 rounded-xl px-3 py-2 text-left transition-colors hover:bg-[var(--bg-secondary)]/60"
+                  className="flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-left transition-colors"
+                  style={{
+                    color: 'var(--text-primary)'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = 'var(--bg-secondary, rgba(148,163,184,0.1))'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = 'transparent'
+                  }}
                 >
                   <div className="flex items-center gap-2">
                     <Layers size={14} className="text-[var(--primary-cyan)]" />
@@ -186,12 +199,25 @@ export default function CourseStructureSidebar({
                       return (
                         <div
                           key={module.id}
-                          className="rounded-lg border border-[rgba(148,163,184,0.08)] bg-[var(--bg-card)]/70"
+                          className="rounded-lg border transition-colors"
+                          style={{
+                            borderColor: 'var(--border-color, rgba(148,163,184,0.08))',
+                            backgroundColor: 'var(--bg-card)'
+                          }}
                         >
                           <button
                             type="button"
                             onClick={() => toggleModule(module.id)}
-                            className="flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-left transition-colors hover:bg-[var(--bg-secondary)]/40"
+                            className="flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-left transition-colors"
+                            style={{
+                              color: 'var(--text-primary)'
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.backgroundColor = 'var(--bg-secondary, rgba(148,163,184,0.1))'
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.backgroundColor = 'transparent'
+                            }}
                           >
                             <div className="flex items-center gap-2">
                               <Folder size={12} className="text-[var(--primary-cyan)]" />
@@ -220,25 +246,31 @@ export default function CourseStructureSidebar({
                                     <button
                                       type="button"
                                       className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left transition-all ${
-                                        disabled
-                                          ? 'cursor-not-allowed opacity-60'
-                                          : 'hover:bg-[var(--bg-secondary)]/60'
-                                      } ${
-                                        isActive
-                                          ? 'bg-[rgba(14,165,233,0.15)] border border-[var(--primary-cyan)]'
-                                          : ''
+                                        disabled ? 'cursor-not-allowed opacity-60' : ''
                                       }`}
                                       style={{
-                                        background:
-                                          isActive
-                                            ? 'rgba(14,165,233,0.15)'
-                                            : completed
-                                              ? 'rgba(16,185,129,0.1)'
-                                              : 'transparent',
+                                        background: isActive
+                                          ? 'rgba(14,165,233,0.15)'
+                                          : completed
+                                            ? 'rgba(16,185,129,0.1)'
+                                            : 'transparent',
+                                        border: isActive ? '1px solid var(--primary-cyan, #0ea5e9)' : '1px solid transparent',
                                         color: 'var(--text-primary)'
                                       }}
                                       onClick={() => handleLessonClick(lessonId)}
                                       disabled={disabled}
+                                      onMouseEnter={(e) => {
+                                        if (!disabled && !isActive) {
+                                          e.currentTarget.style.backgroundColor = 'var(--bg-secondary, rgba(148,163,184,0.1))'
+                                        }
+                                      }}
+                                      onMouseLeave={(e) => {
+                                        if (!isActive) {
+                                          e.currentTarget.style.backgroundColor = completed
+                                            ? 'rgba(16,185,129,0.1)'
+                                            : 'transparent'
+                                        }
+                                      }}
                                     >
                                       <span className="flex-shrink-0">
                                         {completed ? (
@@ -269,33 +301,6 @@ export default function CourseStructureSidebar({
           })}
         </div>
       </div>
-
-      {(onGoToAssessment || onGoToFeedback) && (
-        <div className="space-y-2 rounded-2xl border border-[rgba(148,163,184,0.18)] bg-[var(--bg-card)]/90 p-4 shadow-sm backdrop-blur">
-          {onGoToAssessment && (
-            <button
-              type="button"
-              onClick={onGoToAssessment}
-              className="flex w-full items-center justify-center gap-2 rounded-lg bg-[var(--bg-secondary)] px-3 py-2 text-xs font-semibold transition-colors hover:bg-[var(--bg-secondary)]/80"
-              style={{ color: 'var(--text-primary)' }}
-            >
-              <Target size={14} />
-              Go to assessment
-            </button>
-          )}
-          {onGoToFeedback && (
-            <button
-              type="button"
-              onClick={onGoToFeedback}
-              className="flex w-full items-center justify-center gap-2 rounded-lg bg-[var(--bg-secondary)] px-3 py-2 text-xs font-semibold transition-colors hover:bg-[var(--bg-secondary)]/80"
-              style={{ color: 'var(--text-primary)' }}
-            >
-              <MessageSquare size={14} />
-              Give feedback
-            </button>
-          )}
-        </div>
-      )}
     </div>
   )
 }

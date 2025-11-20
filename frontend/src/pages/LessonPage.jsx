@@ -263,18 +263,19 @@ export default function LessonPage() {
   return (
     <div className="page-surface bg-[var(--bg-primary)] transition-colors">
       <Container>
-        <div className="grid gap-6 lg:grid-cols-[minmax(260px,320px),1fr] py-10">
-          <CourseStructureSidebar
-            course={course}
-            learnerProgress={learnerProgress}
-            currentLessonId={normalizedLessonId}
-            userRole={userRole}
-            onSelectLesson={(targetLessonId) => navigate(`/course/${courseId}/lesson/${targetLessonId}`)}
-            onGoToAssessment={() => navigate(`/course/${courseId}/assessment`)}
-            onGoToFeedback={() => navigate(`/course/${courseId}/feedback`)}
-          />
+        <div className="grid gap-6 lg:grid-cols-[280px,1fr] py-6">
+          <aside className="lg:sticky lg:top-6 h-fit">
+            <CourseStructureSidebar
+              course={course}
+              learnerProgress={learnerProgress}
+              currentLessonId={normalizedLessonId}
+              userRole={userRole}
+              onSelectLesson={(targetLessonId) => navigate(`/course/${courseId}/lesson/${targetLessonId}`)}
+            />
+          </aside>
 
-          <LessonView
+          <div className="p-6">
+            <LessonView
             courseTitle={course?.title || course?.course_name}
             lesson={lesson}
             onPrevious={previousLesson ? () => navigate(`/course/${courseId}/lesson/${previousLesson.id || previousLesson.lesson_id}`) : undefined}

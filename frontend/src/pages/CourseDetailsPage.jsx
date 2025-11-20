@@ -284,18 +284,31 @@ export default function CourseDetailsPage() {
     <>
       <div className="page-surface bg-[var(--bg-primary)] transition-colors">
         <Container>
-          <div className="grid gap-6 lg:grid-cols-[minmax(260px,320px),1fr] py-10">
-            <CourseStructureSidebar
-              course={course}
-              learnerProgress={learnerProgress}
-              currentLessonId={null}
-              userRole={userRole}
-              onSelectLesson={(lessonId) => navigate(`/course/${id}/lesson/${lessonId}`)}
-              onGoToAssessment={() => navigate(`/course/${id}/assessment`)}
-              onGoToFeedback={() => navigate(`/course/${id}/feedback`)}
-            />
+          <div className="grid gap-6 lg:grid-cols-[280px,1fr] py-6">
+            <aside className="lg:sticky lg:top-6 h-fit">
+              <CourseStructureSidebar
+                course={course}
+                learnerProgress={learnerProgress}
+                currentLessonId={null}
+                userRole={userRole}
+                onSelectLesson={(lessonId) => navigate(`/course/${id}/lesson/${lessonId}`)}
+              />
+            </aside>
 
-            <CourseOverview
+            <div className="p-6">
+              {hasFeedback && (
+                <div className="mb-6">
+                  <button
+                    type="button"
+                    onClick={() => navigate(`/course/${id}/feedback`)}
+                    className="btn btn-secondary flex items-center justify-center gap-2"
+                  >
+                    <i className="fa-solid fa-comment-dots" />
+                    Edit Feedback
+                  </button>
+                </div>
+              )}
+              <CourseOverview
               course={course}
               isEnrolled={isEnrolled}
               onEnrollClick={() => setModalOpen(true)}
@@ -310,7 +323,8 @@ export default function CourseDetailsPage() {
               backLink={isPersonalizedFlow ? '/learner/personalized' : '/learner/marketplace'}
               hasFeedback={hasFeedback}
               courseId={id}
-            />
+              />
+            </div>
           </div>
         </Container>
       </div>
