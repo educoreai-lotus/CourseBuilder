@@ -283,52 +283,54 @@ export default function CourseDetailsPage() {
   return (
     <>
       <div className="page-surface bg-[var(--bg-primary)] min-h-screen transition-colors">
-        <Container>
-          <div className="flex flex-col lg:flex-row gap-6 max-w-7xl mx-auto py-6">
-            {/* Left Sidebar */}
-            <aside className="w-full lg:w-[300px] shrink-0">
-              <CourseStructureSidebar
-                course={course}
-                learnerProgress={learnerProgress}
-                currentLessonId={null}
-                userRole={userRole}
-                onSelectLesson={(lessonId) => navigate(`/course/${id}/lesson/${lessonId}`)}
-              />
-            </aside>
+        <div className="flex flex-col lg:flex-row gap-6 py-6">
+          {/* Left Sidebar - Fixed to left edge */}
+          <aside className="w-full lg:w-[300px] lg:pl-6 shrink-0">
+            <CourseStructureSidebar
+              course={course}
+              learnerProgress={learnerProgress}
+              currentLessonId={null}
+              userRole={userRole}
+              onSelectLesson={(lessonId) => navigate(`/course/${id}/lesson/${lessonId}`)}
+            />
+          </aside>
 
-            {/* Main Content */}
-            <main className="flex-1 mt-2">
-              {hasFeedback && (
-                <div className="mb-4">
-                  <button
-                    type="button"
-                    onClick={() => navigate(`/course/${id}/feedback`)}
-                    className="btn btn-secondary flex items-center justify-center gap-2"
-                  >
-                    <i className="fa-solid fa-comment-dots" />
-                    Edit Feedback
-                  </button>
-                </div>
-              )}
-              <CourseOverview
-                course={course}
-                isEnrolled={isEnrolled}
-                onEnrollClick={() => setModalOpen(true)}
-                onContinue={
-                  firstLessonId
-                    ? () => navigate(`/course/${id}/lesson/${firstLessonId}`)
-                    : () => navigate(`/course/${id}/overview`)
-                }
-                showStructureCta={userRole === 'learner'}
-                learnerProfile={userProfile}
-                progressSummary={learnerProgress}
-                backLink={isPersonalizedFlow ? '/learner/personalized' : '/learner/marketplace'}
-                hasFeedback={hasFeedback}
-                courseId={id}
-              />
-            </main>
-          </div>
-        </Container>
+          {/* Main Content - Centered in remaining space */}
+          <main className="flex-1 mt-2">
+            <Container>
+              <div className="max-w-5xl mx-auto">
+                {hasFeedback && (
+                  <div className="mb-4">
+                    <button
+                      type="button"
+                      onClick={() => navigate(`/course/${id}/feedback`)}
+                      className="btn btn-secondary flex items-center justify-center gap-2"
+                    >
+                      <i className="fa-solid fa-comment-dots" />
+                      Edit Feedback
+                    </button>
+                  </div>
+                )}
+                <CourseOverview
+                  course={course}
+                  isEnrolled={isEnrolled}
+                  onEnrollClick={() => setModalOpen(true)}
+                  onContinue={
+                    firstLessonId
+                      ? () => navigate(`/course/${id}/lesson/${firstLessonId}`)
+                      : () => navigate(`/course/${id}/overview`)
+                  }
+                  showStructureCta={userRole === 'learner'}
+                  learnerProfile={userProfile}
+                  progressSummary={learnerProgress}
+                  backLink={isPersonalizedFlow ? '/learner/personalized' : '/learner/marketplace'}
+                  hasFeedback={hasFeedback}
+                  courseId={id}
+                />
+              </div>
+            </Container>
+          </main>
+        </div>
       </div>
 
       {!isPersonalizedFlow && (

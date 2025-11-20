@@ -262,49 +262,51 @@ export default function LessonPage() {
   // This ensures hooks are always called in the same order
   return (
     <div className="page-surface bg-[var(--bg-primary)] min-h-screen transition-colors">
-      <Container>
-        <div className="flex flex-col lg:flex-row gap-6 max-w-7xl mx-auto py-6">
-          {/* Left Sidebar */}
-          <aside className="w-full lg:w-[300px] shrink-0">
-            <CourseStructureSidebar
-              course={course}
-              learnerProgress={learnerProgress}
-              currentLessonId={normalizedLessonId}
-              userRole={userRole}
-              onSelectLesson={(targetLessonId) => navigate(`/course/${courseId}/lesson/${targetLessonId}`)}
-            />
-          </aside>
+      <div className="flex flex-col lg:flex-row gap-6 py-6">
+        {/* Left Sidebar - Fixed to left edge */}
+        <aside className="w-full lg:w-[300px] lg:pl-6 shrink-0">
+          <CourseStructureSidebar
+            course={course}
+            learnerProgress={learnerProgress}
+            currentLessonId={normalizedLessonId}
+            userRole={userRole}
+            onSelectLesson={(targetLessonId) => navigate(`/course/${courseId}/lesson/${targetLessonId}`)}
+          />
+        </aside>
 
-          {/* Main Content */}
-          <main className="flex-1 mt-2">
-            <LessonView
-              courseTitle={course?.title || course?.course_name}
-              lesson={lesson}
-              onPrevious={previousLesson ? () => navigate(`/course/${courseId}/lesson/${previousLesson.id || previousLesson.lesson_id}`) : undefined}
-              onNext={
-                nextLesson ? () => navigate(`/course/${courseId}/lesson/${nextLesson.id || nextLesson.lesson_id}`) : undefined
-              }
-              onComplete={handleComplete}
-              isCompleted={hasCompletedCurrent}
-              completionSummary={completionSummary}
-              onTakeTest={isFinalLesson ? handleTakeTest : undefined}
-              isFinalLesson={isFinalLesson}
-              structureHref={`/course/${courseId}/overview`}
-              overviewHref={`/course/${courseId}/overview`}
-              enrichmentAssets={enrichmentAssets}
-              enrichmentLoading={enrichmentLoading}
-              enrichmentError={enrichmentError}
-              enrichmentAsset={enrichmentAssetDescriptor}
-              onEnrichmentResults={handleEnrichmentResults}
-              onEnrichmentLoading={handleEnrichmentLoading}
-              onEnrichmentError={handleEnrichmentError}
-              course={course}
-              courseId={courseId}
-              userRole={userRole}
-            />
-          </main>
-        </div>
-      </Container>
+        {/* Main Content - Centered in remaining space */}
+        <main className="flex-1 mt-2">
+          <Container>
+            <div className="max-w-5xl mx-auto">
+              <LessonView
+                courseTitle={course?.title || course?.course_name}
+                lesson={lesson}
+                onPrevious={previousLesson ? () => navigate(`/course/${courseId}/lesson/${previousLesson.id || previousLesson.lesson_id}`) : undefined}
+                onNext={
+                  nextLesson ? () => navigate(`/course/${courseId}/lesson/${nextLesson.id || nextLesson.lesson_id}`) : undefined
+                }
+                onComplete={handleComplete}
+                isCompleted={hasCompletedCurrent}
+                completionSummary={completionSummary}
+                onTakeTest={isFinalLesson ? handleTakeTest : undefined}
+                isFinalLesson={isFinalLesson}
+                structureHref={`/course/${courseId}/overview`}
+                overviewHref={`/course/${courseId}/overview`}
+                enrichmentAssets={enrichmentAssets}
+                enrichmentLoading={enrichmentLoading}
+                enrichmentError={enrichmentError}
+                enrichmentAsset={enrichmentAssetDescriptor}
+                onEnrichmentResults={handleEnrichmentResults}
+                onEnrichmentLoading={handleEnrichmentLoading}
+                onEnrichmentError={handleEnrichmentError}
+                course={course}
+                courseId={courseId}
+                userRole={userRole}
+              />
+            </div>
+          </Container>
+        </main>
+      </div>
     </div>
   )
 }
