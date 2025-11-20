@@ -142,26 +142,63 @@ jobs:
     needs: [backend-tests, frontend-tests, frontend-build]
     runs-on: ubuntu-latest
     if: (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master') && github.event_name == 'push'
+    continue-on-error: true
+    environment:
+      name: production
+      url: https://coursebuilderfs-production.up.railway.app
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Deploy to Railway
-        uses: bervProject/railway-deploy@v0.1.0
+      - name: Check Railway token
+        id: check-token
+        run: |
+          if [ -z "${{ secrets.RAILWAY_TOKEN }}" ]; then
+            echo "token_exists=false" >> $GITHUB_OUTPUT
+            echo "⚠️ RAILWAY_TOKEN secret not configured. Skipping deployment."
+          else
+            echo "token_exists=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Setup Node.js
+        if: steps.check-token.outputs.token_exists == 'true'
+        uses: actions/setup-node@v4
         with:
-          railway_token: ${{ secrets.RAILWAY_TOKEN }}
-          service: backend
+          node-version: 20
+
+      - name: Install Railway CLI
+        if: steps.check-token.outputs.token_exists == 'true'
+        run: npm install -g @railway/cli
+
+      - name: Deploy to Railway
+        if: steps.check-token.outputs.token_exists == 'true'
+        run: railway up --service backend --detach
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        working-directory: ./backend
 
   deploy-frontend:
     name: Deploy Frontend to Vercel
     needs: [backend-tests, frontend-tests, frontend-build]
     runs-on: ubuntu-latest
     if: (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master') && github.event_name == 'push'
+    continue-on-error: true
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Check Vercel secrets
+        id: check-secrets
+        run: |
+          if [ -z "${{ secrets.VERCEL_TOKEN }}" ] || [ -z "${{ secrets.VERCEL_ORG_ID }}" ] || [ -z "${{ secrets.VERCEL_PROJECT_ID }}" ]; then
+            echo "secrets_exist=false" >> $GITHUB_OUTPUT
+            echo "⚠️ Vercel secrets not configured. Skipping deployment."
+          else
+            echo "secrets_exist=true" >> $GITHUB_OUTPUT
+          fi
+
       - name: Deploy to Vercel
+        if: steps.check-secrets.outputs.secrets_exist == 'true'
         uses: amondnet/vercel-action@v25
         with:
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
