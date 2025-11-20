@@ -8,13 +8,13 @@ import {
   CheckCircle2,
   Sparkles,
   Clock,
-  Layers,
-  X
+  Layers
 } from 'lucide-react'
 import { getCourseById } from '../services/apiService.js'
 import LoadingSpinner from '../components/LoadingSpinner.jsx'
 import CourseStructure from '../components/course/CourseStructure.jsx'
 import LessonAssetsPanel from '../components/course/LessonAssetsPanel.jsx'
+import EnrichmentButton from '../features/enrichment/components/EnrichmentButton.jsx'
 import { useApp } from '../context/AppContext'
 import Container from '../components/Container.jsx'
 
@@ -29,7 +29,9 @@ export default function CourseStructurePage() {
   const [error, setError] = useState(null)
   const [completedLessons, setCompletedLessons] = useState([])
   const [learnerProgress, setLearnerProgress] = useState(null)
-  const [showAiAssets, setShowAiAssets] = useState(false)
+  const [assetData, setAssetData] = useState(null)
+  const [assetLoading, setAssetLoading] = useState(false)
+  const [assetError, setAssetError] = useState(null)
 
   const loadCourse = useCallback(async () => {
     setLoading(true)
@@ -45,6 +47,9 @@ export default function CourseStructurePage() {
       } else {
         setCompletedLessons([])
       }
+      // Reset asset data when course changes
+      setAssetData(null)
+      setAssetError(null)
     } catch (err) {
       const message = err.message || 'Failed to load course structure'
       setError(message)
@@ -116,6 +121,57 @@ export default function CourseStructurePage() {
     if (!lessonId) return
     navigate(`/course/${id}/lesson/${lessonId}`)
   }
+
+  // Enrichment asset descriptor for personalized courses
+  const enrichmentAssetDescriptor = useMemo(() => {
+    if (!course || !isPersonalized) {
+      return null
+    }
+
+    const courseId = course.id || course.course_id || id
+    return {
+      type: 'course',
+      title: course.title || course.course_name,
+      description: course.description || course.course_description,
+      metadata: {
+        course_id: courseId,
+        course_title: course.title || course.course_name,
+        skills: course?.skills || course?.metadata?.skills || [],
+        tags: []
+      }
+    }
+  }, [course, id, isPersonalized])
+
+  const handleManualEnrichment = useCallback(
+    (response) => {
+      setAssetData(response)
+      setAssetError(null)
+      if (response) {
+        if (response._savedToCourse) {
+          showToast('AI enrichment saved successfully.', 'success')
+          // Reload course to get updated ai_assets
+          loadCourse()
+        } else if (response._saveError) {
+          console.error('Failed to save assets to course:', response._saveError)
+          showToast(`AI enrichment generated but failed to save: ${response._saveError}`, 'error')
+        } else {
+          showToast('AI enrichment generated successfully.', 'success')
+        }
+      }
+    },
+    [showToast, loadCourse]
+  )
+
+  const handleEnrichmentLoading = useCallback((isLoading) => {
+    setAssetLoading(isLoading)
+  }, [])
+
+  const handleEnrichmentError = useCallback((err) => {
+    setAssetError(err)
+    if (err) {
+      setAssetData(null)
+    }
+  }, [])
 
   // Don't block personalized courses - they are auto-enrolled
   if (userRole === 'learner' && !learnerProgress?.is_enrolled && !loading && !isPersonalized) {
@@ -315,16 +371,6 @@ export default function CourseStructurePage() {
                 </p>
               </div>
               <div className="flex items-center gap-3">
-                {isPersonalized && (
-                  <button
-                    type="button"
-                    onClick={() => setShowAiAssets(!showAiAssets)}
-                    className="inline-flex items-center gap-2 rounded-full border border-[rgba(168,85,247,0.3)] bg-[rgba(168,85,247,0.12)] px-4 py-2 text-sm font-semibold text-[#7c3aed] transition-all hover:bg-[rgba(168,85,247,0.2)] hover:border-[rgba(168,85,247,0.5)] hover:shadow-md"
-                  >
-                    <Sparkles size={16} />
-                    {showAiAssets ? 'Hide AI Resources' : 'View AI Resources'}
-                  </button>
-                )}
                 <span className="inline-flex items-center gap-2 rounded-full bg-[rgba(14,165,233,0.12)] px-4 py-2 text-xs font-semibold uppercase tracking-widest text-[#0f766e]">
                   <Sparkles size={14} />
                   Guided journey
@@ -340,50 +386,42 @@ export default function CourseStructurePage() {
             />
           </section>
 
-          {/* AI Assets Section - Only show when button is clicked for personalized courses */}
-          {isPersonalized && showAiAssets && (
-            <section className="relative flex flex-col gap-5 rounded-3xl border border-[rgba(168,85,247,0.25)] bg-gradient-to-br from-[rgba(168,85,247,0.08)] to-[rgba(124,58,237,0.05)] p-6 shadow-lg backdrop-blur">
-              <button
-                type="button"
-                onClick={() => setShowAiAssets(false)}
-                className="absolute right-4 top-4 inline-flex items-center justify-center rounded-full border border-[rgba(148,163,184,0.2)] bg-[var(--bg-card)]/90 p-2 text-[var(--text-muted)] transition-all hover:bg-[var(--bg-card)] hover:text-[var(--text-primary)] hover:shadow-md"
-                aria-label="Close AI resources"
-              >
-                <X size={18} />
-              </button>
-
-              <header className="flex flex-col gap-3 pr-12 md:flex-row md:items-start md:justify-between">
+          {/* AI Assets Section - Only for personalized courses, button-triggered like trainer side */}
+          {isPersonalized && (
+            <section className="flex flex-col gap-5 rounded-3xl border border-[rgba(148,163,184,0.18)] bg-[var(--bg-card)] p-6 shadow-sm backdrop-blur">
+              <header className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                 <div className="flex-1">
-                  <div className="mb-2 inline-flex items-center gap-2 rounded-full bg-[rgba(168,85,247,0.16)] px-3 py-1 text-xs font-semibold uppercase tracking-widest text-[#7c3aed]">
-                    <Sparkles size={14} />
-                    AI-Enriched Resources
-                  </div>
-                  <h2 className="text-2xl font-semibold text-[var(--text-primary)] mt-2">
-                    Curated Learning Resources
+                  <h2 className="text-xl font-semibold text-[var(--text-primary)]">
+                    AI-Enriched Learning Resources
                   </h2>
-                  <p className="text-sm leading-6 text-[var(--text-secondary)] mt-2">
-                    Explore handpicked videos, repositories, and resources to deepen your understanding of this personalized course.
+                  <p className="text-sm leading-6 text-[var(--text-secondary)]">
+                    Request AI-curated videos, repositories, and resources to deepen your understanding of this personalized course.
                   </p>
                 </div>
+                <EnrichmentButton
+                  asset={enrichmentAssetDescriptor}
+                  onResults={handleManualEnrichment}
+                  onLoading={handleEnrichmentLoading}
+                  onError={handleEnrichmentError}
+                  disabled={!enrichmentAssetDescriptor}
+                  buttonLabel={course?.ai_assets && Object.keys(course.ai_assets).length > 0 ? "Regenerate resources" : "Request AI resources"}
+                  className="self-start"
+                />
               </header>
 
-              {course?.ai_assets && Object.keys(course.ai_assets).length > 0 ? (
-                <LessonAssetsPanel
-                  assets={course.ai_assets}
-                  loading={false}
-                  error={null}
-                />
-              ) : (
-                <div className="rounded-2xl border border-[rgba(148,163,184,0.12)] bg-[var(--bg-secondary)]/50 px-6 py-8 text-center">
-                  <Sparkles size={32} className="mx-auto mb-3 text-[var(--primary-cyan)] opacity-60" />
-                  <h3 className="text-lg font-semibold text-[var(--text-primary)] mb-2">
-                    No AI resources available yet
-                  </h3>
-                  <p className="text-sm text-[var(--text-secondary)]">
-                    AI-enriched resources will appear here once they are generated for this course.
-                  </p>
+              {/* Show existing course assets if available */}
+              {course?.ai_assets && Object.keys(course.ai_assets).length > 0 && !assetData && (
+                <div className="rounded-2xl border border-[rgba(16,185,129,0.25)] bg-[rgba(16,185,129,0.1)] p-4 text-sm text-[#047857]">
+                  <CheckCircle2 className="mr-2 inline h-4 w-4" />
+                  Course has AI resources saved. Click "Regenerate resources" to update them.
                 </div>
               )}
+
+              <LessonAssetsPanel
+                assets={assetData || (course?.ai_assets && Object.keys(course.ai_assets).length > 0 ? course.ai_assets : null)}
+                loading={assetLoading}
+                error={assetError}
+              />
             </section>
           )}
         </div>

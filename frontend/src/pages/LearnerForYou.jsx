@@ -170,8 +170,7 @@ export default function LearnerForYou() {
               </p>
               <h1 className="text-3xl font-bold text-[var(--text-primary)]">Courses curated just for you</h1>
               <p className="max-w-3xl text-base leading-7 text-[var(--text-secondary)]">
-                Trigger AI to assemble a tailored learning path. Pick a focus, generate a course, and start learning
-                instantly with enriched lessons, labs, and curated resources.
+                Trigger AI to assemble a tailored learning path. Pick a focus, generate a course, and start learning instantly.
               </p>
             </div>
 
