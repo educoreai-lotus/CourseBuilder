@@ -272,8 +272,7 @@ export default function LearnerDashboard() {
                           </div>
                           <Link
                             to={`/courses/${course.id || course.course_id}`}
-                            className="btn btn-primary text-xs"
-                            style={{ padding: '10px 18px' }}
+                            className="btn btn-primary btn-sm"
                           >
                             Resume
                           </Link>
@@ -308,12 +307,7 @@ export default function LearnerDashboard() {
                             </p>
                           </div>
                           <span
-                            className="status-chip"
-                            style={{
-                              background:
-                                topic.momentum === 'up' ? 'rgba(34,197,94,0.12)' : 'rgba(14,165,233,0.12)',
-                              color: topic.momentum === 'up' ? '#047857' : '#0f766e'
-                            }}
+                            className={`status-chip ${topic.momentum === 'up' ? 'status-chip-success' : 'status-chip-info'}`}
                           >
                             <i className={`fa-solid ${topic.momentum === 'up' ? 'fa-arrow-trend-up' : 'fa-arrow-right'}`} />
                             {topic.momentum === 'up' ? 'Growing' : 'Steady'}
@@ -332,10 +326,10 @@ export default function LearnerDashboard() {
                     Choose your learning path and begin your journey to mastery.
                   </p>
                   <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
-                    <Link to="/learner/marketplace" className="btn btn-secondary" style={{ background: 'white', color: 'var(--primary-blue)', border: 'none' }}>
+                    <Link to="/learner/marketplace" className="btn btn-cta-white">
                       Browse marketplace
                     </Link>
-                    <Link to="/learner/personalized" className="btn btn-secondary" style={{ background: 'var(--accent-gold)', color: 'white', border: 'none' }}>
+                    <Link to="/learner/personalized" className="btn btn-cta-gold">
                       Get personalized
                     </Link>
                   </div>

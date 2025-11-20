@@ -32,7 +32,7 @@ const renderStars = (rating, onSelect, interactive = false) => {
           <Star
             key={value}
             size={36}
-            className={filled ? 'text-yellow-400' : 'text-gray-300'}
+            className={filled ? 'text-[var(--accent-gold)]' : 'text-[var(--text-muted)] opacity-40'}
             fill={filled ? 'currentColor' : 'none'}
           />
         )
@@ -335,7 +335,7 @@ export default function FeedbackPage() {
                   </div>
                   <div className="flex items-center gap-3 text-2xl font-bold text-[var(--text-primary)]">
                     {communityStats.average_rating?.toFixed(1)}
-                    <Star size={24} className="text-yellow-400" fill="currentColor" />
+                    <Star size={24} className="text-[var(--accent-gold)]" fill="currentColor" />
                   </div>
                 </div>
               </div>
@@ -396,8 +396,8 @@ export default function FeedbackPage() {
                               onClick={() => toggleTag(tag)}
                               className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
                                 active
-                                  ? 'bg-[rgba(14,165,233,0.18)] text-[#0f766e] border border-[rgba(14,165,233,0.3)]'
-                                  : 'bg-[rgba(148,163,184,0.12)] text-[var(--text-muted)]'
+                                  ? 'status-chip status-chip-info'
+                                  : 'status-chip'
                               } hover:opacity-80`}
                             >
                               #{tag}
@@ -453,7 +453,7 @@ export default function FeedbackPage() {
                           tags.map((tag) => (
                             <span
                               key={tag}
-                              className="rounded-full px-3 py-1 text-xs font-semibold bg-[rgba(14,165,233,0.18)] text-[#0f766e] border border-[rgba(14,165,233,0.3)]"
+                              className="status-chip status-chip-info"
                             >
                               #{tag}
                             </span>

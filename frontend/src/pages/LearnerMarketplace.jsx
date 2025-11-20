@@ -123,39 +123,39 @@ export default function LearnerMarketplace() {
 
                 return (
                   <div key={course.id || course.course_id} className="course-card">
-                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 'var(--spacing-sm)' }}>
-                      <div>
-                        <span className="tag-chip" style={{ marginBottom: 'var(--spacing-sm)' }}>
+                    <div className="flex justify-between gap-4">
+                      <div className="flex-1">
+                        <span className="tag-chip mb-2 block">
                           <i className="fa-solid fa-graduation-cap" />
                           {course.level || 'Beginner'}
                         </span>
-                        <h3 style={{ fontSize: '1.3rem', fontWeight: 600 }}>{course.title || course.course_name}</h3>
-                        <p style={{ marginTop: 'var(--spacing-sm)', color: 'var(--text-muted)' }}>
+                        <h3 className="text-xl font-semibold text-[var(--text-primary)]">{course.title || course.course_name}</h3>
+                        <p className="mt-2 text-sm text-[var(--text-secondary)]">
                           {course.description || course.course_description || 'Accelerate your learning with actionable insights and guided projects.'}
                         </p>
                       </div>
-                      <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                        <span className="status-chip" style={{ background: 'rgba(234,179,8,0.12)', color: '#b45309' }}>
+                      <div className="flex flex-col items-end gap-1.5">
+                        <span className="status-chip status-chip-rating">
                           <i className="fa-solid fa-star" />
                           {(course.rating || course.average_rating || 4.6).toFixed(1)}
                         </span>
-                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                        <span className="text-xs text-[var(--text-muted)]">
                           {course.total_enrollments ? `${course.total_enrollments}+ learners` : 'Popular choice'}
                         </span>
                       </div>
                     </div>
 
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--spacing-sm)', marginTop: 'var(--spacing-md)', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                      <span className="status-chip" style={{ background: 'rgba(59,130,246,0.1)', color: '#1d4ed8' }}>
+                    <div className="flex flex-wrap gap-2 mt-4 text-sm text-[var(--text-muted)]">
+                      <span className="status-chip status-chip-blue">
                         <i className="fa-solid fa-layer-group" />
                         {course.modules?.length || 4} modules
                       </span>
-                      <span className="status-chip" style={{ background: 'rgba(16,185,129,0.12)', color: '#047857' }}>
+                      <span className="status-chip status-chip-success">
                         <i className="fa-solid fa-clock" />
                         {course.duration ? `${course.duration} mins` : '45 mins / lesson'}
                       </span>
                       {course.ai_assets && Object.keys(course.ai_assets).length > 0 && (
-                        <span className="status-chip" style={{ background: 'rgba(168,85,247,0.12)', color: '#7c3aed' }}>
+                        <span className="status-chip status-chip-purple">
                           <i className="fa-solid fa-sparkles" />
                           AI Enriched
                         </span>
@@ -166,13 +166,13 @@ export default function LearnerMarketplace() {
                       </span>
                     </div>
 
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'var(--spacing-lg)' }}>
-                      <span className="status-chip" style={{ background: course.visibility === 'private' ? 'rgba(239,68,68,0.12)' : 'rgba(6,95,70,0.08)', color: course.visibility === 'private' ? '#b91c1c' : '#047857' }}>
+                    <div className="flex justify-between items-center mt-6">
+                      <span className={`status-chip ${course.visibility === 'private' ? 'status-chip-danger' : 'status-chip-success'}`}>
                         <i className="fa-solid fa-shield-halved" />
                         {course.visibility === 'private' ? 'Invite only' : 'Open enrollment'}
                       </span>
-                      <Link to={`/courses/${course.id || course.course_id}`} className="btn btn-primary" style={{ padding: '10px 20px' }}>
-                        View details <i className="fa-solid fa-arrow-right" style={{ marginLeft: '8px' }} />
+                      <Link to={`/courses/${course.id || course.course_id}`} className="btn btn-primary btn-sm flex items-center gap-2">
+                        View details <i className="fa-solid fa-arrow-right" />
                       </Link>
                     </div>
                   </div>

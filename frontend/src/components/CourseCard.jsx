@@ -27,12 +27,12 @@ export default function CourseCard({ course, showProgress = false, progress = 0,
               {level}
             </span>
             {isPersonalized && (
-              <span className="rounded-full bg-[rgba(124,58,237,0.16)] px-3 py-1 text-xs font-semibold uppercase tracking-wide text-[#6d28d9]">
+              <span className="badge badge-purple">
                 PERSONALIZED
               </span>
             )}
             {isMarketplace && (
-              <span className="rounded-full bg-[rgba(14,165,233,0.12)] px-3 py-1 text-xs font-semibold uppercase tracking-wide text-[#0f766e]">
+              <span className="badge badge-cyan">
                 MARKETPLACE
               </span>
             )}
@@ -43,21 +43,13 @@ export default function CourseCard({ course, showProgress = false, progress = 0,
             )}
           </div>
           <h3 className="text-xl font-semibold text-[var(--text-primary)] leading-snug">{title}</h3>
-          <p
-            className="text-sm leading-6 text-[var(--text-secondary)]"
-            style={{
-              display: '-webkit-box',
-              WebkitLineClamp: 3,
-              WebkitBoxOrient: 'vertical',
-              overflow: 'hidden'
-            }}
-          >
+          <p className="text-sm leading-6 text-[var(--text-secondary)] line-clamp-3">
             {description || 'No description available.'}
           </p>
         </div>
 
         <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-2 text-[#FACC15]">
+          <div className="flex items-center gap-2 text-[var(--accent-gold)]">
             <i className="fas fa-star" aria-hidden="true"></i>
             <span className="text-base font-semibold text-[var(--text-primary)]">
               {rating.toFixed(1)}
@@ -72,10 +64,7 @@ export default function CourseCard({ course, showProgress = false, progress = 0,
         {skillChips.length > 0 && (
           <div className="flex flex-wrap gap-2">
             {skillChips.map((skill) => (
-              <span
-                key={skill}
-                className="rounded-full bg-[rgba(14,165,233,0.12)] px-3 py-1 text-xs font-semibold text-[#0f766e]"
-              >
+              <span key={skill} className="tag-chip">
                 {skill}
               </span>
             ))}
@@ -92,11 +81,7 @@ export default function CourseCard({ course, showProgress = false, progress = 0,
           <div className="progress-bar">
             <div
               className="progress-fill"
-              style={{
-                width: `${progress}%`,
-                background:
-                  'linear-gradient(90deg, rgba(6, 95, 70, 0.95), rgba(15, 118, 110, 0.8))'
-              }}
+              style={{ width: `${progress}%` }}
             />
           </div>
         </div>
