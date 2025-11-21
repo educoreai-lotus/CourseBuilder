@@ -9,9 +9,15 @@ import { dispatchIntegrationRequest } from '../integration/dispatcher.js';
 /**
  * Infer target service from payload structure
  * Routing logic is internal - determines which microservice to route to based on payload content
+ * 
+ * NOTE: If no pattern matches and we have a response template, default to CourseBuilder
+ * (AI-powered query generation for Course Builder's own database)
  */
-function inferTargetServiceFromPayload(payloadObject) {
-  if (!payloadObject || typeof payloadObject !== 'object') return null;
+function inferTargetServiceFromPayload(payloadObject, responseTemplate) {
+  if (!payloadObject || typeof payloadObject !== 'object') {
+    // If we have a response template, default to CourseBuilder for AI-powered filling
+    return responseTemplate ? 'CourseBuilder' : null;
+  }
   
   // ContentStudio: has topics[] or learner_id + skills
   if (payloadObject.topics || (payloadObject.learner_id && payloadObject.skills)) {
@@ -51,6 +57,12 @@ function inferTargetServiceFromPayload(payloadObject) {
   // Devlab: has course_id, learner_id, course_name (minimal payload)
   if (payloadObject.course_id && payloadObject.learner_id && payloadObject.course_name) {
     return 'Devlab';
+  }
+  
+  // Default: If we have a response template, use CourseBuilder with AI-powered query generation
+  // This handles cases where the payload doesn't match any known pattern but we still need to fill the template
+  if (responseTemplate && typeof responseTemplate === 'object') {
+    return 'CourseBuilder';
   }
   
   return null;
@@ -151,11 +163,12 @@ export async function handleFillContentMetrics(req, res) {
     }
 
     // Infer target service from payload structure (routing is internal)
-    const targetService = inferTargetServiceFromPayload(payloadObject);
+    // Pass responseTemplate to allow defaulting to CourseBuilder if no pattern matches
+    const targetService = inferTargetServiceFromPayload(payloadObject, responseObject);
     if (!targetService) {
       const errorPayload = {
         error: 'Bad Request',
-        message: 'Could not determine target service from payload structure. Please ensure payload matches a known service pattern.'
+        message: 'Could not determine target service from payload structure. Please ensure payload matches a known service pattern or provide a valid response template.'
       };
       res.setHeader('Content-Type', 'text/plain');
       return res.status(400).send(JSON.stringify(errorPayload));

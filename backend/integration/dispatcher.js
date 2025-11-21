@@ -11,6 +11,7 @@ import { handleDirectoryIntegration } from './handlers/directoryHandler.js';
 import { handleLearningAnalyticsIntegration } from './handlers/learningAnalyticsHandler.js';
 import { handleManagementReportingIntegration } from './handlers/managementReportingHandler.js';
 import { handleDevlabIntegration } from './handlers/devlabHandler.js';
+import { handleCourseBuilderIntegration } from './handlers/courseBuilderHandler.js';
 
 /**
  * Dispatch integration request based on serviceName
@@ -33,6 +34,10 @@ export async function dispatchIntegrationRequest(serviceName, payloadObject, res
 
   // Route based on serviceName and pass both payload and response template
   switch (normalizedServiceName) {
+    case 'CourseBuilder':
+      // Use AI-powered query generation to fill Course Builder's own response templates
+      return await handleCourseBuilderIntegration(payloadObject, responseTemplate);
+
     case 'ContentStudio':
       return await handleContentStudioIntegration(payloadObject, responseTemplate);
 
@@ -69,6 +74,7 @@ export async function dispatchIntegrationRequest(serviceName, payloadObject, res
  */
 export function getSupportedServices() {
   return [
+    'CourseBuilder',
     'ContentStudio',
     'LearnerAI',
     'Assessment',
