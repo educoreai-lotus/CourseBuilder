@@ -2,6 +2,24 @@
 
 This directory contains JSON contract specifications for all microservice integrations in the Course Builder system.
 
+## Shared Envelope Structure
+
+**IMPORTANT**: All microservice integrations use a **shared envelope structure** documented in:
+- **`SHARED_ENVELOPE_STRUCTURE.md`** - Defines the common envelope (requester_service, payload, response)
+
+The shared envelope is:
+```json
+{
+  "requester_service": "service_name",  // e.g., "course_builder", "content_studio"
+  "payload": {},                         // Service-specific request data (object)
+  "response": {}                         // Service-specific response template (object)
+}
+```
+
+**Note**: `payload` and `response` are regular JSON objects (NOT stringified JSON strings).
+
+Each contract file below defines the **service-specific** structure inside `payload` and `response`.
+
 ## Structure
 
 Each contract file follows a consistent structure:

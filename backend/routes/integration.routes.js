@@ -12,20 +12,20 @@ const router = express.Router();
  * POST /api/fill-content-metrics
  * Unified endpoint for all microservice integrations
  * 
- * Request Body (stringified JSON):
+ * Request Body (regular JSON object):
  *   {
- *     "requester_service": "CourseBuilder", // Always "CourseBuilder" - identifies who is making the request
- *     "payload": "{\"key\": \"value\"}", // stringified JSON - data sent to target microservice
- *     "response": "{\"field1\": \"\", \"field2\": []}" // stringified JSON - template for expected response structure
+ *     "requester_service": "course_builder", // Service name making the request (lowercase with underscores)
+ *     "payload": { "key": "value" }, // JSON object - data sent to target microservice
+ *     "response": { "field1": "", "field2": [] } // JSON object - template for expected response structure
  *   }
  * 
  * Note: Routing to target microservice is determined internally from payload structure.
  * 
- * Response (stringified JSON):
+ * Response (regular JSON object):
  *   {
- *     "requester_service": "CourseBuilder",
- *     "payload": "<same as request>", // stringified JSON
- *     "response": "{\"field1\": \"filled\", \"field2\": [...]}" // stringified JSON (filled by service)
+ *     "requester_service": "course_builder",
+ *     "payload": { ... }, // Same as request payload
+ *     "response": { "field1": "filled", "field2": [...] } // Filled by service
  *   }
  */
 router.post('/fill-content-metrics', integrationController.handleFillContentMetrics);

@@ -48,18 +48,15 @@ export async function sendToContentStudio(payloadObject) {
 
     // Build response template (empty, Content Studio will fill it)
     const responseTemplate = {
-      learner_id: sendPayload.learner_id || '',
-      learner_name: sendPayload.learner_name || '',
-      learner_company: sendPayload.learner_company || '',
-      topics: []
+      course: []
     };
 
     // Send using unified endpoint format (three-field structure)
-    // Content Studio API expects 'serviceName' instead of 'requester_service'
+    // Use lowercase with underscores for requester_service
     const requestBody = {
-      serviceName: 'CourseBuilder',
-      payload: JSON.stringify(sendPayload),
-      response: JSON.stringify(responseTemplate)
+      requester_service: 'course_builder',
+      payload: sendPayload, // Regular object, NOT stringified
+      response: responseTemplate // Regular object, NOT stringified
     };
 
     const response = await axios.post(
@@ -72,19 +69,10 @@ export async function sendToContentStudio(payloadObject) {
       }
     );
 
-    // Parse response - response is stringified JSON
-    let responseData;
-    if (typeof response.data === 'string') {
-      responseData = JSON.parse(response.data);
-    } else {
-      responseData = response.data;
-    }
+    // Response is a regular JSON object (NOT stringified)
+    const responseData = response.data;
 
-    // Parse the nested response field (also stringified)
-    if (responseData.response && typeof responseData.response === 'string') {
-      return JSON.parse(responseData.response);
-    }
-
+    // Return the filled response object
     return responseData.response || responseData;
   } catch (error) {
     console.error('[ContentStudio Client] Error:', error);

@@ -1,7 +1,7 @@
 /**
  * Unified Integration Controller
  * Handles all integration requests through single endpoint: POST /api/fill-content-metrics
- * Implements strict stringified JSON request/response contract.
+ * Implements shared envelope structure with regular JSON objects (not stringified).
  */
 
 import { dispatchIntegrationRequest } from '../integration/dispatcher.js';
@@ -74,93 +74,49 @@ function inferTargetServiceFromPayload(payloadObject, responseTemplate) {
  * POST /api/fill-content-metrics
  *
  * Contract rules:
- * 1) Request body is a stringified JSON (Express JSON parser will yield a string)
- * 2) Parse with JSON.parse to object: must contain requester_service (string, always "CourseBuilder"), payload (stringified JSON string), response (stringified JSON string)
- * 3) Parse both payload and response strings to objects
+ * 1) Request body is a regular JSON object (parsed by Express.json() middleware)
+ * 2) Must contain requester_service (string, lowercase with underscores, e.g., "course_builder"), payload (JSON object), response (JSON object)
+ * 3) Both payload and response are regular JSON objects (NOT stringified)
  * 4) Infer target service from payload structure (routing is internal)
  * 5) Route to appropriate handler, pass parsed payload and response template
  * 6) Handler fills the response template and returns it
- * 7) Stringify response back and return the full envelope as stringified JSON (only requester_service, payload, response)
- * 8) On parse/validation error: respond 400 with stringified JSON error
+ * 7) Return the full envelope as regular JSON object (only requester_service, payload, response)
+ * 8) On parse/validation error: respond 400 with JSON error
  */
 export async function handleFillContentMetrics(req, res) {
   try {
-    // Body may arrive as:
-    // 1. A string (stringified JSON) - if Express.json() middleware is not used or body is sent as text
-    // 2. An object (already parsed by Express.json() middleware)
-    let envelope;
-    if (typeof req.body === 'string') {
-      // Body is a string - parse it
-      try {
-        envelope = JSON.parse(req.body);
-      } catch (parseError) {
-        const errorPayload = {
-          error: 'Bad Request',
-          message: 'Failed to parse request body as JSON',
-          details: parseError.message
-        };
-        res.setHeader('Content-Type', 'text/plain');
-      return res.status(400).send(JSON.stringify(errorPayload));
-      }
-    } else if (typeof req.body === 'object' && req.body !== null) {
-      // Body is already parsed by Express.json() - use it directly
-      envelope = req.body;
-    } else {
-      // Invalid body type
+    // Body should be a regular JSON object (parsed by Express.json() middleware)
+    const envelope = req.body;
+
+    // Validate body is an object
+    if (!envelope || typeof envelope !== 'object') {
       const errorPayload = {
         error: 'Bad Request',
-        message: 'Request body must be a valid JSON object or stringified JSON'
+        message: 'Request body must be a valid JSON object'
       };
-      res.setHeader('Content-Type', 'text/plain');
-      return res.status(400).send(JSON.stringify(errorPayload));
+      res.setHeader('Content-Type', 'application/json');
+      return res.status(400).json(errorPayload);
     }
 
     // Validate required fields and structure
     // Only three fields allowed: requester_service, payload, response
     const requesterService = envelope.requester_service;
-    const hasRequesterService = typeof requesterService === 'string' && requesterService.trim() === 'CourseBuilder';
-    const hasPayload = envelope.payload && typeof envelope.payload === 'string';
-    const hasResponse = envelope.response && typeof envelope.response === 'string';
+    const hasRequesterService = typeof requesterService === 'string' && requesterService.trim().length > 0;
+    const hasPayload = envelope.payload && typeof envelope.payload === 'object';
+    const hasResponse = envelope.response && typeof envelope.response === 'object';
 
     if (!hasRequesterService || !hasPayload || !hasResponse) {
       const errorPayload = {
         error: 'Bad Request',
-        message: 'Envelope must include only "requester_service" (string, must be "CourseBuilder"), "payload" (stringified JSON string), and "response" (stringified JSON string)'
+        message: 'Envelope must include "requester_service" (string, lowercase with underscores), "payload" (JSON object), and "response" (JSON object)'
       };
-      res.setHeader('Content-Type', 'text/plain');
-      return res.status(400).send(JSON.stringify(errorPayload));
+      res.setHeader('Content-Type', 'application/json');
+      return res.status(400).json(errorPayload);
     }
 
-    // Ensure requester_service is set correctly
-    envelope.requester_service = 'CourseBuilder';
-
-    // Parse payload (it's a stringified JSON)
-    let payloadObject;
-    try {
-      payloadObject = JSON.parse(envelope.payload);
-    } catch (parseError) {
-      const errorPayload = {
-        error: 'Bad Request',
-        message: 'Failed to parse payload as JSON',
-        details: parseError.message
-      };
-      res.setHeader('Content-Type', 'text/plain');
-      return res.status(400).send(JSON.stringify(errorPayload));
-    }
-
-    // Parse response (it's a stringified JSON)
-    let responseObject;
-    try {
-      responseObject = JSON.parse(envelope.response);
-    } catch (parseError) {
-      const errorPayload = {
-        error: 'Bad Request',
-        message: 'Failed to parse response as JSON',
-        details: parseError.message
-      };
-      res.setHeader('Content-Type', 'text/plain');
-      return res.status(400).send(JSON.stringify(errorPayload));
-    }
+    // Payload and response are already objects (NOT stringified)
+    const payloadObject = envelope.payload;
+    const responseObject = envelope.response;
 
     // Infer target service from payload structure (routing is internal)
     // Pass responseTemplate to allow defaulting to CourseBuilder if no pattern matches
@@ -178,30 +134,28 @@ export async function handleFillContentMetrics(req, res) {
     const filledResponse = await dispatchIntegrationRequest(targetService, payloadObject, responseObject);
 
     // Handler returns the filled response object
-    // Stringify response back to string
-    envelope.response = JSON.stringify(filledResponse);
+    // Response is already a regular object (NOT stringified)
     
     // Return only the three required fields: requester_service, payload, response
     // Routing information (target_service) is internal and not exposed
     const responseEnvelope = {
-      requester_service: 'CourseBuilder',
-      payload: envelope.payload,
-      response: envelope.response
+      requester_service: envelope.requester_service, // Keep original requester_service
+      payload: payloadObject, // Keep original payload
+      response: filledResponse // Return filled response object
     };
 
-    // Return the full envelope as stringified JSON
-    // Set Content-Type to text/plain since we're sending stringified JSON
-    res.setHeader('Content-Type', 'text/plain');
-    return res.status(200).send(JSON.stringify(responseEnvelope));
+    // Return the full envelope as regular JSON object
+    res.setHeader('Content-Type', 'application/json');
+    return res.status(200).json(responseEnvelope);
   } catch (error) {
-    console.error('[Integration Controller] Error processing request from CourseBuilder:', error);
+    console.error('[Integration Controller] Error processing request:', error);
     const status = error.status || 500;
     const errorPayload = {
       error: status === 500 ? 'Internal Server Error' : 'Error',
       message: error.message || 'Unhandled error'
     };
-    res.setHeader('Content-Type', 'text/plain');
-    return res.status(status).send(JSON.stringify(errorPayload));
+    res.setHeader('Content-Type', 'application/json');
+    return res.status(status).json(errorPayload);
   }
 }
 

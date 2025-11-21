@@ -25,7 +25,7 @@ export function buildSendPayload(feedback, course) {
     },
     course_id: course.id,
     course_name: course.course_name,
-    learner_id: feedback.learner_id
+    employee_id: feedback.learner_id // Send learner_id value but use field name employee_id
   };
 }
 
@@ -54,7 +54,7 @@ export function validateSendPayload(payload) {
     typeof payload.feedback === 'object' &&
     typeof payload.feedback.rating === 'number' &&
     typeof payload.course_id === 'string' &&
-    typeof payload.learner_id === 'string'
+    typeof payload.employee_id === 'string' // Changed from learner_id to employee_id
   );
 }
 
