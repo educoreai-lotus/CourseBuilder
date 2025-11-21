@@ -25,13 +25,21 @@ export async function executeQuery(sqlQuery, params = []) {
   validateQuerySecurity(sqlQuery);
 
   try {
+    console.log('[Query Executor] 🔍 Executing SQL query with params:', params);
+    console.log('[Query Executor] SQL Query:', sqlQuery);
+    
     // Use parameterized queries to prevent SQL injection
     // db.one() returns a single row, db.many() returns multiple rows
     // db.oneOrNone() returns a single row or null
     
     // Determine which method to use based on expected result
     // For now, try oneOrNone to handle both single and no results gracefully
+    const startTime = Date.now();
     const result = await db.oneOrNone(sqlQuery, params);
+    const duration = Date.now() - startTime;
+    
+    console.log(`[Query Executor] ✅ Query executed successfully in ${duration}ms`);
+    console.log('[Query Executor] Query results:', result ? JSON.stringify(result).substring(0, 200) + '...' : 'No results');
     
     return result || {}; // Return empty object if no results
   } catch (error) {

@@ -167,7 +167,11 @@ export async function handleFillContentMetrics(req, res) {
     // Determine target service based on NEW routing logic:
     // - If response template has fields → Course Builder Handler (AI)
     // - If response template is empty → Specialized handler based on payload structure
+    console.log('[Integration Controller] 🔍 Determining target service...');
+    console.log('[Integration Controller] Response template has fields:', responseTemplateHasFields(responseObject));
     const targetService = determineTargetService(payloadObject, responseObject);
+    console.log('[Integration Controller] ✅ Target service determined:', targetService);
+    
     if (!targetService) {
       const errorPayload = {
         error: 'Bad Request',
@@ -178,7 +182,12 @@ export async function handleFillContentMetrics(req, res) {
     }
 
     // Call dispatcher with target service, payload, and response template
+    console.log(`[Integration Controller] 📤 Routing to ${targetService} handler...`);
+    if (targetService === 'CourseBuilder') {
+      console.log('[Integration Controller] 🤖 Using AI-powered Course Builder Handler (Gemini AI will be called)');
+    }
     const filledResponse = await dispatchIntegrationRequest(targetService, payloadObject, responseObject);
+    console.log(`[Integration Controller] ✅ ${targetService} handler completed successfully`);
 
     // Handler returns the filled response object
     // Response is already a regular object (NOT stringified)

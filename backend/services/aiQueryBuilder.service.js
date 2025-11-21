@@ -112,37 +112,60 @@ function responseTemplateHasFields(responseTemplate) {
  * @throws {Error} - If response template is empty or invalid
  */
 export async function generateSQLQuery(payloadObject, responseTemplate) {
+  console.log('[AI Query Builder] Starting SQL query generation...');
+  
   if (!GEMINI_API_KEY) {
+    console.error('[AI Query Builder] ❌ ERROR: GEMINI_API_KEY not configured in environment variables');
+    console.error('[AI Query Builder] Please set GEMINI_API_KEY in Railway environment variables');
     throw new Error('GEMINI_API_KEY not configured. Cannot generate SQL queries.');
   }
+  console.log('[AI Query Builder] ✅ GEMINI_API_KEY found in environment');
 
   // Safety check: Ensure response template has fields to fill
   // Per requirements: "If the response_template is empty: Output nothing (AI should not be invoked)"
   if (!responseTemplateHasFields(responseTemplate)) {
+    console.warn('[AI Query Builder] ⚠️ Response template is empty - AI should not be invoked');
     throw new Error('Response template is empty. AI should not be invoked when there are no fields to fill.');
   }
+  console.log('[AI Query Builder] ✅ Response template has fields to fill');
 
   try {
+    console.log('[AI Query Builder] Initializing Gemini AI...');
     const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
     const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+    console.log('[AI Query Builder] ✅ Gemini AI initialized with model: gemini-2.5-flash');
 
     // Build the prompt
+    console.log('[AI Query Builder] Building prompt with field normalization rules...');
     const prompt = buildQueryGenerationPrompt(payloadObject, responseTemplate);
+    console.log('[AI Query Builder] ✅ Prompt built successfully');
 
-    // Generate SQL query
+    // Generate SQL query using Gemini AI
+    console.log('[AI Query Builder] 🚀 Calling Gemini AI to generate SQL query...');
+    const startTime = Date.now();
     const result = await model.generateContent(prompt);
     const response = await result.response;
     const text = response.text();
+    const duration = Date.now() - startTime;
+    console.log(`[AI Query Builder] ✅ Gemini AI responded in ${duration}ms`);
+    console.log('[AI Query Builder] Raw AI response length:', text.length, 'characters');
 
     // Extract SQL from response (may contain markdown code fences)
+    console.log('[AI Query Builder] Extracting SQL from AI response...');
     const sqlQuery = extractSQLFromResponse(text);
+    console.log('[AI Query Builder] ✅ SQL extracted:', sqlQuery.substring(0, 100) + '...');
 
     // Validate the query is SELECT only
+    console.log('[AI Query Builder] Validating SQL query (SELECT-only check)...');
     validateQueryIsSelectOnly(sqlQuery);
+    console.log('[AI Query Builder] ✅ SQL query validated successfully');
 
-    return sqlQuery.trim();
+    const finalQuery = sqlQuery.trim();
+    console.log('[AI Query Builder] ✅ Final SQL query generated:', finalQuery);
+    return finalQuery;
   } catch (error) {
-    console.error('[AI Query Builder] Error generating SQL query:', error);
+    console.error('[AI Query Builder] ❌ Error generating SQL query:', error.message);
+    console.error('[AI Query Builder] Error stack:', error.stack);
     throw new Error(`Failed to generate SQL query: ${error.message}`);
   }
 }
