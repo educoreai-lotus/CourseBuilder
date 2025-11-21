@@ -15,9 +15,9 @@ import { handleCourseBuilderIntegration } from './handlers/courseBuilderHandler.
 
 /**
  * Dispatch integration request based on serviceName
- * @param {string} serviceName - Name of the service (e.g., "ContentStudio", "LearnerAI")
+ * @param {string} serviceName - Name of the service (e.g., "ContentStudio", "LearnerAI", "CourseBuilder")
  * @param {Object} payloadObject - Parsed payload object
- * @param {Object} responseTemplate - Empty response template object to be filled by handler
+ * @param {Object} responseTemplate - Response template object (may be empty {} for specialized handlers, or have fields for AI handler)
  * @returns {Promise<Object>} Filled response object
  */
 export async function dispatchIntegrationRequest(serviceName, payloadObject, responseTemplate) {
@@ -25,8 +25,9 @@ export async function dispatchIntegrationRequest(serviceName, payloadObject, res
     throw new Error('serviceName is required and must be a string');
   }
   
-  if (!responseTemplate || typeof responseTemplate !== 'object') {
-    throw new Error('responseTemplate is required and must be an object');
+  // Response template must be an object (can be empty {} for specialized handlers)
+  if (responseTemplate === null || responseTemplate === undefined || typeof responseTemplate !== 'object') {
+    throw new Error('responseTemplate is required and must be an object (can be empty {})');
   }
 
   // Normalize service name (case-insensitive)

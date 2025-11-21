@@ -7,16 +7,43 @@
 import { dispatchIntegrationRequest } from '../integration/dispatcher.js';
 
 /**
- * Infer target service from payload structure
- * Routing logic is internal - determines which microservice to route to based on payload content
- * 
- * NOTE: If no pattern matches and we have a response template, default to CourseBuilder
- * (AI-powered query generation for Course Builder's own database)
+ * Check if response template has fields to fill
+ * Response template has fields if it's an object with at least one key
+ * @param {Object} responseTemplate - Response template to check
+ * @returns {boolean} - True if template has fields to fill
  */
-function inferTargetServiceFromPayload(payloadObject, responseTemplate) {
+function responseTemplateHasFields(responseTemplate) {
+  if (!responseTemplate || typeof responseTemplate !== 'object') {
+    return false;
+  }
+  
+  // Check if it has at least one key
+  const keys = Object.keys(responseTemplate);
+  if (keys.length === 0) {
+    return false;
+  }
+  
+  // Check if any value is not null/undefined/empty string (indicating a field to fill)
+  // Empty arrays and empty objects are considered "fields to fill"
+  for (const key of keys) {
+    const value = responseTemplate[key];
+    // If value is not null/undefined, it's a field to fill (even if empty array/object)
+    if (value !== null && value !== undefined) {
+      return true;
+    }
+  }
+  
+  return false;
+}
+
+/**
+ * Infer specialized service from payload structure
+ * Used only when response template is empty (no AI needed)
+ * Determines which specialized handler to use based on payload content
+ */
+function inferSpecializedServiceFromPayload(payloadObject) {
   if (!payloadObject || typeof payloadObject !== 'object') {
-    // If we have a response template, default to CourseBuilder for AI-powered filling
-    return responseTemplate ? 'CourseBuilder' : null;
+    return null;
   }
   
   // ContentStudio: has topics[] or learner_id + skills
@@ -59,13 +86,30 @@ function inferTargetServiceFromPayload(payloadObject, responseTemplate) {
     return 'Devlab';
   }
   
-  // Default: If we have a response template, use CourseBuilder with AI-powered query generation
-  // This handles cases where the payload doesn't match any known pattern but we still need to fill the template
-  if (responseTemplate && typeof responseTemplate === 'object') {
+  return null;
+}
+
+/**
+ * Determine target service based on response template and payload
+ * NEW LOGIC: AI is used ONLY when response template has fields to fill
+ * 
+ * @param {Object} payloadObject - Payload from request
+ * @param {Object} responseTemplate - Response template from request
+ * @returns {string|null} - Target service name or null
+ */
+function determineTargetService(payloadObject, responseTemplate) {
+  // NEW ROUTING LOGIC:
+  // 1. If response template has fields → Use Course Builder Handler (AI)
+  // 2. If response template is empty → Use specialized handler based on payload structure
+  
+  // Check if response template has fields to fill
+  if (responseTemplateHasFields(responseTemplate)) {
+    // Response template has fields → Use AI-powered Course Builder Handler
     return 'CourseBuilder';
   }
   
-  return null;
+  // Response template is empty → Use specialized handler based on payload structure
+  return inferSpecializedServiceFromPayload(payloadObject);
 }
 
 
@@ -120,16 +164,17 @@ export async function handleFillContentMetrics(req, res) {
     const payloadObject = envelope.payload;
     const responseObject = envelope.response || {};  // Default to {} if response is missing
 
-    // Infer target service from payload structure (routing is internal)
-    // Pass responseTemplate to allow defaulting to CourseBuilder if no pattern matches
-    const targetService = inferTargetServiceFromPayload(payloadObject, responseObject);
+    // Determine target service based on NEW routing logic:
+    // - If response template has fields → Course Builder Handler (AI)
+    // - If response template is empty → Specialized handler based on payload structure
+    const targetService = determineTargetService(payloadObject, responseObject);
     if (!targetService) {
       const errorPayload = {
         error: 'Bad Request',
-        message: 'Could not determine target service from payload structure. Please ensure payload matches a known service pattern or provide a valid response template.'
+        message: 'Could not determine target service. Please ensure payload matches a known service pattern, or provide a response template with fields to fill.'
       };
-      res.setHeader('Content-Type', 'text/plain');
-      return res.status(400).send(JSON.stringify(errorPayload));
+      res.setHeader('Content-Type', 'application/json');
+      return res.status(400).json(errorPayload);
     }
 
     // Call dispatcher with target service, payload, and response template
