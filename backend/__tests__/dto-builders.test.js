@@ -129,11 +129,13 @@ describe('DTO Builders Integration Tests', () => {
       expect(payload).toHaveProperty('feedback');
       expect(payload).toHaveProperty('course_id');
       expect(payload).toHaveProperty('course_name');
-      expect(payload).toHaveProperty('learner_id');
+      expect(payload).toHaveProperty('employee_id'); // Changed from learner_id to employee_id
+      expect(payload).not.toHaveProperty('learner_id'); // Should NOT have learner_id
       
       // ⚠️ CRITICAL: course_name must be looked up from course entity
       expect(payload.course_name).toBe('Test Course');
       expect(payload.course_id).toBe('course-123');
+      expect(payload.employee_id).toBe('learner-123'); // learner_id is sent as employee_id
       
       // Verify feedback structure
       expect(payload.feedback).toHaveProperty('rating');
@@ -163,7 +165,7 @@ describe('DTO Builders Integration Tests', () => {
         },
         course_id: 'course-123',
         course_name: 'Test Course',
-        learner_id: 'learner-123'
+        employee_id: 'learner-123' // Changed from learner_id to employee_id
       };
       
       expect(directoryDTO.validateSendPayload(validPayload)).toBe(true);
