@@ -279,8 +279,7 @@ export default function CourseOverview({
                   <div
                     key={item.label}
                     className="rounded-2xl border bg-[var(--bg-card)]/90 p-4 text-sm shadow-sm backdrop-blur transition-colors"
-                    style={{ borderColor: 'var(--border-subtle, var(--border-color))' }}
-                    style={{ background: 'var(--bg-card)' }}
+                    style={{ borderColor: 'var(--border-subtle, var(--border-color))', background: 'var(--bg-card)' }}
                   >
                     <div className="flex items-center gap-2 text-[var(--primary-cyan)]">
                       {item.icon}
