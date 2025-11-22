@@ -216,16 +216,6 @@ export default function LessonView({
                     <Sparkles size={16} />
                     See Enriched Content
                   </button>
-                ) : isLearner && courseIsPersonalized && enrichmentAsset ? (
-                  // PERSONALIZED COURSES: "AI Enrich (Course)" button with manual trigger
-                  <EnrichmentButton
-                    asset={enrichmentAsset}
-                    onResults={onEnrichmentResults || undefined}
-                    onLoading={onEnrichmentLoading || undefined}
-                    onError={onEnrichmentError || undefined}
-                    buttonLabel="AI Enrich (Course)"
-                    disabled={!enrichmentAsset}
-                  />
                 ) : userRole !== 'learner' && enrichmentAsset ? (
                   // TRAINERS: Original enrichment button
                   <EnrichmentButton

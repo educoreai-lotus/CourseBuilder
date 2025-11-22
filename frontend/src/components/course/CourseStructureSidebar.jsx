@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import {
   ChevronDown,
   ChevronRight,
@@ -7,10 +7,12 @@ import {
   BookOpen,
   CheckCircle2,
   PlayCircle,
-  Lock
+  Lock,
+  Sparkles
 } from 'lucide-react'
-import { isPersonalized } from '../../utils/courseTypeUtils.js'
+import { isPersonalized, isMarketplace } from '../../utils/courseTypeUtils.js'
 import { useApp } from '../../context/AppContext.jsx'
+import EnrichmentButton from '../../features/enrichment/components/EnrichmentButton.jsx'
 
 const normalizeHierarchy = (course) => {
   if (!course) return []
@@ -94,9 +96,18 @@ export default function CourseStructureSidebar({
   learnerProgress = null,
   currentLessonId = null,
   userRole = 'learner',
-  onSelectLesson
+  onSelectLesson,
+  enrichmentAsset = null,
+  onEnrichmentResults = null,
+  onEnrichmentLoading = null,
+  onEnrichmentError = null,
+  enrichmentAssets = null
 }) {
   const { showToast } = useApp()
+  
+  // Check if course is personalized for enrichment button placement
+  const courseIsPersonalized = course ? isPersonalized(course) : false
+  const isLearner = userRole === 'learner'
 
   // Determine if course is personalized
   const isPersonalizedCourse = isPersonalized(course)
@@ -127,10 +138,44 @@ export default function CourseStructureSidebar({
     return lessons
   }, [hierarchy])
   
-  const [expandedTopics, setExpandedTopics] = useState(() =>
-    new Set(hierarchy.map((topic) => topic.id))
-  )
-  const [expandedModules, setExpandedModules] = useState(() => new Set())
+  // Auto-expand topics and modules containing the current lesson
+  const getInitialExpanded = useMemo(() => {
+    if (!currentLessonId || hierarchy.length === 0) {
+      return { topics: new Set(hierarchy.map((topic) => topic.id)), modules: new Set() }
+    }
+    
+    const topicsSet = new Set()
+    const modulesSet = new Set()
+    
+    // Find the current lesson's topic and module
+    hierarchy.forEach((topic) => {
+      topic.modules?.forEach((module) => {
+        const hasCurrentLesson = module.lessons?.some(
+          (lesson) => String(lesson.id) === String(currentLessonId)
+        )
+        if (hasCurrentLesson) {
+          topicsSet.add(topic.id)
+          modulesSet.add(module.id)
+        }
+      })
+    })
+    
+    // If no match found, expand all topics
+    if (topicsSet.size === 0) {
+      hierarchy.forEach((topic) => topicsSet.add(topic.id))
+    }
+    
+    return { topics: topicsSet, modules: modulesSet }
+  }, [hierarchy, currentLessonId])
+  
+  const [expandedTopics, setExpandedTopics] = useState(() => getInitialExpanded.topics)
+  const [expandedModules, setExpandedModules] = useState(() => getInitialExpanded.modules)
+  
+  // Update expanded state when currentLessonId changes
+  useEffect(() => {
+    setExpandedTopics(getInitialExpanded.topics)
+    setExpandedModules(getInitialExpanded.modules)
+  }, [currentLessonId, getInitialExpanded])
 
   const toggleTopic = (topicId) => {
     setExpandedTopics((prev) => {

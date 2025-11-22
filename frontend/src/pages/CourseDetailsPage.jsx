@@ -299,18 +299,6 @@ export default function CourseDetailsPage() {
           <main className="flex-1">
             <Container>
               <div className="max-w-5xl mx-auto pt-2">
-                {isEnrolled && (
-                  <div className="mb-4">
-                    <button
-                      type="button"
-                      onClick={() => navigate(`/course/${id}/feedback`)}
-                      className="btn btn-secondary flex items-center justify-center gap-2"
-                    >
-                      <i className="fa-solid fa-comment-dots" />
-                      {hasFeedback ? 'Edit Feedback' : 'Give Feedback'}
-                    </button>
-                  </div>
-                )}
                 <CourseOverview
                   course={course}
                   isEnrolled={isEnrolled}
