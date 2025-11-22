@@ -1,6 +1,7 @@
 /**
  * Seed Database with Mock Data
- * Creates: 1 learner, 1 trainer, 1 course, 1 registration
+ * Creates: 1 learner (Alice Learner), 2 trainers, 8 courses (4 marketplace + 4 personalized)
+ * Single learner is enrolled in ALL courses with feedback and progress tracking
  */
 
 import db, { pgp } from '../config/database.js';
@@ -11,14 +12,16 @@ import { RegistrationRepository } from '../repositories/RegistrationRepository.j
 import { TopicRepository } from '../repositories/TopicRepository.js';
 import { ModuleRepository } from '../repositories/ModuleRepository.js';
 import { LessonRepository } from '../repositories/LessonRepository.js';
+import { FeedbackRepository } from '../repositories/FeedbackRepository.js';
 
 dotenv.config();
 
 // Mock User IDs (matching frontend AppContext)
 const TRAINER_ID = '20000000-0000-0000-0000-000000000001'; // Tristan Trainer
 const TRAINER_2_ID = '20000000-0000-0000-0000-000000000002'; // Trainer 2
-const LEARNER_ID = '10000000-0000-0000-0000-000000000001'; // Alice Learner
-const LEARNER_2_ID = '10000000-0000-0000-0000-000000000002'; // Learner 2
+const LEARNER_ID = '10000000-0000-0000-0000-000000000001'; // Alice Learner (ONLY LEARNER)
+const LEARNER_NAME = 'Alice Learner'; // Matching frontend AppContext
+const LEARNER_COMPANY = 'Emerald Learning'; // Matching frontend AppContext
 
 // Mock Course IDs
 const MARKETPLACE_COURSE_1_ID = 'c3d4e5f6-a7b8-9012-cdef-123456789012'; // JavaScript course
@@ -38,6 +41,7 @@ const registrationRepository = new RegistrationRepository();
 const topicRepository = new TopicRepository();
 const moduleRepository = new ModuleRepository();
 const lessonRepository = new LessonRepository();
+const feedbackRepository = new FeedbackRepository();
 
 /**
  * Helper function to create full course content structure
@@ -110,7 +114,7 @@ async function seedMockData() {
       start_date: new Date(),
       created_by_user_id: TRAINER_ID,
       learning_path_designation: {},
-      studentsIDDictionary: {}, // No automatic enrollment - enrollment through frontend
+      studentsIDDictionary: {}, // Will enroll learner after content creation
       feedbackDictionary: {},
       lesson_completion_dictionary: {}
     });
@@ -129,7 +133,7 @@ async function seedMockData() {
       start_date: new Date(),
       created_by_user_id: TRAINER_2_ID,
       learning_path_designation: {},
-      studentsIDDictionary: {}, // No automatic enrollment
+      studentsIDDictionary: {}, // Will enroll learner after content creation
       feedbackDictionary: {},
       lesson_completion_dictionary: {}
     });
@@ -148,7 +152,7 @@ async function seedMockData() {
       start_date: new Date(),
       created_by_user_id: TRAINER_ID,
       learning_path_designation: {},
-      studentsIDDictionary: {}, // No automatic enrollment
+      studentsIDDictionary: {}, // Will enroll learner after content creation
       feedbackDictionary: {},
       lesson_completion_dictionary: {}
     });
@@ -167,7 +171,7 @@ async function seedMockData() {
       start_date: new Date(),
       created_by_user_id: TRAINER_ID,
       learning_path_designation: {},
-      studentsIDDictionary: {}, // No automatic enrollment
+      studentsIDDictionary: {}, // Will enroll learner after content creation
       feedbackDictionary: {},
       lesson_completion_dictionary: {}
     });
@@ -175,9 +179,10 @@ async function seedMockData() {
 
     // ============================================
     // PERSONALIZED COURSES (Learner-specific - automatic enrollment)
+    // ALL FOR SINGLE LEARNER: Alice Learner
     // ============================================
     
-    // 4. Personalized Course 1: For Learner 1
+    // 5. Personalized Course 1: For Single Learner
     console.log('📚 Creating personalized course 1 for learner...');
     const personalizedCourse1 = await courseRepository.create({
       id: PERSONALIZED_COURSE_1_ID,
@@ -210,8 +215,8 @@ async function seedMockData() {
     });
     console.log(`   ✅ Course created: ${personalizedCourse1.course_name}\n`);
 
-    // 5. Personalized Course 2: For Learner 2
-    console.log('📚 Creating personalized course 2 for learner 2...');
+    // 6. Personalized Course 2: For Single Learner
+    console.log('📚 Creating personalized course 2 for learner...');
     const personalizedCourse2 = await courseRepository.create({
       id: PERSONALIZED_COURSE_2_ID,
       course_name: 'AI and Machine Learning Fundamentals',
@@ -221,7 +226,7 @@ async function seedMockData() {
       level: 'beginner',
       duration_hours: 18,
       start_date: new Date(),
-      created_by_user_id: LEARNER_2_ID,
+      created_by_user_id: LEARNER_ID,
       learning_path_designation: {
         is_designated: true,
         target_competency: {
@@ -232,7 +237,7 @@ async function seedMockData() {
         }
       },
       studentsIDDictionary: {
-        [LEARNER_2_ID]: {
+        [LEARNER_ID]: {
           status: 'in_progress',
           enrolled_date: new Date().toISOString(),
           completion_reason: null
@@ -243,8 +248,8 @@ async function seedMockData() {
     });
     console.log(`   ✅ Course created: ${personalizedCourse2.course_name}\n`);
 
-    // 6. Personalized Course 3: For Learner 1 (NEW - FULL COURSE)
-    console.log('📚 Creating personalized course 3 for learner 1 (Full Course)...');
+    // 7. Personalized Course 3: For Single Learner (NEW - FULL COURSE)
+    console.log('📚 Creating personalized course 3 for learner (Full Course)...');
     const personalizedCourse3 = await courseRepository.create({
       id: PERSONALIZED_COURSE_3_ID,
       course_name: 'Cloud Infrastructure and DevOps Mastery',
@@ -276,8 +281,8 @@ async function seedMockData() {
     });
     console.log(`   ✅ Course created: ${personalizedCourse3.course_name}\n`);
 
-    // 7. Personalized Course 4: For Learner 2 (NEW - FULL COURSE)
-    console.log('📚 Creating personalized course 4 for learner 2 (Full Course)...');
+    // 8. Personalized Course 4: For Single Learner (NEW - FULL COURSE)
+    console.log('📚 Creating personalized course 4 for learner (Full Course)...');
     const personalizedCourse4 = await courseRepository.create({
       id: PERSONALIZED_COURSE_4_ID,
       course_name: 'Data Engineering and Big Data Analytics',
@@ -287,7 +292,7 @@ async function seedMockData() {
       level: 'intermediate',
       duration_hours: 28,
       start_date: new Date(),
-      created_by_user_id: LEARNER_2_ID,
+      created_by_user_id: LEARNER_ID,
       learning_path_designation: {
         is_designated: true,
         target_competency: {
@@ -298,7 +303,7 @@ async function seedMockData() {
         }
       },
       studentsIDDictionary: {
-        [LEARNER_2_ID]: {
+        [LEARNER_ID]: {
           status: 'in_progress',
           enrolled_date: new Date().toISOString(),
           completion_reason: null
@@ -1377,79 +1382,228 @@ async function seedMockData() {
     console.log(`   ✅ Created: ${personalized4Content.topics.length} topics, ${personalized4Content.modules.length} modules, ${personalized4Content.lessons.length} lessons\n`);
 
     // ============================================
-    // CREATE REGISTRATIONS (Only for personalized courses - automatic enrollment)
+    // ENROLL SINGLE LEARNER IN ALL COURSES
     // ============================================
-    console.log('👤 Creating registrations for personalized courses...');
+    console.log('👤 Enrolling single learner (Alice Learner) in ALL courses...\n');
     
-    // Registration 1: Learner 1 in Personalized Course 1
-    const registration1 = await registrationRepository.create({
+    // Helper function to enroll learner in a course and update course dictionaries
+    async function enrollLearnerInCourse(courseId, courseName, enrollmentDate = new Date()) {
+      // Create registration
+      const registration = await registrationRepository.create({
+        learner_id: LEARNER_ID,
+        learner_name: LEARNER_NAME,
+        course_id: courseId,
+        company_id: COMPANY_ID,
+        company_name: LEARNER_COMPANY,
+        status: 'in_progress',
+        enrolled_date: enrollmentDate
+      });
+      
+      // Update course's studentsIDDictionary
+      const course = await courseRepository.findById(courseId);
+      const updatedStudentsDict = {
+        ...(course.studentsIDDictionary || {}),
+        [LEARNER_ID]: {
+          status: 'in_progress',
+          enrolled_date: enrollmentDate.toISOString(),
+          completion_reason: null
+        }
+      };
+      await courseRepository.update(courseId, { studentsIDDictionary: updatedStudentsDict });
+      
+      return registration;
+    }
+
+    // Enroll in all marketplace courses
+    console.log('📝 Enrolling in marketplace courses...');
+    const reg1 = await enrollLearnerInCourse(MARKETPLACE_COURSE_1_ID, marketplaceCourse1.course_name);
+    console.log(`   ✅ ${LEARNER_NAME} → ${marketplaceCourse1.course_name}`);
+    
+    const reg2 = await enrollLearnerInCourse(MARKETPLACE_COURSE_2_ID, marketplaceCourse2.course_name);
+    console.log(`   ✅ ${LEARNER_NAME} → ${marketplaceCourse2.course_name}`);
+    
+    const reg3 = await enrollLearnerInCourse(MARKETPLACE_COURSE_3_ID, marketplaceCourse3.course_name);
+    console.log(`   ✅ ${LEARNER_NAME} → ${marketplaceCourse3.course_name}`);
+    
+    const reg4 = await enrollLearnerInCourse(MARKETPLACE_COURSE_4_ID, marketplaceCourse4.course_name);
+    console.log(`   ✅ ${LEARNER_NAME} → ${marketplaceCourse4.course_name}\n`);
+
+    // Enroll in all personalized courses (already have enrollment in studentsIDDictionary, just create registrations)
+    console.log('📝 Enrolling in personalized courses...');
+    const reg5 = await registrationRepository.create({
       learner_id: LEARNER_ID,
-      learner_name: 'Sarah Johnson',
+      learner_name: LEARNER_NAME,
       course_id: PERSONALIZED_COURSE_1_ID,
       company_id: COMPANY_ID,
-      company_name: 'Tech Innovations Inc.',
+      company_name: LEARNER_COMPANY,
       status: 'in_progress',
       enrolled_date: new Date()
     });
-    console.log(`   ✅ Registration: ${registration1.learner_name} → ${personalizedCourse1.course_name}\n`);
+    console.log(`   ✅ ${LEARNER_NAME} → ${personalizedCourse1.course_name}`);
 
-    // Registration 2: Learner 2 in Personalized Course 2
-    const registration2 = await registrationRepository.create({
-      learner_id: LEARNER_2_ID,
-      learner_name: 'Alex Martinez',
+    const reg6 = await registrationRepository.create({
+      learner_id: LEARNER_ID,
+      learner_name: LEARNER_NAME,
       course_id: PERSONALIZED_COURSE_2_ID,
       company_id: COMPANY_ID,
-      company_name: 'Data Solutions Corp',
+      company_name: LEARNER_COMPANY,
       status: 'in_progress',
       enrolled_date: new Date()
     });
-    console.log(`   ✅ Registration: ${registration2.learner_name} → ${personalizedCourse2.course_name}\n`);
+    console.log(`   ✅ ${LEARNER_NAME} → ${personalizedCourse2.course_name}`);
 
-    // Registration 3: Learner 1 in Personalized Course 3 (NEW)
-    const registration3 = await registrationRepository.create({
+    const reg7 = await registrationRepository.create({
       learner_id: LEARNER_ID,
-      learner_name: 'Sarah Johnson',
+      learner_name: LEARNER_NAME,
       course_id: PERSONALIZED_COURSE_3_ID,
       company_id: COMPANY_ID,
-      company_name: 'Tech Innovations Inc.',
+      company_name: LEARNER_COMPANY,
       status: 'in_progress',
       enrolled_date: new Date()
     });
-    console.log(`   ✅ Registration: ${registration3.learner_name} → ${personalizedCourse3.course_name}\n`);
+    console.log(`   ✅ ${LEARNER_NAME} → ${personalizedCourse3.course_name}`);
 
-    // Registration 4: Learner 2 in Personalized Course 4 (NEW)
-    const registration4 = await registrationRepository.create({
-      learner_id: LEARNER_2_ID,
-      learner_name: 'Alex Martinez',
+    const reg8 = await registrationRepository.create({
+      learner_id: LEARNER_ID,
+      learner_name: LEARNER_NAME,
       course_id: PERSONALIZED_COURSE_4_ID,
       company_id: COMPANY_ID,
-      company_name: 'Data Solutions Corp',
+      company_name: LEARNER_COMPANY,
       status: 'in_progress',
       enrolled_date: new Date()
     });
-    console.log(`   ✅ Registration: ${registration4.learner_name} → ${personalizedCourse4.course_name}\n`);
+    console.log(`   ✅ ${LEARNER_NAME} → ${personalizedCourse4.course_name}\n`);
+
+    // ============================================
+    // ADD FEEDBACK FOR SOME COURSES
+    // ============================================
+    console.log('💬 Adding feedback for learner in some courses...');
+    
+    const feedback1 = await feedbackRepository.create({
+      learner_id: LEARNER_ID,
+      course_id: MARKETPLACE_COURSE_1_ID,
+      rating: 5,
+      comment: 'Excellent course! The async programming section was particularly helpful.'
+    });
+    console.log(`   ✅ Feedback added: 5 stars for ${marketplaceCourse1.course_name}`);
+    
+    const feedback2 = await feedbackRepository.create({
+      learner_id: LEARNER_ID,
+      course_id: MARKETPLACE_COURSE_3_ID,
+      rating: 4,
+      comment: 'Great content on React hooks. Would love more examples on performance optimization.'
+    });
+    console.log(`   ✅ Feedback added: 4 stars for ${marketplaceCourse3.course_name}`);
+    
+    const feedback3 = await feedbackRepository.create({
+      learner_id: LEARNER_ID,
+      course_id: PERSONALIZED_COURSE_1_ID,
+      rating: 5,
+      comment: 'Perfect personalized path for my goals! The full-stack approach is exactly what I needed.'
+    });
+    console.log(`   ✅ Feedback added: 5 stars for ${personalizedCourse1.course_name}\n`);
+
+    // Update feedbackDictionary in courses
+    const course1 = await courseRepository.findById(MARKETPLACE_COURSE_1_ID);
+    await courseRepository.update(MARKETPLACE_COURSE_1_ID, {
+      feedbackDictionary: {
+        ...(course1.feedbackDictionary || {}),
+        [LEARNER_ID]: {
+          rating: 5,
+          comment: feedback1.comment,
+          submitted_at: new Date().toISOString()
+        }
+      }
+    });
+    
+    const course3 = await courseRepository.findById(MARKETPLACE_COURSE_3_ID);
+    await courseRepository.update(MARKETPLACE_COURSE_3_ID, {
+      feedbackDictionary: {
+        ...(course3.feedbackDictionary || {}),
+        [LEARNER_ID]: {
+          rating: 4,
+          comment: feedback2.comment,
+          submitted_at: new Date().toISOString()
+        }
+      }
+    });
+    
+    const pCourse1 = await courseRepository.findById(PERSONALIZED_COURSE_1_ID);
+    await courseRepository.update(PERSONALIZED_COURSE_1_ID, {
+      feedbackDictionary: {
+        ...(pCourse1.feedbackDictionary || {}),
+        [LEARNER_ID]: {
+          rating: 5,
+          comment: feedback3.comment,
+          submitted_at: new Date().toISOString()
+        }
+      }
+    });
+
+    // ============================================
+    // ADD LESSON COMPLETION PROGRESS
+    // ============================================
+    console.log('📊 Adding lesson completion progress...');
+    
+    // Helper function to mark lessons as completed for a course
+    async function addLessonProgress(courseId, completedLessonIds, courseName) {
+      const course = await courseRepository.findById(courseId);
+      const progressDict = {
+        ...(course.lesson_completion_dictionary || {}),
+        [LEARNER_ID]: {
+          completed_lessons: completedLessonIds,
+          progress_percentage: Math.round((completedLessonIds.length / (course.duration_hours || 1)) * 100),
+          last_accessed: new Date().toISOString()
+        }
+      };
+      await courseRepository.update(courseId, { lesson_completion_dictionary: progressDict });
+      console.log(`   ✅ Progress added: ${completedLessonIds.length} lessons completed in ${courseName}`);
+    }
+
+    // Add progress for JavaScript course (first 2 lessons)
+    if (jsCourseContent.lessons.length >= 2) {
+      await addLessonProgress(MARKETPLACE_COURSE_1_ID, 
+        [jsCourseContent.lessons[0].id, jsCourseContent.lessons[1].id],
+        marketplaceCourse1.course_name);
+    }
+    
+    // Add progress for React course (first lesson)
+    if (reactCourseContent.lessons.length >= 1) {
+      await addLessonProgress(MARKETPLACE_COURSE_3_ID,
+        [reactCourseContent.lessons[0].id],
+        marketplaceCourse3.course_name);
+    }
+    
+    // Add progress for personalized course 1 (first lesson)
+    if (personalized1Content.lessons.length >= 1) {
+      await addLessonProgress(PERSONALIZED_COURSE_1_ID,
+        [personalized1Content.lessons[0].id],
+        personalizedCourse1.course_name);
+    }
+    
+    console.log('');
 
     // Summary
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     console.log('✅ Database seeding completed successfully!\n');
     console.log('📊 Summary:');
     console.log('\n👥 Users:');
-    console.log(`   👨‍🏫 Trainer 1: Dr. Michael Chen (${TRAINER_ID.substring(0, 8)}...)`);
-    console.log(`   👨‍🏫 Trainer 2: Prof. Emily Watson (${TRAINER_2_ID.substring(0, 8)}...)`);
-    console.log(`   👤 Learner 1: Sarah Johnson (${LEARNER_ID.substring(0, 8)}...)`);
-    console.log(`   👤 Learner 2: Alex Martinez (${LEARNER_2_ID.substring(0, 8)}...)`);
+    console.log(`   👨‍🏫 Trainer 1: Tristan Trainer (${TRAINER_ID.substring(0, 8)}...)`);
+    console.log(`   👨‍🏫 Trainer 2: Trainer 2 (${TRAINER_2_ID.substring(0, 8)}...)`);
+    console.log(`   👤 SINGLE LEARNER: ${LEARNER_NAME} (${LEARNER_ID.substring(0, 8)}...)`);
+    console.log(`      Company: ${LEARNER_COMPANY}`);
     
-    console.log('\n📚 Marketplace Courses (enrollment through frontend):');
-    console.log(`   1. ${marketplaceCourse1.course_name} (${marketplaceCourse1.level}) - ${jsCourseContent.lessons.length} lessons`);
-    console.log(`   2. ${marketplaceCourse2.course_name} (${marketplaceCourse2.level}) - ${pythonCourseContent.lessons.length} lessons`);
-    console.log(`   3. ${marketplaceCourse3.course_name} (${marketplaceCourse3.level}) - ${reactCourseContent.lessons.length} lessons`);
-    console.log(`   4. ${marketplaceCourse4.course_name} (${marketplaceCourse4.level}) - ${nodejsCourseContent.lessons.length} lessons`);
+    console.log('\n📚 Marketplace Courses (ALL enrolled by single learner):');
+    console.log(`   1. ${marketplaceCourse1.course_name} (${marketplaceCourse1.level}) - ${jsCourseContent.lessons.length} lessons ✓`);
+    console.log(`   2. ${marketplaceCourse2.course_name} (${marketplaceCourse2.level}) - ${pythonCourseContent.lessons.length} lessons ✓`);
+    console.log(`   3. ${marketplaceCourse3.course_name} (${marketplaceCourse3.level}) - ${reactCourseContent.lessons.length} lessons ✓`);
+    console.log(`   4. ${marketplaceCourse4.course_name} (${marketplaceCourse4.level}) - ${nodejsCourseContent.lessons.length} lessons ✓`);
     
-    console.log('\n🎯 Personalized Courses (automatic enrollment):');
-    console.log(`   1. ${personalizedCourse1.course_name} → ${registration1.learner_name} enrolled - ${personalized1Content.lessons.length} lessons`);
-    console.log(`   2. ${personalizedCourse2.course_name} → ${registration2.learner_name} enrolled - ${personalized2Content.lessons.length} lessons`);
-    console.log(`   3. ${personalizedCourse3.course_name} → ${registration3.learner_name} enrolled - ${personalized3Content.lessons.length} lessons`);
-    console.log(`   4. ${personalizedCourse4.course_name} → ${registration4.learner_name} enrolled - ${personalized4Content.lessons.length} lessons`);
+    console.log('\n🎯 Personalized Courses (ALL enrolled by single learner):');
+    console.log(`   1. ${personalizedCourse1.course_name} - ${personalized1Content.lessons.length} lessons ✓`);
+    console.log(`   2. ${personalizedCourse2.course_name} - ${personalized2Content.lessons.length} lessons ✓`);
+    console.log(`   3. ${personalizedCourse3.course_name} - ${personalized3Content.lessons.length} lessons ✓`);
+    console.log(`   4. ${personalizedCourse4.course_name} - ${personalized4Content.lessons.length} lessons ✓`);
     
     const totalTopics = jsCourseContent.topics.length + pythonCourseContent.topics.length + 
                        reactCourseContent.topics.length + nodejsCourseContent.topics.length +
@@ -1468,11 +1622,15 @@ async function seedMockData() {
     console.log(`   • ${totalTopics} Topics`);
     console.log(`   • ${totalModules} Modules`);
     console.log(`   • ${totalLessons} Lessons`);
-    console.log(`   • 4 Registrations (for personalized courses)`);
+    console.log(`   • 8 Registrations (ALL for ${LEARNER_NAME})`);
+    console.log(`   • 3 Feedback entries (for 3 courses)`);
+    console.log(`   • Lesson progress tracked in 3 courses`);
     
-    console.log('\n🎉 You can now test the frontend with this data!');
-    console.log('   Marketplace courses: Available for enrollment via frontend');
-    console.log('   Personalized courses: Already enrolled (automatic)');
+    console.log('\n🎉 Database is ready with real data!');
+    console.log(`   Single learner (${LEARNER_NAME}) is enrolled in ALL ${4 + 4} courses`);
+    console.log('   Marketplace courses: Enrolled and ready to learn');
+    console.log('   Personalized courses: Enrolled and ready to learn');
+    console.log('   Feedback and progress data included');
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
 
   } catch (error) {
