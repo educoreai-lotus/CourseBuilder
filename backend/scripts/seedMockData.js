@@ -1382,51 +1382,11 @@ async function seedMockData() {
     console.log(`   ✅ Created: ${personalized4Content.topics.length} topics, ${personalized4Content.modules.length} modules, ${personalized4Content.lessons.length} lessons\n`);
 
     // ============================================
-    // ENROLL SINGLE LEARNER IN ALL COURSES
+    // ENROLL SINGLE LEARNER IN PERSONALIZED COURSES ONLY
+    // Marketplace courses require manual enrollment through the frontend
     // ============================================
-    console.log('👤 Enrolling single learner (Alice Learner) in ALL courses...\n');
-    
-    // Helper function to enroll learner in a course and update course dictionaries
-    async function enrollLearnerInCourse(courseId, courseName, enrollmentDate = new Date()) {
-      // Create registration
-      const registration = await registrationRepository.create({
-        learner_id: LEARNER_ID,
-        learner_name: LEARNER_NAME,
-        course_id: courseId,
-        company_id: COMPANY_ID,
-        company_name: LEARNER_COMPANY,
-        status: 'in_progress',
-        enrolled_date: enrollmentDate
-      });
-      
-      // Update course's studentsIDDictionary
-      const course = await courseRepository.findById(courseId);
-      const updatedStudentsDict = {
-        ...(course.studentsIDDictionary || {}),
-        [LEARNER_ID]: {
-          status: 'in_progress',
-          enrolled_date: enrollmentDate.toISOString(),
-          completion_reason: null
-        }
-      };
-      await courseRepository.update(courseId, { studentsIDDictionary: updatedStudentsDict });
-      
-      return registration;
-    }
-
-    // Enroll in all marketplace courses
-    console.log('📝 Enrolling in marketplace courses...');
-    const reg1 = await enrollLearnerInCourse(MARKETPLACE_COURSE_1_ID, marketplaceCourse1.course_name);
-    console.log(`   ✅ ${LEARNER_NAME} → ${marketplaceCourse1.course_name}`);
-    
-    const reg2 = await enrollLearnerInCourse(MARKETPLACE_COURSE_2_ID, marketplaceCourse2.course_name);
-    console.log(`   ✅ ${LEARNER_NAME} → ${marketplaceCourse2.course_name}`);
-    
-    const reg3 = await enrollLearnerInCourse(MARKETPLACE_COURSE_3_ID, marketplaceCourse3.course_name);
-    console.log(`   ✅ ${LEARNER_NAME} → ${marketplaceCourse3.course_name}`);
-    
-    const reg4 = await enrollLearnerInCourse(MARKETPLACE_COURSE_4_ID, marketplaceCourse4.course_name);
-    console.log(`   ✅ ${LEARNER_NAME} → ${marketplaceCourse4.course_name}\n`);
+    console.log('👤 Enrolling single learner (Alice Learner) in personalized courses only...\n');
+    console.log('   Note: Marketplace courses require manual enrollment through the frontend.\n');
 
     // Enroll in all personalized courses (already have enrollment in studentsIDDictionary, just create registrations)
     console.log('📝 Enrolling in personalized courses...');
@@ -1479,35 +1439,28 @@ async function seedMockData() {
     // ============================================
     console.log('💬 Adding feedback for learner in some courses...');
     
+    // Add feedback for personalized courses only (learner is enrolled in these)
     const feedback1 = await feedbackRepository.create({
-      learner_id: LEARNER_ID,
-      course_id: MARKETPLACE_COURSE_1_ID,
-      rating: 5,
-      comment: 'Excellent course! The async programming section was particularly helpful.'
-    });
-    console.log(`   ✅ Feedback added: 5 stars for ${marketplaceCourse1.course_name}`);
-    
-    const feedback2 = await feedbackRepository.create({
-      learner_id: LEARNER_ID,
-      course_id: MARKETPLACE_COURSE_3_ID,
-      rating: 4,
-      comment: 'Great content on React hooks. Would love more examples on performance optimization.'
-    });
-    console.log(`   ✅ Feedback added: 4 stars for ${marketplaceCourse3.course_name}`);
-    
-    const feedback3 = await feedbackRepository.create({
       learner_id: LEARNER_ID,
       course_id: PERSONALIZED_COURSE_1_ID,
       rating: 5,
       comment: 'Perfect personalized path for my goals! The full-stack approach is exactly what I needed.'
     });
-    console.log(`   ✅ Feedback added: 5 stars for ${personalizedCourse1.course_name}\n`);
+    console.log(`   ✅ Feedback added: 5 stars for ${personalizedCourse1.course_name}`);
+    
+    const feedback2 = await feedbackRepository.create({
+      learner_id: LEARNER_ID,
+      course_id: PERSONALIZED_COURSE_3_ID,
+      rating: 5,
+      comment: 'Excellent DevOps course! The cloud infrastructure section was particularly helpful.'
+    });
+    console.log(`   ✅ Feedback added: 5 stars for ${personalizedCourse3.course_name}\n`);
 
-    // Update feedbackDictionary in courses
-    const course1 = await courseRepository.findById(MARKETPLACE_COURSE_1_ID);
-    await courseRepository.update(MARKETPLACE_COURSE_1_ID, {
+    // Update feedbackDictionary in personalized courses
+    const pCourse1 = await courseRepository.findById(PERSONALIZED_COURSE_1_ID);
+    await courseRepository.update(PERSONALIZED_COURSE_1_ID, {
       feedbackDictionary: {
-        ...(course1.feedbackDictionary || {}),
+        ...(pCourse1.feedbackDictionary || {}),
         [LEARNER_ID]: {
           rating: 5,
           comment: feedback1.comment,
@@ -1516,25 +1469,13 @@ async function seedMockData() {
       }
     });
     
-    const course3 = await courseRepository.findById(MARKETPLACE_COURSE_3_ID);
-    await courseRepository.update(MARKETPLACE_COURSE_3_ID, {
+    const pCourse3 = await courseRepository.findById(PERSONALIZED_COURSE_3_ID);
+    await courseRepository.update(PERSONALIZED_COURSE_3_ID, {
       feedbackDictionary: {
-        ...(course3.feedbackDictionary || {}),
-        [LEARNER_ID]: {
-          rating: 4,
-          comment: feedback2.comment,
-          submitted_at: new Date().toISOString()
-        }
-      }
-    });
-    
-    const pCourse1 = await courseRepository.findById(PERSONALIZED_COURSE_1_ID);
-    await courseRepository.update(PERSONALIZED_COURSE_1_ID, {
-      feedbackDictionary: {
-        ...(pCourse1.feedbackDictionary || {}),
+        ...(pCourse3.feedbackDictionary || {}),
         [LEARNER_ID]: {
           rating: 5,
-          comment: feedback3.comment,
+          comment: feedback2.comment,
           submitted_at: new Date().toISOString()
         }
       }
@@ -1560,25 +1501,19 @@ async function seedMockData() {
       console.log(`   ✅ Progress added: ${completedLessonIds.length} lessons completed in ${courseName}`);
     }
 
-    // Add progress for JavaScript course (first 2 lessons)
-    if (jsCourseContent.lessons.length >= 2) {
-      await addLessonProgress(MARKETPLACE_COURSE_1_ID, 
-        [jsCourseContent.lessons[0].id, jsCourseContent.lessons[1].id],
-        marketplaceCourse1.course_name);
-    }
-    
-    // Add progress for React course (first lesson)
-    if (reactCourseContent.lessons.length >= 1) {
-      await addLessonProgress(MARKETPLACE_COURSE_3_ID,
-        [reactCourseContent.lessons[0].id],
-        marketplaceCourse3.course_name);
-    }
-    
+    // Add progress for personalized courses only (learner is enrolled in these)
     // Add progress for personalized course 1 (first lesson)
     if (personalized1Content.lessons.length >= 1) {
       await addLessonProgress(PERSONALIZED_COURSE_1_ID,
         [personalized1Content.lessons[0].id],
         personalizedCourse1.course_name);
+    }
+    
+    // Add progress for personalized course 3 (first lesson)
+    if (personalized3Content.lessons.length >= 1) {
+      await addLessonProgress(PERSONALIZED_COURSE_3_ID,
+        [personalized3Content.lessons[0].id],
+        personalizedCourse3.course_name);
     }
     
     console.log('');
@@ -1593,13 +1528,13 @@ async function seedMockData() {
     console.log(`   👤 SINGLE LEARNER: ${LEARNER_NAME} (${LEARNER_ID.substring(0, 8)}...)`);
     console.log(`      Company: ${LEARNER_COMPANY}`);
     
-    console.log('\n📚 Marketplace Courses (ALL enrolled by single learner):');
-    console.log(`   1. ${marketplaceCourse1.course_name} (${marketplaceCourse1.level}) - ${jsCourseContent.lessons.length} lessons ✓`);
-    console.log(`   2. ${marketplaceCourse2.course_name} (${marketplaceCourse2.level}) - ${pythonCourseContent.lessons.length} lessons ✓`);
-    console.log(`   3. ${marketplaceCourse3.course_name} (${marketplaceCourse3.level}) - ${reactCourseContent.lessons.length} lessons ✓`);
-    console.log(`   4. ${marketplaceCourse4.course_name} (${marketplaceCourse4.level}) - ${nodejsCourseContent.lessons.length} lessons ✓`);
+    console.log('\n📚 Marketplace Courses (Available for manual enrollment):');
+    console.log(`   1. ${marketplaceCourse1.course_name} (${marketplaceCourse1.level}) - ${jsCourseContent.lessons.length} lessons`);
+    console.log(`   2. ${marketplaceCourse2.course_name} (${marketplaceCourse2.level}) - ${pythonCourseContent.lessons.length} lessons`);
+    console.log(`   3. ${marketplaceCourse3.course_name} (${marketplaceCourse3.level}) - ${reactCourseContent.lessons.length} lessons`);
+    console.log(`   4. ${marketplaceCourse4.course_name} (${marketplaceCourse4.level}) - ${nodejsCourseContent.lessons.length} lessons`);
     
-    console.log('\n🎯 Personalized Courses (ALL enrolled by single learner):');
+    console.log('\n🎯 Personalized Courses (Automatically enrolled for single learner):');
     console.log(`   1. ${personalizedCourse1.course_name} - ${personalized1Content.lessons.length} lessons ✓`);
     console.log(`   2. ${personalizedCourse2.course_name} - ${personalized2Content.lessons.length} lessons ✓`);
     console.log(`   3. ${personalizedCourse3.course_name} - ${personalized3Content.lessons.length} lessons ✓`);
@@ -1622,15 +1557,15 @@ async function seedMockData() {
     console.log(`   • ${totalTopics} Topics`);
     console.log(`   • ${totalModules} Modules`);
     console.log(`   • ${totalLessons} Lessons`);
-    console.log(`   • 8 Registrations (ALL for ${LEARNER_NAME})`);
-    console.log(`   • 3 Feedback entries (for 3 courses)`);
-    console.log(`   • Lesson progress tracked in 3 courses`);
+    console.log(`   • 4 Registrations (ALL for ${LEARNER_NAME} - personalized courses only)`);
+    console.log(`   • 2 Feedback entries (for personalized courses)`);
+    console.log(`   • Lesson progress tracked in 2 personalized courses`);
     
     console.log('\n🎉 Database is ready with real data!');
-    console.log(`   Single learner (${LEARNER_NAME}) is enrolled in ALL ${4 + 4} courses`);
-    console.log('   Marketplace courses: Enrolled and ready to learn');
-    console.log('   Personalized courses: Enrolled and ready to learn');
-    console.log('   Feedback and progress data included');
+    console.log(`   Single learner (${LEARNER_NAME}) is enrolled in 4 personalized courses`);
+    console.log('   Marketplace courses: Available for manual enrollment via frontend');
+    console.log('   Personalized courses: Automatically enrolled and ready to learn');
+    console.log('   Feedback and progress data included for personalized courses');
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
 
   } catch (error) {

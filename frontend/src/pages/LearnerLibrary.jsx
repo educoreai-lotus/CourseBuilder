@@ -5,6 +5,7 @@ import LoadingSpinner from '../components/LoadingSpinner.jsx'
 import { useApp } from '../context/AppContext.jsx'
 import Container from '../components/Container.jsx'
 import CourseCard from '../components/CourseCard.jsx'
+import { isMarketplace } from '../utils/courseTypeUtils.js'
 
 export default function LearnerLibrary() {
   const { showToast, userProfile, userRole } = useApp()
@@ -44,11 +45,17 @@ export default function LearnerLibrary() {
       })
       
       // Match enrolled courses with full course data and enrich with progress
+      // Filter: ONLY show marketplace courses (manually enrolled)
+      // Personalized courses are shown in "For You" page, not here
       const enrolledCourses = allCourses
         .filter(course => {
           const courseId = course.id || course.course_id
+          // Must have progress (is enrolled)
           return progressMap.has(courseId)
         })
+        // Exclude personalized courses - they belong in "For You" page
+        // Only show marketplace courses (course_type === 'trainer')
+        .filter(course => isMarketplace(course))
         .map(course => {
           const courseId = course.id || course.course_id
           const progress = progressMap.get(courseId)
