@@ -237,6 +237,12 @@ export const publishCourse = async (req, res, next) => {
     const result = await coursesService.publishCourse(courseId);
     res.status(200).json(result);
   } catch (error) {
+    if (error.status === 400) {
+      return res.status(400).json({
+        error: 'Bad Request',
+        message: error.message || 'Course already published'
+      });
+    }
     if (error.status === 404) {
       return res.status(404).json({
         error: 'Not Found',
