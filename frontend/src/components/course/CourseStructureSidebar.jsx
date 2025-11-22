@@ -265,6 +265,21 @@ export default function CourseStructureSidebar({
         </div>
       </div>
 
+      {/* AI Enrichment Button for Personalized Courses - Permanent in Sidebar */}
+      {isLearner && courseIsPersonalized && enrichmentAsset && (
+        <div className="px-5 pb-3 border-b" style={{ borderColor: 'var(--border-subtle, var(--border-color))' }}>
+          <EnrichmentButton
+            asset={enrichmentAsset}
+            onResults={onEnrichmentResults || undefined}
+            onLoading={onEnrichmentLoading || undefined}
+            onError={onEnrichmentError || undefined}
+            buttonLabel="AI Enrich (Course)"
+            disabled={!enrichmentAsset}
+            className="w-full justify-center"
+          />
+        </div>
+      )}
+
       {/* Content */}
       <div className="p-4 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 220px)' }}>
         <div className="space-y-2.5">
