@@ -171,6 +171,17 @@ export default function CourseStructureSidebar({
     return lessons
   }, [hierarchy])
   
+  // Track visited lessons to keep them accessible and their modules expanded
+  // Load from localStorage on mount
+  const [visitedLessons, setVisitedLessons] = useState(() => {
+    const visited = getVisitedLessonsFromStorage()
+    // Also include current lesson if provided
+    if (currentLessonId) {
+      visited.add(String(currentLessonId))
+    }
+    return visited
+  })
+  
   // Calculate which topics and modules should be expanded based on current lesson OR visited lessons
   const calculateExpandedState = useCallback(() => {
     const topicsSet = new Set()
@@ -200,17 +211,6 @@ export default function CourseStructureSidebar({
     
     return { topics: topicsSet, modules: modulesSet }
   }, [hierarchy, currentLessonId, visitedLessons])
-  
-  // Track visited lessons to keep them accessible and their modules expanded
-  // Load from localStorage on mount
-  const [visitedLessons, setVisitedLessons] = useState(() => {
-    const visited = getVisitedLessonsFromStorage()
-    // Also include current lesson if provided
-    if (currentLessonId) {
-      visited.add(String(currentLessonId))
-    }
-    return visited
-  })
   
   // Sync visited lessons to localStorage whenever they change
   useEffect(() => {
@@ -244,14 +244,34 @@ export default function CourseStructureSidebar({
     return { modules: modulesSet, topics: topicsSet }
   }, [hierarchy, visitedLessons])
   
-  // Initialize expanded state based on current lesson
+  // Initialize expanded state - will be set by useEffect below
   const [expandedTopics, setExpandedTopics] = useState(() => {
-    const state = calculateExpandedState()
-    return state.topics
+    // Initialize with current lesson's topic if available, otherwise empty
+    const topicsSet = new Set()
+    if (currentLessonId && hierarchy.length > 0) {
+      hierarchy.forEach((topic) => {
+        topic.modules?.forEach((module) => {
+          if (module.lessons?.some(lesson => String(lesson.id) === String(currentLessonId))) {
+            topicsSet.add(topic.id)
+          }
+        })
+      })
+    }
+    return topicsSet
   })
   const [expandedModules, setExpandedModules] = useState(() => {
-    const state = calculateExpandedState()
-    return state.modules
+    // Initialize with current lesson's module if available, otherwise empty
+    const modulesSet = new Set()
+    if (currentLessonId && hierarchy.length > 0) {
+      hierarchy.forEach((topic) => {
+        topic.modules?.forEach((module) => {
+          if (module.lessons?.some(lesson => String(lesson.id) === String(currentLessonId))) {
+            modulesSet.add(module.id)
+          }
+        })
+      })
+    }
+    return modulesSet
   })
   
   // Mark current lesson as visited when it changes and save to localStorage
