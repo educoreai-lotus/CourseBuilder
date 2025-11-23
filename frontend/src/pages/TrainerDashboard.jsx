@@ -265,7 +265,7 @@ export default function TrainerDashboard() {
                           <Layers className="h-4 w-4" />
                           Structure
                     </Link>
-                        {isLive && (
+                        {isPublished && (
                           <Link
                             to={`/trainer/feedback/${courseId}`}
                             className="btn-trainer-secondary flex-1 min-w-[140px] items-center justify-center gap-2"
