@@ -76,6 +76,25 @@ export default function LessonPage() {
     loadData()
   }, [courseId, lessonId, loadData])
 
+  // Mark current lesson as visited and save to localStorage
+  useEffect(() => {
+    if (lessonId && userRole === 'learner') {
+      try {
+        const visitedKey = 'visited_lessons'
+        const stored = localStorage.getItem(visitedKey)
+        const visitedLessons = stored ? JSON.parse(stored) : []
+        const lessonIdStr = String(lessonId)
+        
+        if (!visitedLessons.includes(lessonIdStr)) {
+          visitedLessons.push(lessonIdStr)
+          localStorage.setItem(visitedKey, JSON.stringify(visitedLessons))
+        }
+      } catch (err) {
+        console.warn('Failed to save visited lesson to localStorage:', err)
+      }
+    }
+  }, [lessonId, userRole])
+
   useEffect(() => {
     // Redirect unenrolled learners to course overview (except personalized courses - auto-enrolled)
     if (!loading && userRole === 'learner') {

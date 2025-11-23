@@ -12,6 +12,38 @@ import {
 import { isPersonalized } from '../../utils/courseTypeUtils.js'
 import { useApp } from '../../context/AppContext.jsx'
 
+// localStorage helper functions for visited lessons
+const VISITED_LESSONS_KEY = 'visited_lessons'
+
+const getVisitedLessonsFromStorage = () => {
+  try {
+    const stored = localStorage.getItem(VISITED_LESSONS_KEY)
+    if (stored) {
+      const parsed = JSON.parse(stored)
+      return Array.isArray(parsed) ? new Set(parsed.map(String)) : new Set()
+    }
+  } catch (err) {
+    console.warn('Failed to load visited lessons from localStorage:', err)
+  }
+  return new Set()
+}
+
+const saveVisitedLessonsToStorage = (visitedLessonsSet) => {
+  try {
+    const array = Array.from(visitedLessonsSet)
+    localStorage.setItem(VISITED_LESSONS_KEY, JSON.stringify(array))
+  } catch (err) {
+    console.warn('Failed to save visited lessons to localStorage:', err)
+  }
+}
+
+const addVisitedLesson = (lessonId) => {
+  const visited = getVisitedLessonsFromStorage()
+  visited.add(String(lessonId))
+  saveVisitedLessonsToStorage(visited)
+  return visited
+}
+
 const normalizeHierarchy = (course) => {
   if (!course) return []
 
@@ -71,12 +103,12 @@ const getLessonState = (lessonId, completedLessonIds, unlocked, status, allLesso
   
   // ALWAYS unlock the currently visited lesson (front-end unlock)
   if (isCurrentLesson) {
-    return { completed, accessible: true }
+    return { completed, accessible: true, isCurrent: true, isVisited: true }
   }
   
   // If lesson was previously visited, keep it accessible
   if (wasVisited && unlocked) {
-    return { completed, accessible: true }
+    return { completed, accessible: true, isCurrent: false, isVisited: true }
   }
   
   // For learners: Check if previous lesson is completed before unlocking next lesson
@@ -98,7 +130,7 @@ const getLessonState = (lessonId, completedLessonIds, unlocked, status, allLesso
   
   // Default: accessible if unlocked or already completed
   const accessible = unlocked || status === 'unlocked' || completed
-  return { completed, accessible }
+  return { completed, accessible, isCurrent: false, isVisited: wasVisited }
 }
 
 export default function CourseStructureSidebar({
@@ -139,47 +171,53 @@ export default function CourseStructureSidebar({
     return lessons
   }, [hierarchy])
   
-  // Calculate which topics and modules should be expanded based on current lesson
+  // Calculate which topics and modules should be expanded based on current lesson OR visited lessons
   const calculateExpandedState = useCallback(() => {
-    if (!currentLessonId || hierarchy.length === 0) {
-      return { 
-        topics: new Set(hierarchy.map((topic) => topic.id)), 
-        modules: new Set() 
-      }
-    }
-    
     const topicsSet = new Set()
     const modulesSet = new Set()
     
-    // Find the current lesson's topic and module
+    // Find topics/modules that contain current lesson OR any visited lesson
     hierarchy.forEach((topic) => {
       topic.modules?.forEach((module) => {
-        const hasCurrentLesson = module.lessons?.some(
+        const hasCurrentLesson = currentLessonId && module.lessons?.some(
           (lesson) => String(lesson.id) === String(currentLessonId)
         )
-        if (hasCurrentLesson) {
+        const hasVisitedLesson = module.lessons?.some(
+          (lesson) => visitedLessons.has(String(lesson.id))
+        )
+        
+        if (hasCurrentLesson || hasVisitedLesson) {
           topicsSet.add(topic.id)
           modulesSet.add(module.id)
         }
       })
     })
     
-    // If no match found, expand all topics
-    if (topicsSet.size === 0) {
+    // If no match found and we have a current lesson, expand all topics
+    if (topicsSet.size === 0 && currentLessonId && hierarchy.length > 0) {
       hierarchy.forEach((topic) => topicsSet.add(topic.id))
     }
     
     return { topics: topicsSet, modules: modulesSet }
-  }, [hierarchy, currentLessonId])
+  }, [hierarchy, currentLessonId, visitedLessons])
   
   // Track visited lessons to keep them accessible and their modules expanded
+  // Load from localStorage on mount
   const [visitedLessons, setVisitedLessons] = useState(() => {
-    const visited = new Set()
+    const visited = getVisitedLessonsFromStorage()
+    // Also include current lesson if provided
     if (currentLessonId) {
       visited.add(String(currentLessonId))
     }
     return visited
   })
+  
+  // Sync visited lessons to localStorage whenever they change
+  useEffect(() => {
+    if (visitedLessons.size > 0) {
+      saveVisitedLessonsToStorage(visitedLessons)
+    }
+  }, [visitedLessons])
   
   // Find all modules and topics that contain visited lessons
   const visitedModulesAndTopics = useMemo(() => {
@@ -216,13 +254,17 @@ export default function CourseStructureSidebar({
     return state.modules
   })
   
-  // Mark current lesson as visited when it changes
+  // Mark current lesson as visited when it changes and save to localStorage
   useEffect(() => {
     if (currentLessonId) {
       const lessonIdStr = String(currentLessonId)
       setVisitedLessons(prev => {
         const next = new Set(prev)
-        next.add(lessonIdStr)
+        if (!next.has(lessonIdStr)) {
+          next.add(lessonIdStr)
+          // Save to localStorage immediately
+          saveVisitedLessonsToStorage(next)
+        }
         return next
       })
     }
@@ -233,28 +275,21 @@ export default function CourseStructureSidebar({
   useEffect(() => {
     const currentState = calculateExpandedState()
     
-    // Get all modules/topics that should be expanded
-    const topicsToExpand = new Set()
-    const modulesToExpand = new Set()
-    
-    // Add current lesson's topic and module
-    currentState.topics.forEach(topicId => topicsToExpand.add(topicId))
-    currentState.modules.forEach(moduleId => modulesToExpand.add(moduleId))
-    
-    // Add all topics/modules that contain visited lessons
-    visitedModulesAndTopics.topics.forEach(topicId => topicsToExpand.add(topicId))
-    visitedModulesAndTopics.modules.forEach(moduleId => modulesToExpand.add(moduleId))
-    
     // Force expansion of all required topics/modules
+    // calculateExpandedState already considers both currentLessonId and visitedLessons
     setExpandedTopics(prev => {
       const merged = new Set(prev)
-      topicsToExpand.forEach(topicId => merged.add(topicId))
+      currentState.topics.forEach(topicId => merged.add(topicId))
+      // Also ensure all visited modules' topics are expanded
+      visitedModulesAndTopics.topics.forEach(topicId => merged.add(topicId))
       return merged
     })
     
     setExpandedModules(prev => {
       const merged = new Set(prev)
-      modulesToExpand.forEach(moduleId => merged.add(moduleId))
+      currentState.modules.forEach(moduleId => merged.add(moduleId))
+      // Also ensure all visited modules are expanded
+      visitedModulesAndTopics.modules.forEach(moduleId => merged.add(moduleId))
       return merged
     })
   }, [currentLessonId, visitedLessons, calculateExpandedState, visitedModulesAndTopics])
