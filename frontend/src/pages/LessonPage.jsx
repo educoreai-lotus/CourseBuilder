@@ -169,6 +169,9 @@ export default function LessonPage() {
     }
   }, [lesson, course, userRole])
 
+  // Determine if course is personalized (must be before useEffect that uses it)
+  const isPersonalizedCourse = useMemo(() => course ? isPersonalized(course) : false, [course])
+
   // For personalized courses: Auto-load enrichment assets from course.ai_assets if available
   useEffect(() => {
     if (isPersonalizedCourse && userRole === 'learner' && course && !enrichmentAssets && !enrichmentLoading) {
@@ -263,9 +266,6 @@ export default function LessonPage() {
     : allLessonsCompleted
       ? 'Exercises and assessment unlocked.'
       : 'Complete remaining lessons to unlock exercises and assessment.'
-
-  // Determine if course is personalized
-  const isPersonalizedCourse = isPersonalized(course)
 
   // Early returns AFTER all hooks have been called
   // This ensures hooks are always called in the same order
