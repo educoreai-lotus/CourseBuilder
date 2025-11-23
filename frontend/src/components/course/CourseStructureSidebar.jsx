@@ -172,7 +172,7 @@ export default function CourseStructureSidebar({
     return { topics: topicsSet, modules: modulesSet }
   }, [hierarchy, currentLessonId])
   
-  // Track visited lessons, modules, and topics to keep them expanded
+  // Track visited lessons to keep them accessible and their modules expanded
   const [visitedLessons, setVisitedLessons] = useState(() => {
     const visited = new Set()
     if (currentLessonId) {
@@ -181,21 +181,30 @@ export default function CourseStructureSidebar({
     return visited
   })
   
-  // Track visited modules and topics (to keep them expanded)
-  const [visitedModules, setVisitedModules] = useState(() => new Set())
-  const [visitedTopics, setVisitedTopics] = useState(() => new Set())
-  
-  // Find module and topic for a given lesson ID
-  const findLessonLocation = useCallback((lessonId) => {
+  // Find all modules and topics that contain visited lessons
+  const visitedModulesAndTopics = useMemo(() => {
+    const modulesSet = new Set()
+    const topicsSet = new Set()
+    
+    if (visitedLessons.size === 0) {
+      return { modules: modulesSet, topics: topicsSet }
+    }
+    
+    // Find all modules/topics that contain any visited lesson
     for (const topic of hierarchy) {
       for (const module of topic.modules || []) {
-        if (module.lessons?.some(l => String(l.id) === String(lessonId))) {
-          return { topicId: topic.id, moduleId: module.id }
+        const hasVisitedLesson = module.lessons?.some(lesson => 
+          visitedLessons.has(String(lesson.id))
+        )
+        if (hasVisitedLesson) {
+          modulesSet.add(module.id)
+          topicsSet.add(topic.id)
         }
       }
     }
-    return null
-  }, [hierarchy])
+    
+    return { modules: modulesSet, topics: topicsSet }
+  }, [hierarchy, visitedLessons])
   
   // Initialize expanded state based on current lesson
   const [expandedTopics, setExpandedTopics] = useState(() => {
@@ -207,56 +216,48 @@ export default function CourseStructureSidebar({
     return state.modules
   })
   
-  // Update expanded state when currentLessonId changes (including URL navigation, next/previous, page refresh)
+  // Mark current lesson as visited when it changes
   useEffect(() => {
     if (currentLessonId) {
       const lessonIdStr = String(currentLessonId)
-      
-      // Mark current lesson as visited
       setVisitedLessons(prev => {
         const next = new Set(prev)
         next.add(lessonIdStr)
         return next
       })
-      
-      // Find and mark the lesson's module and topic as visited
-      const location = findLessonLocation(currentLessonId)
-      if (location) {
-        setVisitedModules(prev => {
-          const next = new Set(prev)
-          next.add(location.moduleId)
-          return next
-        })
-        setVisitedTopics(prev => {
-          const next = new Set(prev)
-          next.add(location.topicId)
-          return next
-        })
-      }
     }
-  }, [currentLessonId, findLessonLocation])
+  }, [currentLessonId])
   
-  // Auto-expand visited modules and topics, plus current lesson's module/topic
+  // Auto-expand: current lesson's module/topic + all modules/topics with visited lessons
+  // This runs whenever visited lessons change or current lesson changes
   useEffect(() => {
     const currentState = calculateExpandedState()
     
-    // Always expand current lesson's topic and module
+    // Get all modules/topics that should be expanded
+    const topicsToExpand = new Set()
+    const modulesToExpand = new Set()
+    
+    // Add current lesson's topic and module
+    currentState.topics.forEach(topicId => topicsToExpand.add(topicId))
+    currentState.modules.forEach(moduleId => modulesToExpand.add(moduleId))
+    
+    // Add all topics/modules that contain visited lessons
+    visitedModulesAndTopics.topics.forEach(topicId => topicsToExpand.add(topicId))
+    visitedModulesAndTopics.modules.forEach(moduleId => modulesToExpand.add(moduleId))
+    
+    // Force expansion of all required topics/modules
     setExpandedTopics(prev => {
       const merged = new Set(prev)
-      currentState.topics.forEach(topicId => merged.add(topicId))
-      // Also expand all visited topics
-      visitedTopics.forEach(topicId => merged.add(topicId))
+      topicsToExpand.forEach(topicId => merged.add(topicId))
       return merged
     })
     
     setExpandedModules(prev => {
       const merged = new Set(prev)
-      currentState.modules.forEach(moduleId => merged.add(moduleId))
-      // Also expand all visited modules
-      visitedModules.forEach(moduleId => merged.add(moduleId))
+      modulesToExpand.forEach(moduleId => merged.add(moduleId))
       return merged
     })
-  }, [currentLessonId, calculateExpandedState, visitedTopics, visitedModules])
+  }, [currentLessonId, visitedLessons, calculateExpandedState, visitedModulesAndTopics])
 
   const toggleTopic = (topicId) => {
     setExpandedTopics((prev) => {
@@ -268,8 +269,6 @@ export default function CourseStructureSidebar({
       }
       return next
     })
-    // Note: We don't remove from visitedTopics here - manual collapse is temporary
-    // but the topic remains "visited" so it can be re-expanded automatically
   }
 
   const toggleModule = (moduleId) => {
@@ -282,8 +281,6 @@ export default function CourseStructureSidebar({
       }
       return next
     })
-    // Note: We don't remove from visitedModules here - manual collapse is temporary
-    // but the module remains "visited" so it can be re-expanded automatically
   }
 
   const handleLessonClick = (lessonId) => {
