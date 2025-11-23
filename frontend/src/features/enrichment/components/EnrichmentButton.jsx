@@ -55,7 +55,8 @@ export default function EnrichmentButton({
   onError,
   buttonLabel = 'AI Enrich',
   disabled,
-  className = ''
+  className = '',
+  hideModal = false
 }) {
   const [loading, setLoading] = useState(false)
   const [results, setResults] = useState([])
@@ -120,14 +121,20 @@ export default function EnrichmentButton({
       const mappedItems = mapEnrichedItems(response)
 
       setResults(mappedItems)
-      setShowModal(true)
+      // Only show modal if hideModal is false
+      if (!hideModal) {
+        setShowModal(true)
+      }
       if (typeof onResults === 'function') {
         onResults(response)
       }
     } catch (err) {
       setError(err)
       setResults([])
-      setShowModal(true)
+      // Only show modal if hideModal is false
+      if (!hideModal) {
+        setShowModal(true)
+      }
       if (typeof onError === 'function') {
         onError(err)
       }

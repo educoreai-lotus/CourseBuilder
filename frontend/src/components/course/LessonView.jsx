@@ -177,6 +177,18 @@ export default function LessonView({
                 <h2 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
                   AI-Curated Resources
                 </h2>
+                {/* Personalized courses: Button to request AI enrichment */}
+                {courseIsPersonalized && isLearner && enrichmentAsset && (
+                  <EnrichmentButton
+                    asset={enrichmentAsset}
+                    onResults={onEnrichmentResults || undefined}
+                    onLoading={onEnrichmentLoading || undefined}
+                    onError={onEnrichmentError || undefined}
+                    buttonLabel={enrichmentLoading ? 'Generating...' : enrichmentAssets ? 'Refresh AI Resources' : 'Request AI Resources'}
+                    disabled={!enrichmentAsset || enrichmentLoading}
+                    hideModal={true}
+                  />
+                )}
                 {/* Marketplace: Toggle button to show/hide trainer assets (no AI call, expand inline) */}
                 {courseIsMarketplace && isLearner && hasMarketplaceEnrichment && (
                   <button
@@ -219,7 +231,25 @@ export default function LessonView({
                 )
               ) : courseIsPersonalized && isLearner ? (
                 // Personalized: Course-level enrichment, show inline
-                enrichmentAssets && (enrichmentAssets.videos?.length > 0 || enrichmentAssets.repos?.length > 0) ? (
+                enrichmentLoading ? (
+                  <div className="rounded-lg border p-4 text-center" style={{ 
+                    borderColor: 'var(--border-subtle, var(--border-color))',
+                    backgroundColor: 'var(--bg-secondary)'
+                  }}>
+                    <p className="text-sm text-[var(--text-secondary)]">
+                      Generating AI-curated resources...
+                    </p>
+                  </div>
+                ) : enrichmentError ? (
+                  <div className="rounded-lg border p-4 text-center" style={{ 
+                    borderColor: 'rgba(248,113,113,0.32)',
+                    backgroundColor: 'rgba(248,113,113,0.08)'
+                  }}>
+                    <p className="text-sm text-[var(--text-secondary)]">
+                      Failed to generate enrichment. Please try again.
+                    </p>
+                  </div>
+                ) : enrichmentAssets && (enrichmentAssets.videos?.length > 0 || enrichmentAssets.repos?.length > 0) ? (
                   <LessonAssetsPanel assets={enrichmentAssets} loading={false} error={null} />
                 ) : (
                   <div className="rounded-lg border p-4 text-center" style={{ 
@@ -227,7 +257,7 @@ export default function LessonView({
                     backgroundColor: 'var(--bg-secondary)'
                   }}>
                     <p className="text-sm text-[var(--text-secondary)]">
-                      No enriched content generated yet.
+                      No enriched content generated yet. Click "Request AI Resources" above to generate.
                     </p>
                   </div>
                 )
