@@ -53,7 +53,7 @@ export default function LessonView({
   // State for marketplace enrichment visibility toggle (show by default if assets exist)
   const [showMarketplaceEnrichment, setShowMarketplaceEnrichment] = useState(false)
   
-  // Update toggle state when enrichment becomes available
+  // Update toggle state when enrichment becomes available - show by default if assets exist
   useEffect(() => {
     if (hasMarketplaceEnrichment) {
       setShowMarketplaceEnrichment(true)
@@ -225,12 +225,12 @@ export default function LessonView({
                     backgroundColor: 'var(--bg-secondary)'
                   }}>
                     <p className="text-sm text-[var(--text-secondary)]">
-                      This course has no trainer-enriched content.
+                      No enriched content available for this course.
                     </p>
                   </div>
                 )
               ) : courseIsPersonalized && isLearner ? (
-                // Personalized: Course-level enrichment, show inline
+                // Personalized: Course-level enrichment, show inline on every lesson page
                 enrichmentLoading ? (
                   <div className="rounded-lg border p-4 text-center" style={{ 
                     borderColor: 'var(--border-subtle, var(--border-color))',

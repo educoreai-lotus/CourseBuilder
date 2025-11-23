@@ -173,16 +173,21 @@ export default function LessonPage() {
   const isPersonalizedCourse = useMemo(() => course ? isPersonalized(course) : false, [course])
 
   // For personalized courses: Auto-load enrichment assets from course.ai_assets if available
+  // This is course-level enrichment that appears on every lesson page
   useEffect(() => {
-    if (isPersonalizedCourse && userRole === 'learner' && course && !enrichmentAssets && !enrichmentLoading) {
+    if (isPersonalizedCourse && userRole === 'learner' && course) {
       // Auto-load enrichment for personalized courses from course.ai_assets
       // course.ai_assets should already be in the format expected by LessonAssetsPanel
       if (course.ai_assets && Object.keys(course.ai_assets).length > 0) {
-        // Pass assets directly - they should already be in the correct format
-        setEnrichmentAssets(course.ai_assets)
+        // Check if assets have actual content (videos or repos)
+        const hasAssets = (course.ai_assets.videos && course.ai_assets.videos.length > 0) ||
+                         (course.ai_assets.repos && course.ai_assets.repos.length > 0)
+        if (hasAssets) {
+          setEnrichmentAssets(course.ai_assets)
+        }
       }
     }
-  }, [isPersonalizedCourse, userRole, course?.id, course?.ai_assets, enrichmentAssets, enrichmentLoading])
+  }, [isPersonalizedCourse, userRole, course?.id, course?.ai_assets])
 
   const handleComplete = async () => {
     if (!lessonId) return

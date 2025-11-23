@@ -172,7 +172,7 @@ export default function CourseStructureSidebar({
     return { topics: topicsSet, modules: modulesSet }
   }, [hierarchy, currentLessonId])
   
-  // Track visited lessons to keep them accessible
+  // Track visited lessons, modules, and topics to keep them expanded
   const [visitedLessons, setVisitedLessons] = useState(() => {
     const visited = new Set()
     if (currentLessonId) {
@@ -180,6 +180,22 @@ export default function CourseStructureSidebar({
     }
     return visited
   })
+  
+  // Track visited modules and topics (to keep them expanded)
+  const [visitedModules, setVisitedModules] = useState(() => new Set())
+  const [visitedTopics, setVisitedTopics] = useState(() => new Set())
+  
+  // Find module and topic for a given lesson ID
+  const findLessonLocation = useCallback((lessonId) => {
+    for (const topic of hierarchy) {
+      for (const module of topic.modules || []) {
+        if (module.lessons?.some(l => String(l.id) === String(lessonId))) {
+          return { topicId: topic.id, moduleId: module.id }
+        }
+      }
+    }
+    return null
+  }, [hierarchy])
   
   // Initialize expanded state based on current lesson
   const [expandedTopics, setExpandedTopics] = useState(() => {
@@ -194,27 +210,53 @@ export default function CourseStructureSidebar({
   // Update expanded state when currentLessonId changes (including URL navigation, next/previous, page refresh)
   useEffect(() => {
     if (currentLessonId) {
+      const lessonIdStr = String(currentLessonId)
+      
       // Mark current lesson as visited
       setVisitedLessons(prev => {
         const next = new Set(prev)
-        next.add(String(currentLessonId))
+        next.add(lessonIdStr)
         return next
       })
+      
+      // Find and mark the lesson's module and topic as visited
+      const location = findLessonLocation(currentLessonId)
+      if (location) {
+        setVisitedModules(prev => {
+          const next = new Set(prev)
+          next.add(location.moduleId)
+          return next
+        })
+        setVisitedTopics(prev => {
+          const next = new Set(prev)
+          next.add(location.topicId)
+          return next
+        })
+      }
     }
+  }, [currentLessonId, findLessonLocation])
+  
+  // Auto-expand visited modules and topics, plus current lesson's module/topic
+  useEffect(() => {
+    const currentState = calculateExpandedState()
     
-    const newState = calculateExpandedState()
-    // Merge new state with existing to preserve manually opened modules/topics
+    // Always expand current lesson's topic and module
     setExpandedTopics(prev => {
       const merged = new Set(prev)
-      newState.topics.forEach(topicId => merged.add(topicId))
+      currentState.topics.forEach(topicId => merged.add(topicId))
+      // Also expand all visited topics
+      visitedTopics.forEach(topicId => merged.add(topicId))
       return merged
     })
+    
     setExpandedModules(prev => {
       const merged = new Set(prev)
-      newState.modules.forEach(moduleId => merged.add(moduleId))
+      currentState.modules.forEach(moduleId => merged.add(moduleId))
+      // Also expand all visited modules
+      visitedModules.forEach(moduleId => merged.add(moduleId))
       return merged
     })
-  }, [currentLessonId, calculateExpandedState])
+  }, [currentLessonId, calculateExpandedState, visitedTopics, visitedModules])
 
   const toggleTopic = (topicId) => {
     setExpandedTopics((prev) => {
@@ -226,6 +268,8 @@ export default function CourseStructureSidebar({
       }
       return next
     })
+    // Note: We don't remove from visitedTopics here - manual collapse is temporary
+    // but the topic remains "visited" so it can be re-expanded automatically
   }
 
   const toggleModule = (moduleId) => {
@@ -238,6 +282,8 @@ export default function CourseStructureSidebar({
       }
       return next
     })
+    // Note: We don't remove from visitedModules here - manual collapse is temporary
+    // but the module remains "visited" so it can be re-expanded automatically
   }
 
   const handleLessonClick = (lessonId) => {
