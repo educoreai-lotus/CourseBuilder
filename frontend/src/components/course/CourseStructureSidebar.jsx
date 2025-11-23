@@ -64,8 +64,14 @@ const formatDuration = (duration) => {
 }
 
 // Check if a lesson is accessible based on previous lesson completion
-const getLessonState = (lessonId, completedLessonIds, unlocked, status, allLessons, currentIndex) => {
+const getLessonState = (lessonId, completedLessonIds, unlocked, status, allLessons, currentIndex, currentLessonId) => {
   const completed = completedLessonIds.includes(String(lessonId))
+  const isCurrentLesson = String(lessonId) === String(currentLessonId)
+  
+  // ALWAYS unlock the currently visited lesson (front-end unlock)
+  if (isCurrentLesson && unlocked) {
+    return { completed, accessible: true }
+  }
   
   // For learners: Check if previous lesson is completed before unlocking next lesson
   // First lesson is always accessible if enrolled
@@ -386,7 +392,8 @@ export default function CourseStructureSidebar({
                                   canAccessLessons,
                                   lesson.status,
                                   allLessonsFlat,
-                                  lessonIndex
+                                  lessonIndex,
+                                  normalizedCurrentLessonId
                                 )
                                 const disabled = !accessible && userRole === 'learner'
                                 const isActive = normalizedCurrentLessonId === lessonId

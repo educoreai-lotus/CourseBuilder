@@ -191,7 +191,7 @@ export default function LessonView({
                 <h2 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
                   Learning Resources
                 </h2>
-                {/* Only show button for trainers */}
+                {/* Show button for trainers */}
                 {userRole !== 'learner' && enrichmentAsset && (
                   <EnrichmentButton
                     asset={enrichmentAsset}
@@ -215,12 +215,26 @@ export default function LessonView({
                     backgroundColor: 'var(--bg-secondary)'
                   }}>
                     <p className="text-sm text-[var(--text-secondary)]">
-                      No enriched content available for this lesson.
+                      No enriched content available for this course.
+                    </p>
+                  </div>
+                )
+              ) : courseIsPersonalized && isLearner ? (
+                // Personalized courses: Show AI assets if available
+                enrichmentAssets && (enrichmentAssets.videos?.length > 0 || enrichmentAssets.repos?.length > 0) ? (
+                  <LessonAssetsPanel assets={enrichmentAssets} loading={false} error={null} />
+                ) : (
+                  <div className="rounded-lg border p-4 text-center" style={{ 
+                    borderColor: 'var(--border-subtle, var(--border-color))',
+                    backgroundColor: 'var(--bg-secondary)'
+                  }}>
+                    <p className="text-sm text-[var(--text-secondary)]">
+                      No enriched content available for this course.
                     </p>
                   </div>
                 )
               ) : (
-                // Personalized/Trainer: Show dynamically loaded content
+                // Trainer: Show dynamically loaded content
                 <LessonAssetsPanel assets={enrichmentAssets} loading={enrichmentLoading} error={enrichmentError} />
               )}
             </div>

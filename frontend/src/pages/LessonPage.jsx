@@ -169,8 +169,17 @@ export default function LessonPage() {
     }
   }, [lesson, course, userRole])
 
-  // Note: Removed auto-loading of enrichment assets for learners
-  // Learners must click the "AI Enrich Lesson" button to load enrichment
+  // For personalized courses: Auto-load enrichment assets from course.ai_assets if available
+  useEffect(() => {
+    if (isPersonalizedCourse && userRole === 'learner' && course && !enrichmentAssets && !enrichmentLoading) {
+      // Auto-load enrichment for personalized courses from course.ai_assets
+      // course.ai_assets should already be in the format expected by LessonAssetsPanel
+      if (course.ai_assets && Object.keys(course.ai_assets).length > 0) {
+        // Pass assets directly - they should already be in the correct format
+        setEnrichmentAssets(course.ai_assets)
+      }
+    }
+  }, [isPersonalizedCourse, userRole, course?.id, course?.ai_assets, enrichmentAssets, enrichmentLoading])
 
   const handleComplete = async () => {
     if (!lessonId) return
