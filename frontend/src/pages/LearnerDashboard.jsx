@@ -117,13 +117,13 @@ export default function LearnerDashboard() {
   return (
     <div className="dashboard-surface">
       <Container>
-        <div className="flex flex-col gap-3 pt-3">
+        <div className="flex flex-col gap-2 pt-2">
           <section className="hero-spotlight text-center">
             <p className="text-sm font-semibold uppercase tracking-[0.4em] text-[var(--primary-cyan)]">Learner HQ</p>
             <h1 className="text-4xl font-bold text-[var(--text-primary)]">
               Welcome back, {userProfile?.name || 'Learner'}!
             </h1>
-            <p className="mx-auto mt-2 max-w-2xl text-base leading-7 text-[var(--text-secondary)]">
+            <p className="mx-auto mt-1 max-w-2xl text-base leading-7 text-[var(--text-secondary)]">
               Continue your learning journey and discover new skills curated just for you.
             </p>
           </section>

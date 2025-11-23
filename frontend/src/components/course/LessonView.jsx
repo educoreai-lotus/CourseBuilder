@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import {
   ArrowLeft,
@@ -47,37 +47,23 @@ export default function LessonView({
   const courseIsMarketplace = course ? isMarketplace(course) : false
   const isLearner = userRole === 'learner'
   
-  // For marketplace courses: Check if enrichment exists (view-only)
+  // For marketplace courses: Check if trainer added enrichment (view-only, no AI generation)
   const hasMarketplaceEnrichment = courseIsMarketplace && isLearner && course?.ai_assets && Object.keys(course.ai_assets).length > 0
   
-  // Map course.ai_assets to enrichment format for marketplace courses
-  const marketplaceEnrichmentItems = useMemo(() => {
-    if (!hasMarketplaceEnrichment || !course?.ai_assets) return []
-    
-    const assets = course.ai_assets
-    const items = []
-    
-    // Map videos
-    if (assets.videos && Array.isArray(assets.videos)) {
-      items.push(...assets.videos.map((video) => ({
-        type: 'video',
-        title: video.title || 'Video resource',
-        url: video.url,
-        description: video.description
-      })))
+  // State for marketplace enrichment visibility toggle (show by default if assets exist)
+  const [showMarketplaceEnrichment, setShowMarketplaceEnrichment] = useState(false)
+  
+  // Update toggle state when enrichment becomes available
+  useEffect(() => {
+    if (hasMarketplaceEnrichment) {
+      setShowMarketplaceEnrichment(true)
     }
-    
-    // Map repos
-    if (assets.repos && Array.isArray(assets.repos)) {
-      items.push(...assets.repos.map((repo) => ({
-        type: 'repo',
-        title: repo.name || 'Repository',
-        url: repo.url,
-        description: repo.description
-      })))
-    }
-    
-    return items
+  }, [hasMarketplaceEnrichment])
+  
+  // Marketplace enrichment assets (directly from course.ai_assets - trainer-added)
+  const marketplaceEnrichmentAssets = useMemo(() => {
+    if (!hasMarketplaceEnrichment || !course?.ai_assets) return null
+    return course.ai_assets
   }, [hasMarketplaceEnrichment, course?.ai_assets])
   
   if (!lesson) {
@@ -185,13 +171,23 @@ export default function LessonView({
               isFinalLesson={isFinalLesson}
             />
 
-            {/* Show AI enrichment - embedded in card for marketplace, button for trainers */}
-            <div className="space-y-3">
+            {/* AI-Curated Resources Section */}
+            <div className="space-y-3 border-t pt-4" style={{ borderColor: 'var(--border-subtle, var(--border-color))' }}>
               <div className="flex items-center justify-between gap-4">
                 <h2 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
-                  Learning Resources
+                  AI-Curated Resources
                 </h2>
-                {/* Show button for trainers */}
+                {/* Marketplace: Toggle button to show/hide trainer assets (no AI call, expand inline) */}
+                {courseIsMarketplace && isLearner && hasMarketplaceEnrichment && (
+                  <button
+                    type="button"
+                    onClick={() => setShowMarketplaceEnrichment(!showMarketplaceEnrichment)}
+                    className="text-sm font-semibold text-[var(--primary-cyan)] hover:text-[var(--primary-blue)] transition-colors"
+                  >
+                    {showMarketplaceEnrichment ? 'Hide Enriched Content' : 'See Enriched Content'}
+                  </button>
+                )}
+                {/* Trainer: AI generation button */}
                 {userRole !== 'learner' && enrichmentAsset && (
                   <EnrichmentButton
                     asset={enrichmentAsset}
@@ -204,23 +200,25 @@ export default function LessonView({
                 )}
               </div>
               
-              {/* Show enrichment content directly in card */}
+              {/* Enrichment content */}
               {courseIsMarketplace && isLearner ? (
-                // Marketplace: Show pre-generated content if exists, or message if not
+                // Marketplace: Only show if trainer added assets, toggle visibility inline
                 hasMarketplaceEnrichment ? (
-                  <LessonAssetsPanel assets={marketplaceEnrichmentItems} loading={false} error={null} />
+                  showMarketplaceEnrichment ? (
+                    <LessonAssetsPanel assets={marketplaceEnrichmentAssets} loading={false} error={null} />
+                  ) : null
                 ) : (
                   <div className="rounded-lg border p-4 text-center" style={{ 
                     borderColor: 'var(--border-subtle, var(--border-color))',
                     backgroundColor: 'var(--bg-secondary)'
                   }}>
                     <p className="text-sm text-[var(--text-secondary)]">
-                      No enriched content available for this course.
+                      This course has no trainer-enriched content.
                     </p>
                   </div>
                 )
               ) : courseIsPersonalized && isLearner ? (
-                // Personalized courses: Show AI assets if available
+                // Personalized: Course-level enrichment, show inline
                 enrichmentAssets && (enrichmentAssets.videos?.length > 0 || enrichmentAssets.repos?.length > 0) ? (
                   <LessonAssetsPanel assets={enrichmentAssets} loading={false} error={null} />
                 ) : (
@@ -229,7 +227,7 @@ export default function LessonView({
                     backgroundColor: 'var(--bg-secondary)'
                   }}>
                     <p className="text-sm text-[var(--text-secondary)]">
-                      No enriched content available for this course.
+                      No enriched content generated yet.
                     </p>
                   </div>
                 )

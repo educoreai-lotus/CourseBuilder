@@ -64,12 +64,18 @@ const formatDuration = (duration) => {
 }
 
 // Check if a lesson is accessible based on previous lesson completion
-const getLessonState = (lessonId, completedLessonIds, unlocked, status, allLessons, currentIndex, currentLessonId) => {
+const getLessonState = (lessonId, completedLessonIds, unlocked, status, allLessons, currentIndex, currentLessonId, visitedLessons) => {
   const completed = completedLessonIds.includes(String(lessonId))
   const isCurrentLesson = String(lessonId) === String(currentLessonId)
+  const wasVisited = visitedLessons.has(String(lessonId))
   
   // ALWAYS unlock the currently visited lesson (front-end unlock)
-  if (isCurrentLesson && unlocked) {
+  if (isCurrentLesson) {
+    return { completed, accessible: true }
+  }
+  
+  // If lesson was previously visited, keep it accessible
+  if (wasVisited && unlocked) {
     return { completed, accessible: true }
   }
   
@@ -166,6 +172,15 @@ export default function CourseStructureSidebar({
     return { topics: topicsSet, modules: modulesSet }
   }, [hierarchy, currentLessonId])
   
+  // Track visited lessons to keep them accessible
+  const [visitedLessons, setVisitedLessons] = useState(() => {
+    const visited = new Set()
+    if (currentLessonId) {
+      visited.add(String(currentLessonId))
+    }
+    return visited
+  })
+  
   // Initialize expanded state based on current lesson
   const [expandedTopics, setExpandedTopics] = useState(() => {
     const state = calculateExpandedState()
@@ -178,6 +193,15 @@ export default function CourseStructureSidebar({
   
   // Update expanded state when currentLessonId changes (including URL navigation, next/previous, page refresh)
   useEffect(() => {
+    if (currentLessonId) {
+      // Mark current lesson as visited
+      setVisitedLessons(prev => {
+        const next = new Set(prev)
+        next.add(String(currentLessonId))
+        return next
+      })
+    }
+    
     const newState = calculateExpandedState()
     // Merge new state with existing to preserve manually opened modules/topics
     setExpandedTopics(prev => {
@@ -393,7 +417,8 @@ export default function CourseStructureSidebar({
                                   lesson.status,
                                   allLessonsFlat,
                                   lessonIndex,
-                                  normalizedCurrentLessonId
+                                  normalizedCurrentLessonId,
+                                  visitedLessons
                                 )
                                 const disabled = !accessible && userRole === 'learner'
                                 const isActive = normalizedCurrentLessonId === lessonId
