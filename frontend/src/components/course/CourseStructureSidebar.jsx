@@ -160,6 +160,7 @@ export default function CourseStructureSidebar({
     return { topics: topicsSet, modules: modulesSet }
   }, [hierarchy, currentLessonId])
   
+  // Initialize expanded state based on current lesson
   const [expandedTopics, setExpandedTopics] = useState(() => {
     const state = calculateExpandedState()
     return state.topics
@@ -169,11 +170,20 @@ export default function CourseStructureSidebar({
     return state.modules
   })
   
-  // Update expanded state when currentLessonId changes (including URL navigation)
+  // Update expanded state when currentLessonId changes (including URL navigation, next/previous, page refresh)
   useEffect(() => {
     const newState = calculateExpandedState()
-    setExpandedTopics(newState.topics)
-    setExpandedModules(newState.modules)
+    // Merge new state with existing to preserve manually opened modules/topics
+    setExpandedTopics(prev => {
+      const merged = new Set(prev)
+      newState.topics.forEach(topicId => merged.add(topicId))
+      return merged
+    })
+    setExpandedModules(prev => {
+      const merged = new Set(prev)
+      newState.modules.forEach(moduleId => merged.add(moduleId))
+      return merged
+    })
   }, [currentLessonId, calculateExpandedState])
 
   const toggleTopic = (topicId) => {

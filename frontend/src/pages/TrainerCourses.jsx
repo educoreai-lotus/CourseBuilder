@@ -238,12 +238,12 @@ export default function TrainerCourses() {
                         <Pencil className="h-4 w-4" />
                         Edit course
                       </Link>
-                      {status === 'live' || status === 'published' ? (
+                      {status === 'live' || status === 'published' || status === 'active' ? (
                         <button
                           type="button"
                           disabled
                           title="This course is already published."
-                          className="btn-trainer-primary flex-1 min-w-[140px] items-center justify-center gap-2 opacity-50 cursor-not-allowed"
+                          className="flex-1 min-w-[140px] items-center justify-center gap-2 rounded-full bg-[rgba(148,163,184,0.2)] px-4 py-2 text-sm font-semibold text-[var(--text-muted)] cursor-not-allowed opacity-60"
                         >
                           <CheckCircle2 className="h-4 w-4" />
                           Course Already Published

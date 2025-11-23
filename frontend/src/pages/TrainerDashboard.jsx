@@ -190,7 +190,7 @@ export default function TrainerDashboard() {
                 {courses.map((course) => {
                   const courseId = course.id || course.course_id
                   const status = course.status || 'draft'
-                  const isLive = status === 'live'
+                  const isPublished = status === 'live' || status === 'published' || status === 'active'
 
                   return (
                     <article
@@ -211,13 +211,13 @@ export default function TrainerDashboard() {
                         </div>
                         <span
                           className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-widest ${
-                            isLive
+                            isPublished
                               ? 'bg-[rgba(16,185,129,0.14)] text-[#047857]'
                               : 'bg-[rgba(234,179,8,0.18)] text-[#b45309]'
                           }`}
                         >
                           <CheckCircle2 className="h-3 w-3" />
-                          {isLive ? 'Live' : 'Draft'}
+                          {isPublished ? 'Published' : 'Draft'}
                         </span>
                       </div>
 
@@ -237,7 +237,7 @@ export default function TrainerDashboard() {
                   </div>
 
                       <div className="flex flex-wrap gap-3">
-                        {!isLive ? (
+                        {!isPublished ? (
                       <button
                         type="button"
                             onClick={() => onPublish(courseId)}
@@ -252,7 +252,7 @@ export default function TrainerDashboard() {
                             type="button"
                             disabled
                             title="This course is already published."
-                            className="btn-trainer-primary flex-1 min-w-[140px] items-center justify-center gap-2 opacity-50 cursor-not-allowed"
+                            className="flex-1 min-w-[140px] items-center justify-center gap-2 rounded-full bg-[rgba(148,163,184,0.2)] px-4 py-2 text-sm font-semibold text-[var(--text-muted)] cursor-not-allowed opacity-60"
                           >
                             <CheckCircle2 className="h-4 w-4" />
                             Course Already Published
