@@ -138,15 +138,17 @@ export default function CourseStructureSidebar({
   learnerProgress = null,
   currentLessonId = null,
   userRole = 'learner',
-  onSelectLesson
+  onSelectLesson,
+  isEnrolled: isEnrolledProp = false // Accept isEnrolled as prop (source of truth from backend)
 }) {
   const { showToast } = useApp()
 
   // Determine if course is personalized
   const isPersonalizedCourse = isPersonalized(course)
 
-  // Determine if learner can access lessons
-  const isEnrolled = Boolean(learnerProgress?.is_enrolled)
+  // Use isEnrolled prop (from backend state) instead of checking learnerProgress
+  // Fallback to learnerProgress only if prop not provided (backward compatibility)
+  const isEnrolled = isEnrolledProp !== undefined ? isEnrolledProp : Boolean(learnerProgress?.is_enrolled)
   const canAccessLessons =
     userRole !== 'learner' ? true : isPersonalizedCourse || isEnrolled
 

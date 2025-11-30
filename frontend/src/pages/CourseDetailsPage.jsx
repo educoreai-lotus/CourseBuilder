@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
-import { getCourseById, registerLearner, cancelEnrollment, getMyFeedback } from '../services/apiService.js'
+import { getCourseById, registerLearner, cancelEnrollment, getMyFeedback, fetchEnrollmentStatus } from '../services/apiService.js'
 import LoadingSpinner from '../components/LoadingSpinner.jsx'
 import CourseOverview from '../components/course/CourseOverview.jsx'
 import CourseStructureSidebar from '../components/course/CourseStructureSidebar.jsx'
@@ -39,6 +39,13 @@ export default function CourseDetailsPage() {
     setLoading(true)
     setError(null)
     try {
+      // ALWAYS fetch enrollment status from backend (source of truth)
+      let enrollmentStatusFromBackend = false
+      if (learnerId) {
+        const enrollmentData = await fetchEnrollmentStatus(id, learnerId)
+        enrollmentStatusFromBackend = enrollmentData.enrolled
+      }
+      
       const params = learnerId ? { learner_id: learnerId } : undefined
       const data = await getCourseById(id, params)
       const courseIsPersonalized = isPersonalizedFlow || isPersonalized(data)
@@ -88,13 +95,14 @@ export default function CourseDetailsPage() {
       
       const progress = await personalizedProgress()
 
-      // Determine enrollment status from backend response
-      const enrollmentStatusFromBackend = courseIsPersonalized || (progress?.is_enrolled === true)
+      // Use enrollment status from explicit fetch (not from progress object)
+      // For personalized courses, always consider enrolled
+      const finalEnrollmentStatus = courseIsPersonalized || enrollmentStatusFromBackend
 
       // Check if learner has existing feedback
       // 404 is normal when no feedback exists yet - getMyFeedback returns null for 404
       let feedbackExists = false
-      if (learnerId && enrollmentStatusFromBackend) {
+      if (learnerId && finalEnrollmentStatus) {
         try {
           const feedbackData = await getMyFeedback(id)
           if (feedbackData && typeof feedbackData === 'object' && (feedbackData.id || feedbackData.rating)) {
@@ -111,9 +119,8 @@ export default function CourseDetailsPage() {
       setLearnerProgress(progress)
       setHasFeedback(feedbackExists)
       
-      // Set enrollment state from backend response (source of truth)
-      const enrollmentStatus = courseIsPersonalized || (progress?.is_enrolled === true)
-      setIsEnrolled(enrollmentStatus)
+      // Set enrollment state from backend fetch (source of truth)
+      setIsEnrolled(finalEnrollmentStatus)
     } catch (err) {
       const message = err.message || 'Failed to load course'
       setError(message)
@@ -187,8 +194,18 @@ export default function CourseDetailsPage() {
         learner_company: userProfile?.company
       })
       
+      // Immediately set enrollment state to true (optimistic update)
+      setIsEnrolled(true)
+      
       // Wait a brief moment for database transaction to commit
-      await new Promise(resolve => setTimeout(resolve, 200))
+      await new Promise(resolve => setTimeout(resolve, 300))
+      
+      // Refetch enrollment status from backend to confirm
+      const enrollmentData = await fetchEnrollmentStatus(id, learnerId)
+      const confirmedEnrolled = enrollmentData.enrolled
+      
+      // Update state based on backend confirmation
+      setIsEnrolled(confirmedEnrolled)
       
       // Refetch course details to get updated enrollment status from backend
       const params = learnerId ? { learner_id: learnerId } : undefined
@@ -197,10 +214,10 @@ export default function CourseDetailsPage() {
       // Use the enrollment status from backend response (trust backend data)
       if (updatedCourse?.learner_progress) {
         setLearnerProgress(updatedCourse.learner_progress)
-        // Update enrollment state from backend response
+        // Ensure state matches backend
         setIsEnrolled(updatedCourse.learner_progress.is_enrolled === true)
-      } else {
-        // Fallback if backend doesn't return learner_progress yet
+      } else if (confirmedEnrolled) {
+        // Fallback if backend doesn't return learner_progress yet but enrollment confirmed
         const fallbackProgress = {
           is_enrolled: true,
           registration_id: response.registration_id,
@@ -209,7 +226,7 @@ export default function CourseDetailsPage() {
           completed_lessons: []
         }
         setLearnerProgress(fallbackProgress)
-        setIsEnrolled(true) // Set enrollment state
+        setIsEnrolled(true)
       }
       
       // Update course data as well to reflect enrollment status
@@ -312,33 +329,46 @@ export default function CourseDetailsPage() {
 
     setSubmitting(true)
     try {
+      // Cancel enrollment
       await cancelEnrollment(id, {
         learner_id: learnerId
       })
       
+      // Immediately set enrollment state to false
+      setIsEnrolled(false)
+      
+      // Clear learner progress
+      setLearnerProgress({
+        is_enrolled: false,
+        completed_lessons: []
+      })
+      
       // Wait a brief moment for database transaction to commit
-      await new Promise(resolve => setTimeout(resolve, 200))
+      await new Promise(resolve => setTimeout(resolve, 300))
       
-      // Refetch course details to get updated enrollment status from backend
-      const params = learnerId ? { learner_id: learnerId } : undefined
-      const updatedCourse = await getCourseById(id, params)
+      // Refetch enrollment status from backend to confirm
+      const enrollmentData = await fetchEnrollmentStatus(id, learnerId)
+      const confirmedEnrolled = enrollmentData.enrolled
       
-      // Update enrollment status from backend
-      if (updatedCourse?.learner_progress) {
-        setLearnerProgress(updatedCourse.learner_progress)
-        setIsEnrolled(updatedCourse.learner_progress.is_enrolled === true)
+      // Update state based on backend confirmation
+      setIsEnrolled(confirmedEnrolled)
+      
+      // If still enrolled (shouldn't happen), refetch full course details
+      if (confirmedEnrolled) {
+        const params = learnerId ? { learner_id: learnerId } : undefined
+        const updatedCourse = await getCourseById(id, params)
+        if (updatedCourse?.learner_progress) {
+          setLearnerProgress(updatedCourse.learner_progress)
+        }
+        if (updatedCourse) {
+          setCourse(updatedCourse)
+        }
       } else {
-        // Enrollment cancelled - set to false
+        // Enrollment confirmed cancelled - clear progress
         setLearnerProgress({
           is_enrolled: false,
           completed_lessons: []
         })
-        setIsEnrolled(false) // Update enrollment state
-      }
-      
-      // Update course data
-      if (updatedCourse) {
-        setCourse(updatedCourse)
       }
       
       showToast('Enrollment cancelled successfully. Course removed from your library.', 'success')
@@ -415,6 +445,7 @@ export default function CourseDetailsPage() {
               learnerProgress={learnerProgress}
               currentLessonId={null}
               userRole={userRole}
+              isEnrolled={isEnrolled}
               onSelectLesson={(lessonId) => navigate(`/course/${id}/lesson/${lessonId}`)}
             />
           </aside>

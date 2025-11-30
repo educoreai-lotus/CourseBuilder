@@ -188,6 +188,7 @@ export default function CourseOverview({
               View progress
             </Link>
           )
+        : null // Don't show "View progress" when not enrolled
         : (
             <Link to="/learner/enrolled" className="btn btn-secondary flex items-center justify-center gap-2">
               <BookOpen size={18} />
@@ -353,7 +354,8 @@ export default function CourseOverview({
                 )}
               </div>
 
-              {progressSummary?.status && (
+              {/* Progress box - Only show when enrolled */}
+              {isEnrolled && progressSummary?.status && (
                 <div className="rounded-2xl border p-4 text-sm" style={{ 
                   borderColor: 'var(--accent-green)',
                   backgroundColor: 'var(--bg-secondary)',
