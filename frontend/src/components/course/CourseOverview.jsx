@@ -99,6 +99,8 @@ const getSampleTopics = (course) => {
 export default function CourseOverview({
   course,
   isEnrolled,
+  progress = 0, // Progress percentage (0-100)
+  completedLessons = 0, // Number of completed lessons
   onEnrollClick,
   onContinue,
   onCancelEnrollment,
@@ -136,10 +138,15 @@ export default function CourseOverview({
   const completedLessons = progressSummary?.completed_lessons?.length || 0
   const coursePrice = course?.price ?? 0
 
-  // For personalized courses, always show "Start Course" - never show enroll button
+  // 3-STATE ENROLLMENT SYSTEM
+  // STATE 1: NOT ENROLLED (!isEnrolled) → Show "Enroll"
+  // STATE 2: ENROLLED BUT NOT STARTED (isEnrolled && progress === 0) → Show "Start Learning"
+  // STATE 3: IN PROGRESS (isEnrolled && progress > 0) → Show "Continue Learning"
+  
   const primaryCta = showStructureCta
     ? personalized
       ? (
+          // Personalized courses always show "Start Course"
           <button
             type="button"
             className="btn btn-primary flex items-center justify-center gap-2"
@@ -149,30 +156,46 @@ export default function CourseOverview({
             Start Course
           </button>
         )
-      : isEnrolled
+      : !isEnrolled
         ? (
-            <button
-              type="button"
-              className="btn btn-primary flex items-center justify-center gap-2"
-              onClick={onContinue}
-              disabled={isSubmitting}
-            >
-              <PlayCircle size={18} />
-              Start Learning
-            </button>
-          )
-        : (
+            // STATE 1: NOT ENROLLED → Show "Enroll"
             <button
               type="button"
               className="btn btn-primary flex items-center justify-center gap-2"
               onClick={onEnrollClick}
             >
               <Target size={18} />
-              Enroll now
+              Enroll
             </button>
           )
+        : progress === 0
+          ? (
+              // STATE 2: ENROLLED BUT NOT STARTED → Show "Start Learning"
+              <button
+                type="button"
+                className="btn btn-primary flex items-center justify-center gap-2"
+                onClick={onContinue}
+                disabled={isSubmitting}
+              >
+                <PlayCircle size={18} />
+                Start Learning
+              </button>
+            )
+          : (
+              // STATE 3: IN PROGRESS → Show "Continue Learning"
+              <button
+                type="button"
+                className="btn btn-primary flex items-center justify-center gap-2"
+                onClick={onContinue}
+                disabled={isSubmitting}
+              >
+                <PlayCircle size={18} />
+                Continue Learning
+              </button>
+            )
     : null
 
+  // Secondary CTA based on 3-state system
   const secondaryCta = showStructureCta
     ? personalized
       ? (
@@ -181,19 +204,15 @@ export default function CourseOverview({
             Explore marketplace
           </Link>
         )
-      : isEnrolled
+      : isEnrolled && progress > 0
         ? (
+            // STATE 3: IN PROGRESS → Show "View Progress"
             <Link to="/learner/enrolled" className="btn btn-secondary flex items-center justify-center gap-2">
               <CheckCircle2 size={18} />
-              View progress
+              View Progress
             </Link>
           )
-        : (
-            <Link to="/learner/enrolled" className="btn btn-secondary flex items-center justify-center gap-2">
-              <BookOpen size={18} />
-              My library
-            </Link>
-          )
+        : null // STATE 1 and STATE 2: No secondary CTA
     : null
 
   return (
@@ -321,7 +340,7 @@ export default function CourseOverview({
                 {primaryCta}
                 {secondaryCta}
                 
-                {/* Cancel Enrollment Button - Only shown when enrolled */}
+                {/* Cancel Enrollment Button - Only shown in STATE 2 and STATE 3 (enrolled) */}
                 {!personalized && isEnrolled && onCancelEnrollment && showStructureCta && (
                   <button
                     type="button"
@@ -353,8 +372,8 @@ export default function CourseOverview({
                 )}
               </div>
 
-              {/* Progress box - Only show when enrolled */}
-              {isEnrolled && progressSummary?.status && (
+              {/* Progress box - Only show in STATE 3 (IN PROGRESS: enrolled && progress > 0) */}
+              {isEnrolled && progress > 0 && (
                 <div className="rounded-2xl border p-4 text-sm" style={{ 
                   borderColor: 'var(--accent-green)',
                   backgroundColor: 'var(--bg-secondary)',
@@ -362,7 +381,7 @@ export default function CourseOverview({
                 }}>
                   <div className="flex items-center gap-2 font-semibold">
                     <CheckCircle2 size={16} />
-                    Progress {Math.round(progressPercent)}% · {completedLessons} lessons complete
+                    Progress {Math.round(progress)}% · {completedLessons} lesson{completedLessons !== 1 ? 's' : ''} complete
                   </div>
                   <p className="mt-2 text-xs" style={{ color: 'var(--accent-green)' }}>
                     {personalized

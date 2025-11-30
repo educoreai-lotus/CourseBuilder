@@ -38,6 +38,30 @@ export const browseCourses = async (req, res, next) => {
 };
 
 /**
+ * Get enrollment status for a learner in a course
+ * GET /api/v1/courses/:id/enrollment-status
+ */
+export const getEnrollmentStatus = async (req, res, next) => {
+  try {
+    const { id: courseId } = req.params;
+    const { learner_id: learnerId } = req.query;
+
+    if (!learnerId) {
+      return res.status(200).json({
+        enrolled: false,
+        progress: 0,
+        completedLessons: 0
+      });
+    }
+
+    const status = await coursesService.getEnrollmentStatus(courseId, learnerId);
+    res.status(200).json(status);
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
  * Get course details with full structure
  * GET /api/v1/courses/:id
  */
@@ -531,6 +555,7 @@ export const getLearnerProgress = async (req, res, next) => {
 export const coursesController = {
   browseCourses,
   getCourseDetails,
+  getEnrollmentStatus,
   registerForCourse,
   cancelEnrollment,
   updateCourseProgress,

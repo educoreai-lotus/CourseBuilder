@@ -23,7 +23,13 @@ export default function CourseDetailsPage() {
   const [learnerProgress, setLearnerProgress] = useState(null)
   const [hasFeedback, setHasFeedback] = useState(false)
   // Dedicated enrollment state - synced with backend
+  // 3-State Enrollment System
+  // STATE 1: NOT ENROLLED (enrolled: false)
+  // STATE 2: ENROLLED BUT NOT STARTED (enrolled: true, progress: 0)
+  // STATE 3: IN PROGRESS (enrolled: true, progress > 0)
   const [isEnrolled, setIsEnrolled] = useState(false)
+  const [progress, setProgress] = useState(0)
+  const [completedLessons, setCompletedLessons] = useState(0)
 
   const isPersonalizedFlow = useMemo(() => {
     const params = new URLSearchParams(location.search)
@@ -39,13 +45,19 @@ export default function CourseDetailsPage() {
     setLoading(true)
     setError(null)
     try {
-      // ALWAYS fetch enrollment status from backend (source of truth)
-      let enrollmentStatusFromBackend = false
+      // STEP 1: ALWAYS fetch enrollment status from backend (source of truth)
+      // This is the ONLY source of truth for enrollment state
+      let enrollmentData = { enrolled: false, progress: 0, completedLessons: 0 }
       if (learnerId) {
-        const enrollmentData = await fetchEnrollmentStatus(id, learnerId)
-        enrollmentStatusFromBackend = enrollmentData.enrolled
+        enrollmentData = await fetchEnrollmentStatus(id, learnerId)
       }
       
+      // Set 3-state enrollment system from backend
+      setIsEnrolled(enrollmentData.enrolled)
+      setProgress(enrollmentData.progress || 0)
+      setCompletedLessons(enrollmentData.completedLessons || 0)
+      
+      // Load course details
       const params = learnerId ? { learner_id: learnerId } : undefined
       const data = await getCourseById(id, params)
       const courseIsPersonalized = isPersonalizedFlow || isPersonalized(data)
@@ -60,67 +72,43 @@ export default function CourseDetailsPage() {
           }
         : data
 
-      const personalizedProgress = async () => {
-        if (!courseIsPersonalized) {
-          return enrichedCourse.learner_progress || null
-        }
-
-        const existing = enrichedCourse.learner_progress || {}
-        
-        // For personalized courses: Auto-enroll silently in background if not enrolled
-        // But don't block UI - treat as enrolled immediately
-        if (!existing.is_enrolled && learnerId) {
-          // Auto-enroll in background (fire and forget)
-          registerLearner(id, {
-            learner_id: learnerId,
-            learner_name: userProfile?.name,
-            learner_company: userProfile?.company
-          }).catch((err) => {
-            // Silently handle errors - don't block user experience
-            if (err.response?.status !== 409) {
-              console.warn('Background auto-enrollment failed for personalized course:', err)
-            }
-          })
-        }
-        
-        // Always return enrolled status for personalized courses (no API call blocking)
-        return {
-          ...existing,
-          is_enrolled: true,
-          status: existing.status || 'in_progress',
-          progress: existing.progress ?? 0,
-          completed_lessons: existing.completed_lessons || []
-        }
+      // For personalized courses: Auto-enroll silently in background if not enrolled
+      if (courseIsPersonalized && !enrollmentData.enrolled && learnerId) {
+        registerLearner(id, {
+          learner_id: learnerId,
+          learner_name: userProfile?.name,
+          learner_company: userProfile?.company
+        }).catch((err) => {
+          if (err.response?.status !== 409) {
+            console.warn('Background auto-enrollment failed for personalized course:', err)
+          }
+        })
+        // For personalized courses, treat as enrolled immediately
+        setIsEnrolled(true)
+        setProgress(0)
+        setCompletedLessons(0)
       }
-      
-      const progress = await personalizedProgress()
 
-      // Use enrollment status from explicit fetch (not from progress object)
-      // For personalized courses, always consider enrolled
-      const finalEnrollmentStatus = courseIsPersonalized || enrollmentStatusFromBackend
+      // Set learner progress for backward compatibility (but use enrollment status as source of truth)
+      const progress = enrichedCourse.learner_progress || null
+      setLearnerProgress(progress)
 
       // Check if learner has existing feedback
-      // 404 is normal when no feedback exists yet - getMyFeedback returns null for 404
       let feedbackExists = false
-      if (learnerId && finalEnrollmentStatus) {
+      if (learnerId && enrollmentData.enrolled) {
         try {
           const feedbackData = await getMyFeedback(id)
           if (feedbackData && typeof feedbackData === 'object' && (feedbackData.id || feedbackData.rating)) {
             feedbackExists = true
           }
         } catch (err) {
-          // Other errors (non-404) - log but don't break UI
           console.warn('Failed to load feedback:', err)
           feedbackExists = false
         }
       }
 
       setCourse(enrichedCourse)
-      setLearnerProgress(progress)
       setHasFeedback(feedbackExists)
-      
-      // Set enrollment state from backend fetch (source of truth)
-      setIsEnrolled(finalEnrollmentStatus)
     } catch (err) {
       const message = err.message || 'Failed to load course'
       setError(message)
@@ -194,42 +182,23 @@ export default function CourseDetailsPage() {
         learner_company: userProfile?.company
       })
       
-      // Immediately set enrollment state to true (optimistic update)
-      setIsEnrolled(true)
-      
-      // Wait a brief moment for database transaction to commit
+      // Wait for database transaction to commit
       await new Promise(resolve => setTimeout(resolve, 300))
       
-      // Refetch enrollment status from backend to confirm
+      // STEP 2: Re-fetch enrollment status from backend (source of truth)
       const enrollmentData = await fetchEnrollmentStatus(id, learnerId)
-      const confirmedEnrolled = enrollmentData.enrolled
       
-      // Update state based on backend confirmation
-      setIsEnrolled(confirmedEnrolled)
+      // STEP 3: Update state to STATE 2 (ENROLLED BUT NOT STARTED)
+      setIsEnrolled(enrollmentData.enrolled)
+      setProgress(enrollmentData.progress || 0)
+      setCompletedLessons(enrollmentData.completedLessons || 0)
       
-      // Refetch course details to get updated enrollment status from backend
+      // Update learner progress for backward compatibility
       const params = learnerId ? { learner_id: learnerId } : undefined
       const updatedCourse = await getCourseById(id, params)
-      
-      // Use the enrollment status from backend response (trust backend data)
       if (updatedCourse?.learner_progress) {
         setLearnerProgress(updatedCourse.learner_progress)
-        // Ensure state matches backend
-        setIsEnrolled(updatedCourse.learner_progress.is_enrolled === true)
-      } else if (confirmedEnrolled) {
-        // Fallback if backend doesn't return learner_progress yet but enrollment confirmed
-        const fallbackProgress = {
-          is_enrolled: true,
-          registration_id: response.registration_id,
-          progress: response.progress ?? 0,
-          status: 'in_progress',
-          completed_lessons: []
-        }
-        setLearnerProgress(fallbackProgress)
-        setIsEnrolled(true)
       }
-      
-      // Update course data as well to reflect enrollment status
       if (updatedCourse) {
         setCourse(updatedCourse)
       }
@@ -322,54 +291,46 @@ export default function CourseDetailsPage() {
       return
     }
 
-    // Confirm cancellation
-    if (!window.confirm('Are you sure you want to cancel your enrollment? You will lose all progress in this course.')) {
+    // STEP 1: Show confirm modal
+    const confirmed = window.confirm(
+      'Are you sure you want to cancel your enrollment?\n\nYour progress will be cleared.'
+    )
+    if (!confirmed) {
       return
     }
 
     setSubmitting(true)
     try {
-      // Cancel enrollment
+      // STEP 2: Call DELETE endpoint
       await cancelEnrollment(id, {
         learner_id: learnerId
       })
       
-      // Immediately set enrollment state to false
+      // STEP 3: Immediately reset to STATE 1 (NOT ENROLLED)
       setIsEnrolled(false)
+      setProgress(0)
+      setCompletedLessons(0)
+      setLearnerProgress({
+        is_enrolled: false,
+        completed_lessons: []
+      })
+      
+      // Wait for database transaction to commit
+      await new Promise(resolve => setTimeout(resolve, 300))
+      
+      // STEP 4: Re-fetch enrollment status from backend to confirm
+      const enrollmentData = await fetchEnrollmentStatus(id, learnerId)
+      
+      // STEP 5: Update state based on backend confirmation (should be STATE 1)
+      setIsEnrolled(enrollmentData.enrolled)
+      setProgress(enrollmentData.progress || 0)
+      setCompletedLessons(enrollmentData.completedLessons || 0)
       
       // Clear learner progress
       setLearnerProgress({
         is_enrolled: false,
         completed_lessons: []
       })
-      
-      // Wait a brief moment for database transaction to commit
-      await new Promise(resolve => setTimeout(resolve, 300))
-      
-      // Refetch enrollment status from backend to confirm
-      const enrollmentData = await fetchEnrollmentStatus(id, learnerId)
-      const confirmedEnrolled = enrollmentData.enrolled
-      
-      // Update state based on backend confirmation
-      setIsEnrolled(confirmedEnrolled)
-      
-      // If still enrolled (shouldn't happen), refetch full course details
-      if (confirmedEnrolled) {
-        const params = learnerId ? { learner_id: learnerId } : undefined
-        const updatedCourse = await getCourseById(id, params)
-        if (updatedCourse?.learner_progress) {
-          setLearnerProgress(updatedCourse.learner_progress)
-        }
-        if (updatedCourse) {
-          setCourse(updatedCourse)
-        }
-      } else {
-        // Enrollment confirmed cancelled - clear progress
-        setLearnerProgress({
-          is_enrolled: false,
-          completed_lessons: []
-        })
-      }
       
       showToast('Enrollment cancelled successfully. Course removed from your library.', 'success')
     } catch (err) {
@@ -474,6 +435,8 @@ export default function CourseDetailsPage() {
                   }
                   showStructureCta={userRole === 'learner'}
                   learnerProfile={userProfile}
+                  progress={progress}
+                  completedLessons={completedLessons}
                   progressSummary={learnerProgress}
                   backLink={isPersonalizedFlow ? '/learner/personalized' : '/learner/marketplace'}
                   hasFeedback={hasFeedback}

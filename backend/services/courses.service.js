@@ -443,8 +443,85 @@ export const registerLearner = async (courseId, { learner_id, learner_name, lear
 };
 
 /**
- * Cancel/unregister a learner from a course
+ * Get enrollment status for a learner in a course
+ * Returns { enrolled: boolean, progress: number, completedLessons: number }
  */
+export const getEnrollmentStatus = async (courseId, learnerId) => {
+  if (!learnerId) {
+    return {
+      enrolled: false,
+      progress: 0,
+      completedLessons: 0
+    };
+  }
+
+  try {
+    const normalizedLearnerId = learnerId?.trim();
+    
+    // Check registration table (primary source)
+    const registration = await registrationRepository.findByLearnerAndCourse(normalizedLearnerId, courseId);
+    
+    if (!registration) {
+      // Check studentsIDDictionary as fallback
+      const course = await db.oneOrNone('SELECT students_id_dictionary FROM courses WHERE id = $1', [courseId]);
+      if (course?.students_id_dictionary) {
+        const studentEntry = course.students_id_dictionary[normalizedLearnerId] || course.students_id_dictionary[learnerId];
+        if (studentEntry && studentEntry.status === 'in_progress') {
+          // Found in dictionary but not in registrations - return enrolled with 0 progress
+          return {
+            enrolled: true,
+            progress: 0,
+            completedLessons: 0
+          };
+        }
+      }
+      return {
+        enrolled: false,
+        progress: 0,
+        completedLessons: 0
+      };
+    }
+
+    // Get completed lessons from lesson_completion_dictionary
+    const course = await db.oneOrNone('SELECT lesson_completion_dictionary FROM courses WHERE id = $1', [courseId]);
+    const completionDict = course?.lesson_completion_dictionary || {};
+    const completedLessons = [];
+    
+    for (const [lessonId, lessonData] of Object.entries(completionDict)) {
+      if (lessonData[normalizedLearnerId]?.status === 'completed' || lessonData[learnerId]?.status === 'completed') {
+        completedLessons.push(lessonId);
+      }
+    }
+
+    // Calculate progress
+    const totalLessons = await db.one(
+      `SELECT COUNT(*)::int as total
+       FROM lessons l
+       JOIN modules m ON m.id = l.module_id
+       JOIN topics t ON t.id = m.topic_id
+       WHERE t.course_id = $1`,
+      [courseId]
+    );
+
+    const progress = totalLessons.total > 0 
+      ? (completedLessons.length / totalLessons.total) * 100 
+      : 0;
+
+    return {
+      enrolled: true,
+      progress: Number(progress.toFixed(2)),
+      completedLessons: completedLessons.length
+    };
+  } catch (error) {
+    console.error('[Enrollment Status] Error:', error);
+    return {
+      enrolled: false,
+      progress: 0,
+      completedLessons: 0
+    };
+  }
+};
+
 export const cancelEnrollment = async (courseId, { learner_id }) => {
   try {
     // Normalize IDs to ensure consistency
@@ -1089,5 +1166,6 @@ export const coursesService = {
   getCourseVersions,
   getCourseFilters,
   getLessonDetails,
-  getLearnerProgress
+  getLearnerProgress,
+  getEnrollmentStatus
 };

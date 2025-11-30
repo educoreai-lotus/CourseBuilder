@@ -34,6 +34,13 @@ router.post('/', courseCreationLimiter, authorizeRoles('trainer', 'admin'), cour
 router.get('/', coursesController.browseCourses);
 
 /**
+ * GET /api/v1/courses/:id/enrollment-status
+ * Get enrollment status for a learner in a course
+ * Query param: learner_id
+ */
+router.get('/:id/enrollment-status', coursesController.getEnrollmentStatus);
+
+/**
  * GET /api/v1/courses/:id
  * Get course details with full structure
  */

@@ -67,24 +67,20 @@ export function getCourseById(id, params = {}) {
 
 /**
  * Fetch enrollment status for a learner in a course
- * Returns { enrolled: boolean } based on backend state
+ * Returns { enrolled: boolean, progress: number, completedLessons: number } based on backend state
  */
 export async function fetchEnrollmentStatus(courseId, learnerId) {
   if (!learnerId) {
-    return { enrolled: false }
+    return { enrolled: false, progress: 0, completedLessons: 0 }
   }
   
   try {
-    // Use course details endpoint with learner_id to get enrollment status
     const params = { learner_id: learnerId }
-    const courseData = await api.get(`/courses/${courseId}`, { params }).then(r => r.data)
-    
-    // Extract enrollment status from learner_progress
-    const enrolled = courseData?.learner_progress?.is_enrolled === true
-    return { enrolled }
+    const response = await api.get(`/courses/${courseId}/enrollment-status`, { params })
+    return response.data
   } catch (error) {
     console.error('Error fetching enrollment status:', error)
-    return { enrolled: false }
+    return { enrolled: false, progress: 0, completedLessons: 0 }
   }
 }
 
