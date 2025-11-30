@@ -52,10 +52,10 @@ router.put('/:id', authorizeRoles('trainer', 'admin'), coursesController.updateC
 router.post('/:id/register', authorizeRoles('learner'), coursesController.registerForCourse);
 
 /**
- * DELETE /api/v1/courses/:id/enroll
- * Cancel enrollment for a learner
+ * DELETE /api/v1/courses/:id/enrollment
+ * Cancel enrollment for a course
  */
-router.delete('/:id/enroll', authorizeRoles('learner'), coursesController.cancelEnrollment);
+router.delete('/:id/enrollment', authorizeRoles('learner'), coursesController.cancelEnrollment);
 
 /**
  * PATCH /api/v1/courses/:id/progress

@@ -300,10 +300,14 @@ export default function CourseDetailsPage() {
         learner_id: learnerId
       })
       
-      // Refetch course details to get updated enrollment status
+      // Wait a brief moment for database transaction to commit
+      await new Promise(resolve => setTimeout(resolve, 200))
+      
+      // Refetch course details to get updated enrollment status from backend
       const params = learnerId ? { learner_id: learnerId } : undefined
       const updatedCourse = await getCourseById(id, params)
       
+      // Update enrollment status
       if (updatedCourse?.learner_progress) {
         setLearnerProgress(updatedCourse.learner_progress)
       } else {
@@ -313,6 +317,7 @@ export default function CourseDetailsPage() {
         })
       }
       
+      // Update course data
       if (updatedCourse) {
         setCourse(updatedCourse)
       }
@@ -404,6 +409,7 @@ export default function CourseDetailsPage() {
                   isEnrolled={isEnrolled}
                   onEnrollClick={() => setModalOpen(true)}
                   onCancelEnrollment={handleCancelEnrollment}
+                  isSubmitting={isSubmitting}
                   onContinue={
                     firstLessonId
                       ? () => navigate(`/course/${id}/lesson/${firstLessonId}`)

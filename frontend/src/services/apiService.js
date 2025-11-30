@@ -70,7 +70,7 @@ export function registerLearner(courseId, body) {
 }
 
 export function cancelEnrollment(courseId, body) {
-  return api.delete(`/courses/${courseId}/enroll`, { data: body }).then(r => r.data)
+  return api.delete(`/courses/${courseId}/enrollment`, { data: body }).then(r => r.data)
 }
 
 export function submitFeedback(courseId, body) {

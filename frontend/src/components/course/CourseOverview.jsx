@@ -13,6 +13,7 @@ import {
   CheckCircle2,
   Target,
   MessageSquare,
+  XCircle,
   Edit3
 } from 'lucide-react'
 import Container from '../Container.jsx'
@@ -99,8 +100,9 @@ export default function CourseOverview({
   course,
   isEnrolled,
   onEnrollClick,
-  onCancelEnrollment,
   onContinue,
+  onCancelEnrollment,
+  isSubmitting = false,
   showStructureCta = true,
   learnerProfile,
   progressSummary,
@@ -149,28 +151,15 @@ export default function CourseOverview({
         )
       : isEnrolled
         ? (
-            onCancelEnrollment && !personalized
-              ? (
-                  <button
-                    type="button"
-                    className="btn btn-outline flex items-center justify-center gap-2"
-                    onClick={onCancelEnrollment}
-                    style={{ color: 'var(--accent-orange)', borderColor: 'var(--accent-orange)' }}
-                  >
-                    <i className="fa-solid fa-xmark" aria-hidden="true" />
-                    Cancel enrollment
-                  </button>
-                )
-              : (
-                  <button
-                    type="button"
-                    className="btn btn-primary flex items-center justify-center gap-2"
-                    onClick={onContinue}
-                  >
-                    <PlayCircle size={18} />
-                    Continue learning
-                  </button>
-                )
+            <button
+              type="button"
+              className="btn btn-primary flex items-center justify-center gap-2"
+              onClick={onContinue}
+              disabled={isSubmitting}
+            >
+              <PlayCircle size={18} />
+              Start Learning
+            </button>
           )
         : (
             <button
@@ -194,23 +183,10 @@ export default function CourseOverview({
         )
       : isEnrolled
         ? (
-            onCancelEnrollment && !personalized
-              ? (
-                  <button
-                    type="button"
-                    className="btn btn-primary flex items-center justify-center gap-2"
-                    onClick={onContinue}
-                  >
-                    <PlayCircle size={18} />
-                    Continue learning
-                  </button>
-                )
-              : (
-                  <Link to="/learner/enrolled" className="btn btn-secondary flex items-center justify-center gap-2">
-                    <CheckCircle2 size={18} />
-                    View progress
-                  </Link>
-                )
+            <Link to="/learner/enrolled" className="btn btn-secondary flex items-center justify-center gap-2">
+              <CheckCircle2 size={18} />
+              View progress
+            </Link>
           )
         : (
             <Link to="/learner/enrolled" className="btn btn-secondary flex items-center justify-center gap-2">
@@ -344,6 +320,27 @@ export default function CourseOverview({
               <div className="space-y-3">
                 {primaryCta}
                 {secondaryCta}
+                
+                {/* Cancel Enrollment Button - Only shown when enrolled */}
+                {!personalized && isEnrolled && onCancelEnrollment && showStructureCta && (
+                  <button
+                    type="button"
+                    className="btn btn-outline-danger flex items-center justify-center gap-2 text-sm"
+                    onClick={onCancelEnrollment}
+                    disabled={isSubmitting}
+                    style={{ 
+                      marginTop: '8px',
+                      borderColor: 'var(--accent-orange, #f97316)',
+                      color: 'var(--accent-orange, #f97316)',
+                      padding: '0.5rem 1rem',
+                      fontSize: '0.875rem'
+                    }}
+                  >
+                    <XCircle size={16} />
+                    {isSubmitting ? 'Cancelling...' : 'Cancel Enrollment'}
+                  </button>
+                )}
+                
                 {!personalized && !isEnrolled && showStructureCta && (
                   <p className="text-center text-xs" style={{ color: 'var(--text-muted)' }}>
                     Secure access in one click. Cancel anytime during preview.

@@ -443,12 +443,12 @@ export const registerLearner = async (courseId, { learner_id, learner_name, lear
 };
 
 /**
- * Cancel enrollment for a learner
+ * Cancel/unregister a learner from a course
  */
-export const cancelEnrollment = async (courseId, learnerId) => {
+export const cancelEnrollment = async (courseId, { learner_id }) => {
   try {
-    // Normalize IDs
-    const normalizedLearnerId = learnerId?.trim();
+    // Normalize IDs to ensure consistency
+    const normalizedLearnerId = learner_id?.trim();
     const normalizedCourseId = courseId?.trim();
     
     if (!normalizedLearnerId) {
@@ -463,15 +463,7 @@ export const cancelEnrollment = async (courseId, learnerId) => {
       throw error;
     }
 
-    // Check if course exists
-    const course = await courseRepository.findById(normalizedCourseId);
-    if (!course) {
-      const error = new Error('Course not found');
-      error.status = 404;
-      throw error;
-    }
-
-    // Find existing registration
+    // Find the registration
     const registration = await registrationRepository.findByLearnerAndCourse(normalizedLearnerId, normalizedCourseId);
     if (!registration) {
       const error = new Error('Learner is not enrolled in this course');
@@ -482,9 +474,10 @@ export const cancelEnrollment = async (courseId, learnerId) => {
     // Delete the registration
     await registrationRepository.delete(registration.id);
 
-    // Remove from course studentsIDDictionary
-    const studentsDict = course.studentsIDDictionary || {};
-    if (studentsDict[normalizedLearnerId]) {
+    // Update course studentsIDDictionary - remove learner entry
+    const course = await courseRepository.findById(normalizedCourseId);
+    if (course && course.studentsIDDictionary) {
+      const studentsDict = { ...course.studentsIDDictionary };
       delete studentsDict[normalizedLearnerId];
       await courseRepository.update(normalizedCourseId, { studentsIDDictionary: studentsDict });
     }
@@ -493,7 +486,7 @@ export const cancelEnrollment = async (courseId, learnerId) => {
       status: 'cancelled',
       course_id: normalizedCourseId,
       learner_id: normalizedLearnerId,
-      message: 'Enrollment cancelled successfully'
+      cancelled_at: new Date().toISOString()
     };
   } catch (error) {
     console.error('Error cancelling enrollment:', error);

@@ -119,15 +119,15 @@ export const registerForCourse = async (req, res, next) => {
 };
 
 /**
- * Cancel enrollment for a learner
- * DELETE /api/v1/courses/:id/enroll
+ * Cancel enrollment for a course
+ * DELETE /api/v1/courses/:id/enrollment
  */
 export const cancelEnrollment = async (req, res, next) => {
   try {
     const { id: courseId } = req.params;
-    const { learner_id: learnerId } = req.body;
+    const { learner_id } = req.body;
 
-    if (!learnerId) {
+    if (!learner_id) {
       return res.status(400).json({
         error: 'Bad Request',
         message: 'learner_id is required'
@@ -141,14 +141,16 @@ export const cancelEnrollment = async (req, res, next) => {
       });
     }
 
-    const result = await coursesService.cancelEnrollment(courseId, learnerId);
+    const result = await coursesService.cancelEnrollment(courseId, {
+      learner_id
+    });
 
     res.status(200).json(result);
   } catch (error) {
     if (error.status === 404) {
       return res.status(404).json({
         error: 'Not Found',
-        message: error.message
+        message: error.message || 'Learner is not enrolled in this course'
       });
     }
     next(error);
@@ -530,7 +532,6 @@ export const coursesController = {
   browseCourses,
   getCourseDetails,
   registerForCourse,
-  cancelEnrollment,
   updateCourseProgress,
   createCourse,
   updateCourse,

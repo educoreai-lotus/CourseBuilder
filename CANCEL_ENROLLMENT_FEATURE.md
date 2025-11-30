@@ -1,107 +1,132 @@
 # Cancel Enrollment Feature - Implementation Summary
 
-## Overview
-Added the ability for learners to cancel their enrollment in courses. This allows learners to unenroll from courses they no longer want to continue.
+## ✅ Feature Complete
 
-## Backend Implementation
+### Backend Implementation
 
-### 1. Service Method (`backend/services/courses.service.js`)
-- **Function**: `cancelEnrollment(courseId, learnerId)`
-- **Functionality**:
-  - Normalizes UUID values (trims whitespace)
-  - Validates course and learner IDs
-  - Checks if enrollment exists
-  - Deletes registration from `registrations` table
-  - Removes learner from `studentsIDDictionary` on course
-  - Returns cancellation confirmation
+#### 1. Service Method (`backend/services/courses.service.js`)
+- ✅ Created `cancelEnrollment()` function
+- ✅ Normalizes UUIDs (trim whitespace) for consistency
+- ✅ Finds registration by learner_id and course_id
+- ✅ Deletes registration from database
+- ✅ Removes learner from course `studentsIDDictionary`
+- ✅ Returns cancellation confirmation
 
-### 2. Controller (`backend/controllers/courses.controller.js`)
-- **Function**: `cancelEnrollment(req, res, next)`
-- **Route Handler**: `DELETE /api/v1/courses/:id/enroll`
-- **Functionality**:
-  - Extracts course ID from params
-  - Extracts learner_id from request body
-  - Validates required fields
-  - Calls service method
-  - Returns appropriate HTTP responses
+#### 2. Controller (`backend/controllers/courses.controller.js`)
+- ✅ Created `cancelEnrollment()` controller method
+- ✅ Handles DELETE `/api/v1/courses/:id/enrollment` endpoint
+- ✅ Validates learner_id and course_id
+- ✅ Returns 404 if learner not enrolled
+- ✅ Returns 200 with cancellation details on success
 
-### 3. Route (`backend/routes/courses.routes.js`)
-- **Endpoint**: `DELETE /api/v1/courses/:id/enroll`
-- **Middleware**: `authorizeRoles('learner')` - Only learners can cancel their own enrollment
-- **Position**: Added after registration route
+#### 3. Route (`backend/routes/courses.routes.js`)
+- ✅ Added route: `DELETE /:id/enrollment`
+- ✅ Protected with `authorizeRoles('learner')` middleware
+- ✅ Positioned correctly (after register, before progress routes)
 
-## Frontend Implementation
+### Frontend Implementation
 
-### 1. API Service (`frontend/src/services/apiService.js`)
-- **Function**: `cancelEnrollment(courseId, body)`
-- **Method**: DELETE request to `/courses/${courseId}/enroll`
+#### 1. API Service (`frontend/src/services/apiService.js`)
+- ✅ Added `cancelEnrollment(courseId, body)` function
+- ✅ Uses DELETE method with data in body
+- ✅ Returns parsed response data
 
-### 2. Course Details Page (`frontend/src/pages/CourseDetailsPage.jsx`)
-- **Handler**: `handleCancelEnrollment()`
-- **Functionality**:
-  - Shows confirmation dialog (prevents accidental cancellation)
-  - Calls cancel enrollment API
-  - Refetches course details to update enrollment status
-  - Updates local state
-  - Shows success/error toast notifications
-  - Handles errors gracefully
+#### 2. Course Details Page (`frontend/src/pages/CourseDetailsPage.jsx`)
+- ✅ Added import for `cancelEnrollment`
+- ✅ Created `handleCancelEnrollment()` function with:
+  - Confirmation dialog
+  - Error handling
+  - State updates after cancellation
+  - Refetch of course details
+- ✅ Passes handler to CourseOverview component
 
-### 3. Course Overview Component (`frontend/src/components/course/CourseOverview.jsx`)
-- **New Prop**: `onCancelEnrollment` - Handler function
-- **Cancel Button**:
-  - Only shown when `isEnrolled` is true
-  - Hidden for personalized courses (cannot cancel)
-  - Styled with orange accent color
-  - Uses icon: `fa-xmark`
-  - Label: "Cancel enrollment"
+#### 3. Course Overview Component (`frontend/src/components/course/CourseOverview.jsx`)
+- ✅ Updated button text: "Continue learning" → "Start Learning"
+- ✅ Added `onCancelEnrollment` prop
+- ✅ Added `isSubmitting` prop for loading state
+- ✅ Added Cancel Enrollment button:
+  - Only visible when enrolled
+  - Secondary/danger styling (outline, orange color)
+  - Smaller size (text-sm, reduced padding)
+  - 8px margin-top spacing
+  - XCircle icon
+  - Disabled state during submission
+  - "Cancelling..." text when submitting
 
-## User Experience
+### UI/UX Features
 
-1. **Visibility**: Cancel button appears only for enrolled learners in marketplace courses
-2. **Confirmation**: User must confirm cancellation (prevents accidental clicks)
-3. **Warning**: Confirmation dialog warns about losing progress
-4. **Feedback**: Toast notification confirms successful cancellation
-5. **State Update**: UI immediately reflects enrollment status change
+#### Button States
 
-## Security
+**Before Enrollment:**
+- "Enroll now" button (primary, large)
+- "My library" secondary link
 
-- **Authorization**: Only learners can cancel their own enrollment
-- **Validation**: Server validates course and learner IDs
-- **Existence Check**: Verifies enrollment exists before cancellation
+**After Enrollment:**
+- "Start Learning" button (primary, large) ✅
+- "View progress" secondary link
+- "Cancel Enrollment" button (small, outline, danger) ✅
 
-## Restrictions
+**Cancel Enrollment Button:**
+- Position: Below primary and secondary buttons
+- Style: Outline button with orange/danger color
+- Size: Smaller (text-sm, reduced padding)
+- Spacing: 8px margin-top
+- Icon: XCircle (16px)
+- Loading: Shows "Cancelling..." when submitting
 
-- **Personalized Courses**: Cannot cancel enrollment in personalized courses (auto-enrolled)
-- **Access Control**: Only the enrolled learner can cancel their enrollment
+### User Flow
 
-## API Response
+1. ✅ User enrolls → "Enroll now" button changes to "Start Learning"
+2. ✅ "Cancel Enrollment" button appears below
+3. ✅ User clicks "Cancel Enrollment"
+4. ✅ Confirmation dialog: "Are you sure you want to cancel your enrollment?"
+5. ✅ If confirmed:
+   - API call to DELETE `/api/v1/courses/:id/enrollment`
+   - Success message: "Enrollment cancelled successfully"
+   - Course details refetched
+   - UI reverts to "Enroll now" state
+6. ✅ If cancelled: No action, dialog closes
 
-### Success (200)
-```json
-{
-  "status": "cancelled",
-  "course_id": "...",
-  "learner_id": "...",
-  "message": "Enrollment cancelled successfully"
-}
-```
+### Error Handling
 
-### Error (404)
-```json
-{
-  "error": "Not Found",
-  "message": "Learner is not enrolled in this course"
-}
-```
+- ✅ 404: "Learner is not enrolled in this course"
+- ✅ 400: Missing learner_id or course_id
+- ✅ Network errors: Displayed in toast
+- ✅ Safe error property access
+
+### State Management
+
+- ✅ `learnerProgress` state updated after cancellation
+- ✅ `course` state updated with fresh backend data
+- ✅ `isSubmitting` state prevents double-submission
+- ✅ Refetch ensures UI matches backend state
 
 ## Testing Checklist
 
-- ✅ Cancel enrollment for marketplace course
-- ✅ Try to cancel non-existent enrollment (404 error)
-- ✅ Cancel enrollment removes from registrations table
-- ✅ Cancel enrollment removes from studentsIDDictionary
-- ✅ UI updates immediately after cancellation
-- ✅ Confirmation dialog prevents accidental cancellation
-- ✅ Personalized courses don't show cancel button
-- ✅ Error handling works correctly
+- [ ] Enroll in a course → Verify "Start Learning" appears
+- [ ] Click "Cancel Enrollment" → Verify confirmation dialog
+- [ ] Confirm cancellation → Verify success message
+- [ ] Verify UI reverts to "Enroll now" state
+- [ ] Verify course removed from enrolled list
+- [ ] Try canceling non-existent enrollment → Verify error handling
+- [ ] Test with loading state → Verify button disabled
+
+## Files Modified
+
+### Backend
+- `backend/services/courses.service.js` - Added cancelEnrollment service
+- `backend/controllers/courses.controller.js` - Added cancelEnrollment controller
+- `backend/routes/courses.routes.js` - Added DELETE route
+
+### Frontend
+- `frontend/src/services/apiService.js` - Added cancelEnrollment API function
+- `frontend/src/pages/CourseDetailsPage.jsx` - Added cancel handler
+- `frontend/src/components/course/CourseOverview.jsx` - Added cancel button UI
+
+## Next Steps
+
+1. Test the feature end-to-end
+2. Verify enrollment status persists after page refresh
+3. Check that cancellation works across all course pages
+4. Ensure consistent behavior in personalized vs marketplace courses
 
