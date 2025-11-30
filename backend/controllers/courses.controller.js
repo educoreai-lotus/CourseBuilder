@@ -532,6 +532,7 @@ export const coursesController = {
   browseCourses,
   getCourseDetails,
   registerForCourse,
+  cancelEnrollment,
   updateCourseProgress,
   createCourse,
   updateCourse,

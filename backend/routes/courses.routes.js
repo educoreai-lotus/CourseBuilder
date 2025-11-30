@@ -1,5 +1,5 @@
 import express from 'express';
-import { coursesController } from '../controllers/courses.controller.js';
+import { coursesController, cancelEnrollment } from '../controllers/courses.controller.js';
 import { feedbackController } from '../controllers/feedback.controller.js';
 import { authorizeRoles } from '../middleware/auth.middleware.js';
 import { courseCreationLimiter } from '../middleware/rateLimiter.middleware.js';
@@ -55,7 +55,7 @@ router.post('/:id/register', authorizeRoles('learner'), coursesController.regist
  * DELETE /api/v1/courses/:id/enrollment
  * Cancel enrollment for a course
  */
-router.delete('/:id/enrollment', authorizeRoles('learner'), coursesController.cancelEnrollment);
+router.delete('/:id/enrollment', authorizeRoles('learner'), cancelEnrollment);
 
 /**
  * PATCH /api/v1/courses/:id/progress
