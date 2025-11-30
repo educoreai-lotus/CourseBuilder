@@ -188,7 +188,6 @@ export default function CourseOverview({
               View progress
             </Link>
           )
-        : null // Don't show "View progress" when not enrolled
         : (
             <Link to="/learner/enrolled" className="btn btn-secondary flex items-center justify-center gap-2">
               <BookOpen size={18} />
