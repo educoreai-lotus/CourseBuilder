@@ -22,6 +22,8 @@ export default function CourseDetailsPage() {
   const [isSubmitting, setSubmitting] = useState(false)
   const [learnerProgress, setLearnerProgress] = useState(null)
   const [hasFeedback, setHasFeedback] = useState(false)
+  // Dedicated enrollment state - synced with backend
+  const [isEnrolled, setIsEnrolled] = useState(false)
 
   const isPersonalizedFlow = useMemo(() => {
     const params = new URLSearchParams(location.search)
@@ -86,13 +88,13 @@ export default function CourseDetailsPage() {
       
       const progress = await personalizedProgress()
 
-      // Determine if course is enrolled
-      const isEnrolledCheck = courseIsPersonalized || progress?.is_enrolled
+      // Determine enrollment status from backend response
+      const enrollmentStatusFromBackend = courseIsPersonalized || (progress?.is_enrolled === true)
 
       // Check if learner has existing feedback
       // 404 is normal when no feedback exists yet - getMyFeedback returns null for 404
       let feedbackExists = false
-      if (learnerId && isEnrolledCheck) {
+      if (learnerId && enrollmentStatusFromBackend) {
         try {
           const feedbackData = await getMyFeedback(id)
           if (feedbackData && typeof feedbackData === 'object' && (feedbackData.id || feedbackData.rating)) {
@@ -108,6 +110,10 @@ export default function CourseDetailsPage() {
       setCourse(enrichedCourse)
       setLearnerProgress(progress)
       setHasFeedback(feedbackExists)
+      
+      // Set enrollment state from backend response (source of truth)
+      const enrollmentStatus = courseIsPersonalized || (progress?.is_enrolled === true)
+      setIsEnrolled(enrollmentStatus)
     } catch (err) {
       const message = err.message || 'Failed to load course'
       setError(message)
@@ -124,8 +130,7 @@ export default function CourseDetailsPage() {
   // Determine if course is personalized (declare once)
   const isPersonalizedCourse = isPersonalizedFlow || metadataPersonalized
 
-  // Personalized courses are automatically enrolled - no enrollment needed
-  const isEnrolled = isPersonalizedCourse || learnerProgress?.is_enrolled
+  // Note: isEnrolled is now a state variable, set from backend response
 
   // Get first lesson ID for navigation - MUST be before any early returns
   const flattenedLessons = useMemo(() => {
@@ -158,7 +163,9 @@ export default function CourseDetailsPage() {
       return
     }
 
+    // Prevent re-enrollment if already enrolled
     if (isEnrolled) {
+      showToast('You are already enrolled in this course.', 'info')
       if (firstLessonId) {
         navigate(`/course/${id}/lesson/${firstLessonId}`)
       } else {
@@ -190,15 +197,19 @@ export default function CourseDetailsPage() {
       // Use the enrollment status from backend response (trust backend data)
       if (updatedCourse?.learner_progress) {
         setLearnerProgress(updatedCourse.learner_progress)
+        // Update enrollment state from backend response
+        setIsEnrolled(updatedCourse.learner_progress.is_enrolled === true)
       } else {
         // Fallback if backend doesn't return learner_progress yet
-        setLearnerProgress({
+        const fallbackProgress = {
           is_enrolled: true,
           registration_id: response.registration_id,
           progress: response.progress ?? 0,
           status: 'in_progress',
           completed_lessons: []
-        })
+        }
+        setLearnerProgress(fallbackProgress)
+        setIsEnrolled(true) // Set enrollment state
       }
       
       // Update course data as well to reflect enrollment status
@@ -241,14 +252,16 @@ export default function CourseDetailsPage() {
       }
       
       if (is409) {
-        // Already enrolled - refetch course details to get actual enrollment status
+        // Already enrolled (409) - refetch course details to get actual enrollment status
         try {
           const params = learnerId ? { learner_id: learnerId } : undefined
           const updatedCourse = await getCourseById(id, params)
           if (updatedCourse?.learner_progress) {
             setLearnerProgress(updatedCourse.learner_progress)
+            setIsEnrolled(updatedCourse.learner_progress.is_enrolled === true)
             setCourse(updatedCourse)
           } else {
+            // Assume enrolled if we got 409
             setLearnerProgress((prev) => prev || {
               is_enrolled: true,
               registration_id: null,
@@ -256,9 +269,11 @@ export default function CourseDetailsPage() {
               status: 'in_progress',
               completed_lessons: []
             })
+            setIsEnrolled(true)
           }
         } catch (refetchErr) {
           console.warn('Failed to refetch course details after enrollment:', refetchErr)
+          // Assume enrolled if we got 409
           setLearnerProgress((prev) => prev || {
             is_enrolled: true,
             registration_id: null,
@@ -266,6 +281,7 @@ export default function CourseDetailsPage() {
             status: 'in_progress',
             completed_lessons: []
           })
+          setIsEnrolled(true)
         }
         showToast('You are already enrolled in this course.', 'info')
         setModalOpen(false)
@@ -307,14 +323,17 @@ export default function CourseDetailsPage() {
       const params = learnerId ? { learner_id: learnerId } : undefined
       const updatedCourse = await getCourseById(id, params)
       
-      // Update enrollment status
+      // Update enrollment status from backend
       if (updatedCourse?.learner_progress) {
         setLearnerProgress(updatedCourse.learner_progress)
+        setIsEnrolled(updatedCourse.learner_progress.is_enrolled === true)
       } else {
+        // Enrollment cancelled - set to false
         setLearnerProgress({
           is_enrolled: false,
           completed_lessons: []
         })
+        setIsEnrolled(false) // Update enrollment state
       }
       
       // Update course data
@@ -407,7 +426,14 @@ export default function CourseDetailsPage() {
                 <CourseOverview
                   course={course}
                   isEnrolled={isEnrolled}
-                  onEnrollClick={() => setModalOpen(true)}
+                  onEnrollClick={() => {
+                    // Prevent opening modal if already enrolled
+                    if (isEnrolled) {
+                      showToast('You are already enrolled in this course.', 'info')
+                      return
+                    }
+                    setModalOpen(true)
+                  }}
                   onCancelEnrollment={handleCancelEnrollment}
                   isSubmitting={isSubmitting}
                   onContinue={
