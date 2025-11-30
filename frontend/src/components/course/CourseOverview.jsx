@@ -149,14 +149,28 @@ export default function CourseOverview({
         )
       : isEnrolled
         ? (
-            <button
-              type="button"
-              className="btn btn-primary flex items-center justify-center gap-2"
-              onClick={onContinue}
-            >
-              <PlayCircle size={18} />
-              Continue learning
-            </button>
+            onCancelEnrollment && !personalized
+              ? (
+                  <button
+                    type="button"
+                    className="btn btn-outline flex items-center justify-center gap-2"
+                    onClick={onCancelEnrollment}
+                    style={{ color: 'var(--accent-orange)', borderColor: 'var(--accent-orange)' }}
+                  >
+                    <i className="fa-solid fa-xmark" aria-hidden="true" />
+                    Cancel enrollment
+                  </button>
+                )
+              : (
+                  <button
+                    type="button"
+                    className="btn btn-primary flex items-center justify-center gap-2"
+                    onClick={onContinue}
+                  >
+                    <PlayCircle size={18} />
+                    Continue learning
+                  </button>
+                )
           )
         : (
             <button
@@ -180,23 +194,23 @@ export default function CourseOverview({
         )
       : isEnrolled
         ? (
-            <div className="flex flex-col gap-2">
-              <Link to="/learner/enrolled" className="btn btn-secondary flex items-center justify-center gap-2">
-                <CheckCircle2 size={18} />
-                View progress
-              </Link>
-              {onCancelEnrollment && !personalized && (
-                <button
-                  type="button"
-                  className="btn btn-outline flex items-center justify-center gap-2"
-                  onClick={onCancelEnrollment}
-                  style={{ color: 'var(--accent-orange)', borderColor: 'var(--accent-orange)' }}
-                >
-                  <i className="fa-solid fa-xmark" aria-hidden="true" />
-                  Cancel enrollment
-                </button>
-              )}
-            </div>
+            onCancelEnrollment && !personalized
+              ? (
+                  <button
+                    type="button"
+                    className="btn btn-primary flex items-center justify-center gap-2"
+                    onClick={onContinue}
+                  >
+                    <PlayCircle size={18} />
+                    Continue learning
+                  </button>
+                )
+              : (
+                  <Link to="/learner/enrolled" className="btn btn-secondary flex items-center justify-center gap-2">
+                    <CheckCircle2 size={18} />
+                    View progress
+                  </Link>
+                )
           )
         : (
             <Link to="/learner/enrolled" className="btn btn-secondary flex items-center justify-center gap-2">

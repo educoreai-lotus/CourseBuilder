@@ -317,7 +317,7 @@ export default function CourseDetailsPage() {
         setCourse(updatedCourse)
       }
       
-      showToast('Enrollment cancelled successfully.', 'success')
+      showToast('Enrollment cancelled successfully. Course removed from your library.', 'success')
     } catch (err) {
       let errorMsg = 'Failed to cancel enrollment'
       
