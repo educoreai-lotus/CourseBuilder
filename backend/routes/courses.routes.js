@@ -37,8 +37,23 @@ router.get('/', coursesController.browseCourses);
  * GET /api/v1/courses/:id/enrollment-status
  * Get enrollment status for a learner in a course
  * Query param: learner_id
+ * Must be before /:id route
  */
 router.get('/:id/enrollment-status', coursesController.getEnrollmentStatus);
+
+/**
+ * GET /api/v1/courses/:id/feedback/self
+ * Retrieve the authenticated learner's feedback for a course
+ * Must be before /:id route to avoid conflicts
+ */
+router.get('/:id/feedback/self', authorizeRoles('learner'), feedbackController.getLearnerFeedback);
+
+/**
+ * GET /api/v1/courses/:id/feedback/analytics
+ * Get feedback analytics for trainers
+ * Must be before /:id route to avoid conflicts
+ */
+router.get('/:id/feedback/analytics', feedbackController.getFeedbackAnalytics);
 
 /**
  * GET /api/v1/courses/:id
@@ -99,12 +114,6 @@ router.post('/:id/unpublish', authorizeRoles('trainer', 'admin'), coursesControl
  * Get course version history (Trainer/Admin)
  */
 router.get('/:id/versions', coursesController.getCourseVersions);
-
-/**
- * GET /api/v1/courses/:id/feedback/analytics
- * Get feedback analytics for trainers
- */
-router.get('/:id/feedback/analytics', feedbackController.getFeedbackAnalytics);
 
 export default router;
 
