@@ -134,8 +134,9 @@ export default function CourseOverview({
   const selectedBackLink = backLink ?? (personalized ? '/learner/personalized' : '/learner/marketplace')
   const instructorName = course?.trainer_name || course?.instructor || learnerProfile?.name || 'Expert instructor'
 
-  const progressPercent = progressSummary?.progress ?? 0
-  const completedLessons = progressSummary?.completed_lessons?.length || 0
+  // Use prop values as source of truth, fallback to progressSummary for backward compatibility
+  const progressPercent = progress ?? (progressSummary?.progress ?? 0)
+  const completedLessonsCount = completedLessons ?? (progressSummary?.completed_lessons?.length || 0)
   const coursePrice = course?.price ?? 0
 
   // 3-STATE ENROLLMENT SYSTEM
@@ -381,7 +382,7 @@ export default function CourseOverview({
                 }}>
                   <div className="flex items-center gap-2 font-semibold">
                     <CheckCircle2 size={16} />
-                    Progress {Math.round(progress)}% · {completedLessons} lesson{completedLessons !== 1 ? 's' : ''} complete
+                    Progress {Math.round(progress)}% · {completedLessonsCount} lesson{completedLessonsCount !== 1 ? 's' : ''} complete
                   </div>
                   <p className="mt-2 text-xs" style={{ color: 'var(--accent-green)' }}>
                     {personalized
