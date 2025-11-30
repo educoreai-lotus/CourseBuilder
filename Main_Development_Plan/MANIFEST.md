@@ -5,7 +5,7 @@ This repository contains the Main Development Plan system (v12 Final Structured 
 ## Root Files
 - `VERSION`: System version
 - `LICENSE`: MIT license
-- `MANIFEST.md`: This file
+- `MANIFEST.md`: This file..
 - `ROADMAP.md`: Rolling project roadmap with stage updates
 - `MainDevelopmentPlan.md`: Master guide and operating instructions
 
