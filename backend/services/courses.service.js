@@ -6,11 +6,12 @@ import moduleRepository from '../repositories/ModuleRepository.js';
 import topicRepository from '../repositories/TopicRepository.js';
 import versionRepository from '../repositories/VersionRepository.js';
 import { v4 as uuidv4 } from 'uuid';
+import { cache, cached } from './cache.service.js';
 
 /**
- * Browse courses with filters
+ * Browse courses with filters (internal, no cache)
  */
-export const browseCourses = async ({ search, category, level, sort, page, limit, role }) => {
+const _browseCoursesInternal = async ({ search, category, level, sort, page, limit, role }) => {
   try {
     const normalizedRole = typeof role === 'string' ? role.toLowerCase() : null;
     const isPrivilegedViewer = normalizedRole === 'trainer' || normalizedRole === 'admin';
@@ -137,9 +138,9 @@ export const browseCourses = async ({ search, category, level, sort, page, limit
 };
 
 /**
- * Get course details with full structure
+ * Get course details with full structure (internal, no cache)
  */
-export const getCourseDetails = async (courseId, options = {}) => {
+const _getCourseDetailsInternal = async (courseId, options = {}) => {
   try {
     const { learnerId, role } = options;
     const normalizedRole = typeof role === 'string' ? role.toLowerCase() : null;
@@ -334,6 +335,20 @@ export const getCourseDetails = async (courseId, options = {}) => {
 };
 
 /**
+ * Get course details with full structure (with caching)
+ */
+export const getCourseDetails = cached(
+  _getCourseDetailsInternal,
+  {
+    keyPrefix: 'courses',
+    ttl: 600, // 10 minutes cache
+    keyGenerator: (courseId, options = {}) => {
+      return `courses:details:${courseId}:${JSON.stringify(options)}`;
+    }
+  }
+);
+
+/**
  * Register a learner for a course
  */
 export const registerLearner = async (courseId, { learner_id, learner_name, learner_company, company_id }) => {
@@ -480,6 +495,25 @@ export const updateLessonProgress = async (courseId, { learner_id, lesson_id, co
       }
       await courseRepository.update(courseId, { studentsIDDictionary: studentsDict });
 
+      // Trigger course completion events (credential issuance, analytics, etc.)
+      // Only trigger if this is a new completion (progress just reached 100%)
+      if (progress >= 100 && status === 'completed' && registration.status !== 'completed') {
+        // Import here to avoid circular dependencies - run asynchronously
+        import('./courseCompletion.service.js')
+          .then(({ triggerCourseCompletion }) => {
+            return triggerCourseCompletion({
+              courseId,
+              courseName: course.course_name,
+              learnerId,
+              completedAt: new Date()
+            });
+          })
+          .catch(error => {
+            console.error('[Courses] Error triggering completion events:', error);
+            // Don't block the progress update
+          });
+      }
+
       const completedLessonIds = Object.entries(completionDict)
         .filter(([_, lessonData]) => lessonData[learner_id] && lessonData[learner_id].status === 'completed')
         .map(([lessonId, _]) => lessonId);
@@ -590,6 +624,13 @@ export const updateCourse = async (courseId, updates) => {
 
     const updatedCourse = await courseRepository.update(courseId, updateData);
 
+    // Invalidate cache for this course
+    await cache.del(`courses:details:${courseId}:*`);
+    const cacheKeys = await cache.keys(`courses:browse:*`);
+    for (const key of cacheKeys) {
+      await cache.del(key);
+    }
+
     // Create new version
     const latestVersion = await versionRepository.findLatestVersion('course', courseId);
     const versionNumber = latestVersion ? latestVersion.version_number + 1 : 1;
@@ -633,6 +674,35 @@ export const publishCourse = async (courseId) => {
     }
 
     await courseRepository.update(courseId, { status: 'active' });
+
+    // Invalidate cache for this course
+    await cache.del(`courses:details:${courseId}:*`);
+    await cache.del(`courses:browse:*`);
+
+    // Push to RAG service (async, non-blocking)
+    if (process.env.ENABLE_RAG !== 'false') {
+      import('../integration/clients/ragClient.js')
+        .then(async ({ pushToRAG }) => {
+          // Get full course structure for RAG
+          const topics = await topicRepository.findByCourseId(courseId);
+          const allModules = [];
+          for (const topic of topics) {
+            const topicModules = await moduleRepository.findByTopicId(topic.id);
+            allModules.push(...topicModules);
+          }
+          // Get lessons for all modules
+          const allLessons = [];
+          for (const module of allModules) {
+            const moduleLessons = await lessonRepository.findByModuleId(module.id);
+            allLessons.push(...moduleLessons);
+          }
+          return pushToRAG(course, topics, allModules, allLessons);
+        })
+        .catch(error => {
+          console.error('[Courses] Error pushing to RAG:', error);
+          // Don't block publishing
+        });
+    }
 
     // Update latest version
     const latestVersion = await versionRepository.findLatestVersion('course', courseId);
@@ -876,6 +946,20 @@ export const getLearnerProgress = async (learnerId) => {
     throw error;
   }
 };
+
+/**
+ * Browse courses with filters (with caching)
+ */
+export const browseCourses = cached(
+  _browseCoursesInternal,
+  {
+    keyPrefix: 'courses',
+    ttl: 300, // 5 minutes cache
+    keyGenerator: ({ search, category, level, sort, page, limit, role }) => {
+      return `courses:browse:${JSON.stringify({ search, category, level, sort, page, limit, role })}`;
+    }
+  }
+);
 
 /**
  * Get available filter values

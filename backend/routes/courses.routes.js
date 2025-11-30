@@ -2,6 +2,7 @@ import express from 'express';
 import { coursesController } from '../controllers/courses.controller.js';
 import { feedbackController } from '../controllers/feedback.controller.js';
 import { authorizeRoles } from '../middleware/auth.middleware.js';
+import { courseCreationLimiter } from '../middleware/rateLimiter.middleware.js';
 
 const router = express.Router();
 
@@ -23,7 +24,7 @@ router.get('/learners/:learnerId/progress', coursesController.getLearnerProgress
  * POST /api/v1/courses
  * Create a new course draft (Trainer/Admin)
  */
-router.post('/', authorizeRoles('trainer', 'admin'), coursesController.createCourse);
+router.post('/', courseCreationLimiter, authorizeRoles('trainer', 'admin'), coursesController.createCourse);
 
 /**
  * GET /api/v1/courses

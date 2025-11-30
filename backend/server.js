@@ -10,6 +10,9 @@ import integrationRoutes from './routes/integration.routes.js';
 import enrichmentRoutes from './routes/enrichmentRoutes.js';
 import enrichmentAssetsRoutes from './routes/enrichmentAssetsRoutes.js';
 import { authenticateRequest } from './middleware/auth.middleware.js';
+import { apiLimiter } from './middleware/rateLimiter.middleware.js';
+import { startScheduledPublishingJob } from './services/scheduledPublishing.service.js';
+import { initCache } from './services/cache.service.js';
 
 dotenv.config();
 
@@ -63,6 +66,9 @@ app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Rate limiting middleware (applied before authentication)
+app.use('/api', apiLimiter);
+
 // Authentication middleware
 app.use(authenticateRequest);
 
@@ -114,14 +120,58 @@ app.use((err, req, res, next) => {
 
 // Start server
 let serverInstance;
+let scheduledJobCleanup = null;
 
 if (process.env.NODE_ENV !== 'test') {
-  serverInstance = app.listen(PORT, () => {
-    console.log(`🚀 Course Builder API server running on port ${PORT}`);
-    console.log(`📝 Environment: ${process.env.NODE_ENV || 'development'}`);
-    console.log(`🔗 Health check: http://localhost:${PORT}/health`);
+  // Initialize cache and start server
+  initCache().then(() => {
+    serverInstance = app.listen(PORT, () => {
+      console.log(`🚀 Course Builder API server running on port ${PORT}`);
+      console.log(`📝 Environment: ${process.env.NODE_ENV || 'development'}`);
+      console.log(`🔗 Health check: http://localhost:${PORT}/health`);
+      
+      // Start scheduled publishing job
+      scheduledJobCleanup = startScheduledPublishingJob();
+    });
+  }).catch(error => {
+    console.error('Error initializing cache:', error);
+    // Start server anyway (cache is optional)
+    serverInstance = app.listen(PORT, () => {
+      console.log(`🚀 Course Builder API server running on port ${PORT}`);
+      console.log(`📝 Environment: ${process.env.NODE_ENV || 'development'}`);
+      console.log(`🔗 Health check: http://localhost:${PORT}/health`);
+      
+      scheduledJobCleanup = startScheduledPublishingJob();
+    });
   });
 }
+
+// Graceful shutdown
+process.on('SIGTERM', () => {
+  console.log('SIGTERM received, shutting down gracefully...');
+  if (scheduledJobCleanup) {
+    scheduledJobCleanup();
+  }
+  if (serverInstance) {
+    serverInstance.close(() => {
+      console.log('Server closed');
+      process.exit(0);
+    });
+  }
+});
+
+process.on('SIGINT', () => {
+  console.log('SIGINT received, shutting down gracefully...');
+  if (scheduledJobCleanup) {
+    scheduledJobCleanup();
+  }
+  if (serverInstance) {
+    serverInstance.close(() => {
+      console.log('Server closed');
+      process.exit(0);
+    });
+  }
+});
 
 export const server = serverInstance;
 export default app;

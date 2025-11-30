@@ -1,6 +1,7 @@
 import express from 'express';
 import { feedbackController } from '../controllers/feedback.controller.js';
 import { authorizeRoles } from '../middleware/auth.middleware.js';
+import { feedbackLimiter } from '../middleware/rateLimiter.middleware.js';
 
 const router = express.Router();
 
@@ -8,7 +9,7 @@ const router = express.Router();
  * POST /api/v1/courses/:id/feedback
  * Submit feedback for a course
  */
-router.post('/courses/:id/feedback', authorizeRoles('learner'), feedbackController.submitFeedback);
+router.post('/courses/:id/feedback', feedbackLimiter, authorizeRoles('learner'), feedbackController.submitFeedback);
 
 /**
  * GET /api/v1/courses/:id/feedback/self

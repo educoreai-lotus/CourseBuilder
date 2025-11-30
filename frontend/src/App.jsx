@@ -4,6 +4,7 @@ import Header from './components/Header.jsx'
 import AccessibilityControls from './components/AccessibilityControls.jsx'
 import ChatbotWidget from './components/ChatbotWidget.jsx'
 import Toast from './components/Toast.jsx'
+import ErrorBoundary from './components/ErrorBoundary.jsx'
 import CoursesPage from './pages/CoursesPage.jsx'
 import CourseDetailsPage from './pages/CourseDetailsPage.jsx'
 import LessonPage from './pages/LessonPage.jsx'
@@ -97,8 +98,10 @@ function AppShell() {
 
 export default function App() {
   return (
-    <AppProvider>
-      <AppShell />
-    </AppProvider>
+    <ErrorBoundary>
+      <AppProvider>
+        <AppShell />
+      </AppProvider>
+    </ErrorBoundary>
   )
 }
