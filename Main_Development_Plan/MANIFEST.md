@@ -1,6 +1,6 @@
 # MANIFEST
 
-This repository contains the Main Development Plan system (v12 Final Structured Edition).
+This repository contains the Main Development Plan system (v12 Final Structured Edition)...
 
 ## Root Files
 - `VERSION`: System version
