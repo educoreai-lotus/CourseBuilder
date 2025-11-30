@@ -9,6 +9,12 @@ import { v4 as uuidv4 } from 'uuid';
 export class RegistrationRepository {
   async create(registrationData) {
     const registrationId = uuidv4();
+    
+    // Normalize UUID values to ensure consistency
+    const normalizedLearnerId = registrationData.learner_id?.trim();
+    const normalizedCourseId = registrationData.course_id?.trim();
+    const normalizedCompanyId = registrationData.company_id?.trim() || null;
+    
     const query = `
       INSERT INTO registrations (
         id, learner_id, learner_name, course_id, company_id, company_name, status, enrolled_date
@@ -17,11 +23,11 @@ export class RegistrationRepository {
     `;
     const values = [
       registrationId,
-      registrationData.learner_id,
-      registrationData.learner_name || null,
-      registrationData.course_id,
-      registrationData.company_id || null,
-      registrationData.company_name || null,
+      normalizedLearnerId,
+      registrationData.learner_name?.trim() || null,
+      normalizedCourseId,
+      normalizedCompanyId,
+      registrationData.company_name?.trim() || null,
       registrationData.status || 'in_progress',
       registrationData.enrolled_date || new Date()
     ];
@@ -36,8 +42,12 @@ export class RegistrationRepository {
   }
 
   async findByLearnerAndCourse(learnerId, courseId) {
+    // Normalize UUID values (trim whitespace, convert to lowercase for consistency)
+    const normalizedLearnerId = learnerId?.trim();
+    const normalizedCourseId = courseId?.trim();
+    
     const query = 'SELECT * FROM registrations WHERE learner_id = $1 AND course_id = $2';
-    const row = await db.oneOrNone(query, [learnerId, courseId]);
+    const row = await db.oneOrNone(query, [normalizedLearnerId, normalizedCourseId]);
     return row ? Registration.fromRow(row) : null;
   }
 

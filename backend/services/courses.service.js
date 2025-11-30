@@ -225,15 +225,33 @@ const _getCourseDetailsInternal = async (courseId, options = {}) => {
     let learnerProgress = null;
 
     if (learnerId) {
-      const registration = await registrationRepository.findByLearnerAndCourse(learnerId, courseId);
+      // Normalize learner_id (trim whitespace, ensure proper UUID format)
+      const normalizedLearnerId = learnerId?.trim();
+      
+      // Check registration table first (primary source)
+      let registration = await registrationRepository.findByLearnerAndCourse(normalizedLearnerId, courseId);
 
-      if (registration) {
+      // Fallback: Check studentsIDDictionary if registration not found
+      // This handles edge cases where registration exists but query fails
+      let enrollmentFromDict = null;
+      if (!registration) {
+        const studentsDict = course.studentsIDDictionary || {};
+        enrollmentFromDict = studentsDict[normalizedLearnerId] || studentsDict[learnerId];
+      }
+
+      // Determine enrollment status
+      const isEnrolled = !!registration || !!enrollmentFromDict;
+
+      if (isEnrolled) {
         // Get completed lessons from lesson_completion_dictionary
         const completionDict = course.lesson_completion_dictionary || {};
         const completedLessons = [];
         
         for (const [lessonId, lessonData] of Object.entries(completionDict)) {
-          if (lessonData[learnerId] && lessonData[learnerId].status === 'completed') {
+          // Check both normalized and original learner_id formats
+          if (lessonData[normalizedLearnerId] && lessonData[normalizedLearnerId].status === 'completed') {
+            completedLessons.push(lessonId);
+          } else if (lessonData[learnerId] && lessonData[learnerId].status === 'completed') {
             completedLessons.push(lessonId);
           }
         }
@@ -254,11 +272,16 @@ const _getCourseDetailsInternal = async (courseId, options = {}) => {
 
         learnerProgress = {
           is_enrolled: true,
-          registration_id: registration.id,
+          registration_id: registration?.id || null,
           progress: Number(progress.toFixed(2)),
-          status: registration.status,
+          status: registration?.status || enrollmentFromDict?.status || 'in_progress',
           completed_lessons: completedLessons
         };
+
+        // Log if enrollment found via fallback (indicates potential issue)
+        if (!registration && enrollmentFromDict) {
+          console.warn(`[Enrollment] Registration not found in table but found in studentsIDDictionary for learner ${normalizedLearnerId} in course ${courseId}`);
+        }
       } else {
         learnerProgress = {
           is_enrolled: false,
@@ -353,41 +376,57 @@ export const getCourseDetails = cached(
  */
 export const registerLearner = async (courseId, { learner_id, learner_name, learner_company, company_id }) => {
   try {
+    // Normalize IDs to ensure consistency
+    const normalizedLearnerId = learner_id?.trim();
+    const normalizedCourseId = courseId?.trim();
+    
+    if (!normalizedLearnerId) {
+      const error = new Error('Learner ID is required');
+      error.status = 400;
+      throw error;
+    }
+
+    if (!normalizedCourseId) {
+      const error = new Error('Course ID is required');
+      error.status = 400;
+      throw error;
+    }
+
     // Check if course exists and is active
-    const course = await courseRepository.findById(courseId);
+    const course = await courseRepository.findById(normalizedCourseId);
     if (!course || course.status !== 'active') {
       const error = new Error('Course not found or not available');
       error.status = 404;
       throw error;
     }
 
-    // Check if already registered
-    const existing = await registrationRepository.findByLearnerAndCourse(learner_id, courseId);
+    // Check if already registered (with normalized IDs)
+    const existing = await registrationRepository.findByLearnerAndCourse(normalizedLearnerId, normalizedCourseId);
     if (existing) {
       const error = new Error('Learner is already registered for this course');
       error.code = '23505';
       throw error;
     }
 
-    // Create registration
+    // Create registration (repository will normalize IDs)
     const registration = await registrationRepository.create({
-      learner_id,
-      learner_name,
-      learner_company: learner_company || company_id || null,
-      course_id: courseId,
-      company_id: company_id || null,
+      learner_id: normalizedLearnerId,
+      learner_name: learner_name?.trim(),
+      learner_company: learner_company?.trim() || company_id?.trim() || null,
+      course_id: normalizedCourseId,
+      company_id: company_id?.trim() || null,
       status: 'in_progress'
     });
 
-    // Update course studentsIDDictionary
+    // Update course studentsIDDictionary (use normalized learner_id as key)
     const studentsDict = course.studentsIDDictionary || {};
-    studentsDict[learner_id] = {
+    studentsDict[normalizedLearnerId] = {
       status: 'in_progress',
       enrolled_date: new Date().toISOString(),
       completed_date: null,
       completion_reason: null
     };
-    await courseRepository.update(courseId, { studentsIDDictionary: studentsDict });
+    await courseRepository.update(normalizedCourseId, { studentsIDDictionary: studentsDict });
 
     return {
       status: 'registered',
