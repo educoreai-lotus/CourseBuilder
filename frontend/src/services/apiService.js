@@ -69,6 +69,10 @@ export function registerLearner(courseId, body) {
   return api.post(`/courses/${courseId}/register`, body).then(r => r.data)
 }
 
+export function cancelEnrollment(courseId, body) {
+  return api.delete(`/courses/${courseId}/enroll`, { data: body }).then(r => r.data)
+}
+
 export function submitFeedback(courseId, body) {
   return api.post(`/courses/${courseId}/feedback`, body).then(r => r.data)
 }

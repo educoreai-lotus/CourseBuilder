@@ -443,6 +443,65 @@ export const registerLearner = async (courseId, { learner_id, learner_name, lear
 };
 
 /**
+ * Cancel enrollment for a learner
+ */
+export const cancelEnrollment = async (courseId, learnerId) => {
+  try {
+    // Normalize IDs
+    const normalizedLearnerId = learnerId?.trim();
+    const normalizedCourseId = courseId?.trim();
+    
+    if (!normalizedLearnerId) {
+      const error = new Error('Learner ID is required');
+      error.status = 400;
+      throw error;
+    }
+
+    if (!normalizedCourseId) {
+      const error = new Error('Course ID is required');
+      error.status = 400;
+      throw error;
+    }
+
+    // Check if course exists
+    const course = await courseRepository.findById(normalizedCourseId);
+    if (!course) {
+      const error = new Error('Course not found');
+      error.status = 404;
+      throw error;
+    }
+
+    // Find existing registration
+    const registration = await registrationRepository.findByLearnerAndCourse(normalizedLearnerId, normalizedCourseId);
+    if (!registration) {
+      const error = new Error('Learner is not enrolled in this course');
+      error.status = 404;
+      throw error;
+    }
+
+    // Delete the registration
+    await registrationRepository.delete(registration.id);
+
+    // Remove from course studentsIDDictionary
+    const studentsDict = course.studentsIDDictionary || {};
+    if (studentsDict[normalizedLearnerId]) {
+      delete studentsDict[normalizedLearnerId];
+      await courseRepository.update(normalizedCourseId, { studentsIDDictionary: studentsDict });
+    }
+
+    return {
+      status: 'cancelled',
+      course_id: normalizedCourseId,
+      learner_id: normalizedLearnerId,
+      message: 'Enrollment cancelled successfully'
+    };
+  } catch (error) {
+    console.error('Error cancelling enrollment:', error);
+    throw error;
+  }
+};
+
+/**
  * Update lesson progress for a learner
  */
 export const updateLessonProgress = async (courseId, { learner_id, lesson_id, completed = true }) => {
@@ -1028,6 +1087,7 @@ export const coursesService = {
   createCourse,
   updateCourse,
   registerLearner,
+  cancelEnrollment,
   updateLessonProgress,
   publishCourse,
   schedulePublishing,

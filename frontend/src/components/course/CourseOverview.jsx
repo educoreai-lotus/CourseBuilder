@@ -99,6 +99,7 @@ export default function CourseOverview({
   course,
   isEnrolled,
   onEnrollClick,
+  onCancelEnrollment,
   onContinue,
   showStructureCta = true,
   learnerProfile,
@@ -179,10 +180,23 @@ export default function CourseOverview({
         )
       : isEnrolled
         ? (
-            <Link to="/learner/enrolled" className="btn btn-secondary flex items-center justify-center gap-2">
-              <CheckCircle2 size={18} />
-              View progress
-            </Link>
+            <div className="flex flex-col gap-2">
+              <Link to="/learner/enrolled" className="btn btn-secondary flex items-center justify-center gap-2">
+                <CheckCircle2 size={18} />
+                View progress
+              </Link>
+              {onCancelEnrollment && !personalized && (
+                <button
+                  type="button"
+                  className="btn btn-outline flex items-center justify-center gap-2"
+                  onClick={onCancelEnrollment}
+                  style={{ color: 'var(--accent-orange)', borderColor: 'var(--accent-orange)' }}
+                >
+                  <i className="fa-solid fa-xmark" aria-hidden="true" />
+                  Cancel enrollment
+                </button>
+              )}
+            </div>
           )
         : (
             <Link to="/learner/enrolled" className="btn btn-secondary flex items-center justify-center gap-2">

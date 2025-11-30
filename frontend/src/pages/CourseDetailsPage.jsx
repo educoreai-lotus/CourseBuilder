@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
-import { getCourseById, registerLearner, getMyFeedback } from '../services/apiService.js'
+import { getCourseById, registerLearner, cancelEnrollment, getMyFeedback } from '../services/apiService.js'
 import LoadingSpinner from '../components/LoadingSpinner.jsx'
 import CourseOverview from '../components/course/CourseOverview.jsx'
 import CourseStructureSidebar from '../components/course/CourseStructureSidebar.jsx'
@@ -179,13 +179,33 @@ export default function CourseDetailsPage() {
         learner_name: userProfile?.name,
         learner_company: userProfile?.company
       })
-      setLearnerProgress({
-        is_enrolled: true,
-        registration_id: response.registration_id,
-        progress: response.progress ?? 0,
-        status: 'in_progress',
-        completed_lessons: []
-      })
+      
+      // Wait a brief moment for database transaction to commit
+      await new Promise(resolve => setTimeout(resolve, 200))
+      
+      // Refetch course details to get updated enrollment status from backend
+      const params = learnerId ? { learner_id: learnerId } : undefined
+      const updatedCourse = await getCourseById(id, params)
+      
+      // Use the enrollment status from backend response (trust backend data)
+      if (updatedCourse?.learner_progress) {
+        setLearnerProgress(updatedCourse.learner_progress)
+      } else {
+        // Fallback if backend doesn't return learner_progress yet
+        setLearnerProgress({
+          is_enrolled: true,
+          registration_id: response.registration_id,
+          progress: response.progress ?? 0,
+          status: 'in_progress',
+          completed_lessons: []
+        })
+      }
+      
+      // Update course data as well to reflect enrollment status
+      if (updatedCourse) {
+        setCourse(updatedCourse)
+      }
+      
       showToast('Enrollment confirmed! You can now explore the full course structure.', 'success')
       setModalOpen(false)
       if (firstLessonId) {
@@ -221,14 +241,33 @@ export default function CourseDetailsPage() {
       }
       
       if (is409) {
+        // Already enrolled - refetch course details to get actual enrollment status
+        try {
+          const params = learnerId ? { learner_id: learnerId } : undefined
+          const updatedCourse = await getCourseById(id, params)
+          if (updatedCourse?.learner_progress) {
+            setLearnerProgress(updatedCourse.learner_progress)
+            setCourse(updatedCourse)
+          } else {
+            setLearnerProgress((prev) => prev || {
+              is_enrolled: true,
+              registration_id: null,
+              progress: 0,
+              status: 'in_progress',
+              completed_lessons: []
+            })
+          }
+        } catch (refetchErr) {
+          console.warn('Failed to refetch course details after enrollment:', refetchErr)
+          setLearnerProgress((prev) => prev || {
+            is_enrolled: true,
+            registration_id: null,
+            progress: 0,
+            status: 'in_progress',
+            completed_lessons: []
+          })
+        }
         showToast('You are already enrolled in this course.', 'info')
-        setLearnerProgress((prev) => prev || {
-          is_enrolled: true,
-          registration_id: null,
-          progress: 0,
-          status: 'in_progress',
-          completed_lessons: []
-        })
         setModalOpen(false)
         if (firstLessonId) {
           navigate(`/course/${id}/lesson/${firstLessonId}`)
@@ -239,6 +278,67 @@ export default function CourseDetailsPage() {
         setError(errorMsg)
         showToast(errorMsg, 'error')
       }
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const handleCancelEnrollment = async () => {
+    if (!learnerId) {
+      showToast('Switch to the learner workspace to cancel enrollment.', 'info')
+      return
+    }
+
+    // Confirm cancellation
+    if (!window.confirm('Are you sure you want to cancel your enrollment? You will lose all progress in this course.')) {
+      return
+    }
+
+    setSubmitting(true)
+    try {
+      await cancelEnrollment(id, {
+        learner_id: learnerId
+      })
+      
+      // Refetch course details to get updated enrollment status
+      const params = learnerId ? { learner_id: learnerId } : undefined
+      const updatedCourse = await getCourseById(id, params)
+      
+      if (updatedCourse?.learner_progress) {
+        setLearnerProgress(updatedCourse.learner_progress)
+      } else {
+        setLearnerProgress({
+          is_enrolled: false,
+          completed_lessons: []
+        })
+      }
+      
+      if (updatedCourse) {
+        setCourse(updatedCourse)
+      }
+      
+      showToast('Enrollment cancelled successfully.', 'success')
+    } catch (err) {
+      let errorMsg = 'Failed to cancel enrollment'
+      
+      try {
+        if (err && typeof err === 'object') {
+          const response = 'response' in err ? err.response : null
+          if (response && typeof response === 'object' && 'data' in response) {
+            const data = response.data
+            if (data && typeof data === 'object' && 'message' in data) {
+              errorMsg = String(data.message)
+            }
+          } else if ('message' in err) {
+            errorMsg = String(err.message)
+          }
+        }
+      } catch (checkErr) {
+        console.warn('Error accessing error properties:', checkErr)
+      }
+      
+      setError(errorMsg)
+      showToast(errorMsg, 'error')
     } finally {
       setSubmitting(false)
     }
@@ -303,6 +403,7 @@ export default function CourseDetailsPage() {
                   course={course}
                   isEnrolled={isEnrolled}
                   onEnrollClick={() => setModalOpen(true)}
+                  onCancelEnrollment={handleCancelEnrollment}
                   onContinue={
                     firstLessonId
                       ? () => navigate(`/course/${id}/lesson/${firstLessonId}`)
