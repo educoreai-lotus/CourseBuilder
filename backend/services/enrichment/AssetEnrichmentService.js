@@ -1,5 +1,5 @@
 import crypto from 'crypto';
-import { generateIntents } from './GeminiIntentService.js';
+import { generateIntents } from './OpenAIIntentService.js';
 import { searchYouTube } from './YouTubeFetcher.js';
 import { searchRepos } from './GitHubFetcher.js';
 
@@ -50,7 +50,7 @@ const withOverallTimeout = async (promise) => {
         tags: [],
         videos: [],
         repos: [],
-        source: 'gemini+apis',
+        source: 'openai+apis',
         generatedAt: new Date().toISOString()
       };
     } else {
@@ -83,7 +83,7 @@ export async function enrichAssets({ topic, skills = [], maxItems = 6 } = {}) {
       });
     } catch (error) {
       // generateIntents should never throw (it returns fallback), but be defensive
-      console.warn('[Gemini] Error, continuing with fallback YouTube/GitHub enrichment.');
+      console.warn('[OpenAI] Error, continuing with fallback YouTube/GitHub enrichment.');
       console.error('[AssetEnrichmentService] Failed to generate intents, using fallback:', error.message);
       // Generate a basic fallback if generateIntents somehow throws
       intents = {
@@ -126,7 +126,7 @@ export async function enrichAssets({ topic, skills = [], maxItems = 6 } = {}) {
       videos,
       repos,
       suggestedUrls: sanitizedSuggested,
-      source: 'gemini+apis',
+      source: 'openai+apis',
       generatedAt: new Date().toISOString()
     };
 
@@ -154,7 +154,7 @@ export async function enrichAssets({ topic, skills = [], maxItems = 6 } = {}) {
       videos: [],
       repos: [],
       suggestedUrls: { youtube: [], github: [] },
-      source: 'gemini+apis',
+      source: 'openai+apis',
       generatedAt: new Date().toISOString(),
       error: error.message
     };

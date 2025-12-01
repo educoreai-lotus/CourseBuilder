@@ -184,7 +184,7 @@ export async function handleFillContentMetrics(req, res) {
     // Call dispatcher with target service, payload, and response template
     console.log(`[Integration Controller] 📤 Routing to ${targetService} handler...`);
     if (targetService === 'CourseBuilder') {
-      console.log('[Integration Controller] 🤖 Using AI-powered Course Builder Handler (Gemini AI will be called)');
+      console.log('[Integration Controller] 🤖 Using AI-powered Course Builder Handler (OpenAI will be called)');
     }
     const filledResponse = await dispatchIntegrationRequest(targetService, payloadObject, responseObject);
     console.log(`[Integration Controller] ✅ ${targetService} handler completed successfully`);

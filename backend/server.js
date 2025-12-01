@@ -97,6 +97,24 @@ app.use('/api', integrationRoutes);
 app.use('/api/enrichment', enrichmentRoutes);
 app.use('/api/enrichment', enrichmentAssetsRoutes);
 
+// Test endpoint for OpenAI
+app.get('/api/test/openai', async (req, res) => {
+  try {
+    const { runOpenAI } = await import('./services/enrichment/OpenAIIntentService.js');
+    const result = await runOpenAI("Say 'AI enrichment is working'");
+    res.json({ 
+      output: result,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('[Test OpenAI] Error:', error);
+    res.status(500).json({ 
+      error: error.message,
+      output: 'AI enrichment test failed'
+    });
+  }
+});
+
 // 404 handler
 app.use((req, res) => {
   res.status(404).json({

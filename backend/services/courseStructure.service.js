@@ -229,7 +229,7 @@ export const generateStructure = async (courseInputDTO) => {
       ...learningPathDesignation,
       total_lessons: totalLessons,
       generated_at: now.toISOString(),
-      enrichment_provider: 'gemini-assets'
+      enrichment_provider: 'openai-assets'
     };
 
     await t.none(
