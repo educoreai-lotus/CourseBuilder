@@ -78,7 +78,7 @@ describe('ErrorBoundary', () => {
   it('should use custom fallback when provided', () => {
     const CustomFallback = ({ error, resetError }) => (
       <div>
-        <p>Custom error: {error.message}</p>
+        <p>Custom error: {error?.message || 'Unknown error'}</p>
         <button onClick={resetError}>Custom Reset</button>
       </div>
     );
