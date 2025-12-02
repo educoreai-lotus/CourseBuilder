@@ -19,6 +19,9 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Trust proxy for Railway/Heroku/etc (needed for rate limiting behind reverse proxy)
+app.set('trust proxy', true);
+
 // Middleware
 // CORS configuration - allow frontend URL from environment
 // Normalize origin by removing trailing slash
@@ -90,6 +93,7 @@ app.get('/health', (req, res) => {
 // API Routes
 // IMPORTANT: Register inputRoutes BEFORE coursesRoutes to avoid route conflict
 // /api/v1/courses/input must be registered before /api/v1/courses/:id
+// Note: /input route is also defined in coursesRoutes, but inputRoutes takes precedence
 app.use('/api/v1', inputRoutes);
 app.use('/api/v1/courses', coursesRoutes);
 app.use('/api/v1', feedbackRoutes);

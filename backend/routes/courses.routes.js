@@ -3,7 +3,6 @@ import { coursesController, cancelEnrollment } from '../controllers/courses.cont
 import { feedbackController } from '../controllers/feedback.controller.js';
 import { authorizeRoles } from '../middleware/auth.middleware.js';
 import { courseCreationLimiter } from '../middleware/rateLimiter.middleware.js';
-import { acceptCourseInput } from '../controllers/input.controller.js';
 
 const router = express.Router();
 
@@ -33,13 +32,6 @@ router.post('/', courseCreationLimiter, authorizeRoles('trainer', 'admin'), cour
  * Query params: search, category, level, sort, page, limit
  */
 router.get('/', coursesController.browseCourses);
-
-/**
- * POST /api/v1/courses/input
- * Accept course input from Content Studio or Learner AI
- * MUST be before /:id route to avoid route conflict
- */
-router.post('/input', authorizeRoles('trainer', 'service'), acceptCourseInput);
 
 /**
  * GET /api/v1/courses/:id/enrollment-status
