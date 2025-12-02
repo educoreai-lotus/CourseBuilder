@@ -1,0 +1,76 @@
+{
+  "info": {
+    "name": "AI Course Creation Test",
+    "description": "Test AI course structure generation with simulated Content Studio data",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Create AI Course",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          },
+          {
+            "key": "x-service-name",
+            "value": "test-script",
+            "type": "text"
+          },
+          {
+            "key": "x-role",
+            "value": "service",
+            "type": "text"
+          },
+          {
+            "key": "x-user-role",
+            "value": "service",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"learner_id\": \"10000000-0000-0000-0000-000000000001\",\n  \"learner_name\": \"Alice Learner\",\n  \"learner_company\": \"Emerald Learning\",\n  \"learning_path\": [\n    {\n      \"topic_name\": \"JavaScript Fundamentals\",\n      \"topic_description\": \"Learn JavaScript basics and core concepts\"\n    },\n    {\n      \"topic_name\": \"React Development\",\n      \"topic_description\": \"Build modern React applications\"\n    }\n  ],\n  \"skills\": [\"javascript\", \"react\", \"frontend\"],\n  \"level\": \"beginner\",\n  \"duration\": 10,\n  \"metadata\": {\n    \"learner_id\": \"10000000-0000-0000-0000-000000000001\",\n    \"learner_company\": \"Emerald Learning\"\n  },\n  \"sourceService\": \"test-script\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/v1/courses/input",
+          "host": ["{{base_url}}"],
+          "path": ["api", "v1", "courses", "input"]
+        },
+        "description": "Creates a course with AI-generated structure. When Content Studio is not configured, it will simulate Content Studio response and AI will analyze the simulated lessons to generate topics/modules."
+      },
+      "response": []
+    },
+    {
+      "name": "Check Course Structure",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/v1/courses/:course_id",
+          "host": ["{{base_url}}"],
+          "path": ["api", "v1", "courses", ":course_id"],
+          "variable": [
+            {
+              "key": "course_id",
+              "value": "",
+              "description": "Course ID from previous request"
+            }
+          ]
+        },
+        "description": "Get course details including structure information"
+      },
+      "response": []
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "https://coursebuilderfs-production.up.railway.app",
+      "type": "string"
+    }
+  ]
+}

@@ -20,6 +20,8 @@
     "db:init": "npm run db:setup && npm run migrate && npm run seed",
     "db:push-supabase": "node scripts/push-to-supabase.js",
     "db:push-data-supabase": "node scripts/push-data-to-supabase.js",
+    "check:ai-structure": "node scripts/check-ai-structure.js",
+    "test:ai-course": "node test-api-course.js",
     "db:create-test": "node scripts/create-test-db.js",
     "generate-secrets": "node scripts/generate-secrets.js",
     "migrate:ai-assets": "node scripts/add-ai-assets-column.js"

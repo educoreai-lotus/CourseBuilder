@@ -4,6 +4,7 @@ import { sendToContentStudio } from '../integration/clients/contentStudioClient.
 import { generateCourseMetadata } from './courseMetadata.service.js';
 import { enrichLesson as enrichLessonAI } from './AIEnrichmentService.js';
 import { generateAIStructure } from './AIStructureGenerator.js';
+import { getFallbackData, shouldUseFallback } from '../integration/fallbackData.js';
 
 export const generateStructure = async (courseInputDTO) => {
   const {
@@ -109,7 +110,121 @@ export const generateStructure = async (courseInputDTO) => {
     const allLessonsFromContentStudio = [];
     const lessonIdMap = new Map(); // Map to store lesson data by ID
 
+    // Check if Content Studio is configured
+    const isContentStudioConfigured = !!(process.env.CONTENT_STUDIO_API_URL || process.env.CONTENT_STUDIO_URL);
+    
     for (const topic of learningPath) {
+      // If Content Studio is not configured, simulate response directly
+      if (!isContentStudioConfigured) {
+        console.warn(`[Course Structure] Content Studio not configured, simulating Content Studio response for topic "${topic.topicName}"`);
+        
+        // Simulate Content Studio response - Content Studio returns topics[] array
+        // Each topic in the array becomes one lesson in Course Builder
+        // Content Studio typically returns 3-6 lessons per topic
+        const lessonsPerTopic = Math.max(3, Math.min(6, (skills?.length || 3) + 1));
+        
+        for (let i = 0; i < lessonsPerTopic; i++) {
+          const topicId = uuidv4(); // Content Studio topic_id
+          const skillForLesson = skills && skills.length > 0 ? skills[i % skills.length] : topic.topicName.split(' ')[0].toLowerCase();
+          
+          // Generate realistic lesson names matching Content Studio format
+          const lessonNames = [
+            `Introduction to ${skillForLesson}`,
+            `${skillForLesson} Fundamentals and Core Concepts`,
+            `Working with ${skillForLesson}`,
+            `Advanced ${skillForLesson} Techniques`,
+            `${skillForLesson} Best Practices and Patterns`,
+            `Mastering ${skillForLesson}`
+          ];
+          
+          const topicName = lessonNames[i % lessonNames.length];
+          const topicDescription = `Learn ${topicName.toLowerCase()} - ${topic.topicDescription || 'comprehensive coverage of essential concepts'}`;
+          
+          // Simulate Content Studio topic format (each topic = one lesson)
+          // Content Studio returns topics[] with contents[], devlab_exercises, etc.
+          const simulatedContentStudioTopic = {
+            topic_id: topicId,
+            topic_name: topicName,
+            topic_description: topicDescription,
+            topic_language: topic.topicLanguage || 'English',
+            format_order: ['text_audio', 'code', 'presentation'],
+            contents: [
+              {
+                content_type: 'text_audio',
+                content_data: {
+                  text: `This lesson provides a comprehensive introduction to ${topicName.toLowerCase()}. You'll learn the fundamentals and practical applications.`,
+                  audio_url: null
+                }
+              },
+              {
+                content_type: 'code',
+                content_data: {
+                  code: `// Example: ${skillForLesson} code snippet\nfunction example() {\n  // Start learning ${skillForLesson} here\n  return 'Hello, ${skillForLesson}!'\n}`,
+                  language: skillForLesson === 'javascript' || skillForLesson === 'react' ? 'javascript' : 'python'
+                }
+              },
+              {
+                content_type: 'presentation',
+                content_data: {
+                  slides: [
+                    { title: `Introduction to ${skillForLesson}`, content: 'Overview of key concepts' },
+                    { title: 'Core Principles', content: 'Fundamental building blocks' },
+                    { title: 'Practical Examples', content: 'Real-world applications' }
+                  ]
+                }
+              }
+            ],
+            devlab_exercises: [
+              {
+                exercise_id: `ex-${skillForLesson}-${i + 1}`,
+                exercise_name: `${topicName} Practice Exercise`,
+                difficulty: i === 0 ? 'beginner' : (i < 3 ? 'intermediate' : 'advanced'),
+                description: `Practice what you learned about ${skillForLesson}`
+              }
+            ],
+            skills: [skillForLesson],
+            trainer_id: null,
+            trainer_name: null,
+            template_id: null
+          };
+          
+          // Store Content Studio topic directly (it will be processed like real Content Studio response)
+          // Content Studio topic_id becomes lessonId, topic_name becomes lessonName
+          const lessonId = simulatedContentStudioTopic.topic_id;
+          const lessonName = simulatedContentStudioTopic.topic_name;
+          
+          // Store the topic as lesson (Content Studio topic = Course Builder lesson)
+          const lessonData = {
+            ...simulatedContentStudioTopic,
+            // Map Content Studio topic fields to lesson fields for compatibility
+            lessonId: lessonId,
+            id: lessonId,
+            lessonName: lessonName,
+            title: lessonName,
+            name: lessonName,
+            lessonDescription: simulatedContentStudioTopic.topic_description,
+            description: simulatedContentStudioTopic.topic_description,
+            summary: simulatedContentStudioTopic.topic_description,
+            contentType: 'mixed',
+            type: 'mixed',
+            // Content Studio contents[] array → lesson content_data
+            content_data: simulatedContentStudioTopic.contents || [],
+            contents: simulatedContentStudioTopic.contents || [],
+            originalTopic: topic.topicName
+          };
+          
+          lessonIdMap.set(lessonId, lessonData);
+          allLessonsFromContentStudio.push({
+            lessonId,
+            lessonName,
+            lesson: lessonData
+          });
+        }
+        
+        console.log(`[Course Structure] Generated ${lessonsPerTopic} simulated Content Studio lessons for topic: ${topic.topicName}`);
+        continue; // Skip to next topic
+      }
+      
       try {
         const contentStudioResponse = await sendToContentStudio({
           learnerData: {
@@ -128,14 +243,25 @@ export const generateStructure = async (courseInputDTO) => {
         });
 
         // Extract lessons from Content Studio response
-        const lessons = contentStudioResponse.lessons || contentStudioResponse.topics || [];
+        // Content Studio returns topics[] array, where each topic = one lesson
+        let lessons = [];
+        
+        if (contentStudioResponse.lessons) {
+          lessons = contentStudioResponse.lessons;
+        } else if (contentStudioResponse.topics && Array.isArray(contentStudioResponse.topics)) {
+          // Content Studio format: topics[] array where each topic becomes a lesson
+          lessons = contentStudioResponse.topics;
+        } else if (contentStudioResponse.course && Array.isArray(contentStudioResponse.course)) {
+          lessons = contentStudioResponse.course;
+        }
         
         // Process and store lessons with unique IDs
         for (let idx = 0; idx < lessons.length; idx++) {
           const lesson = lessons[idx];
-          // Generate stable lesson ID - prefer existing, otherwise use UUID for consistency
-          const lessonId = lesson.lessonId || lesson.id || uuidv4();
-          const lessonName = lesson.lessonName || lesson.title || lesson.name || `Lesson ${allLessonsFromContentStudio.length + 1}`;
+          // Generate stable lesson ID - Content Studio uses topic_id, or use lessonId/id, or generate UUID
+          const lessonId = lesson.topic_id || lesson.lessonId || lesson.id || uuidv4();
+          // Content Studio topic_name becomes lesson name
+          const lessonName = lesson.topic_name || lesson.lessonName || lesson.title || lesson.name || `Lesson ${allLessonsFromContentStudio.length + 1}`;
           
           // Store full lesson data for later use
           const lessonDataWithId = {
@@ -158,11 +284,127 @@ export const generateStructure = async (courseInputDTO) => {
         console.log(`[Course Structure] Fetched ${lessons.length} lessons for topic: ${topic.topicName}`);
       } catch (error) {
         console.error(`[Course Structure] Error fetching lessons for topic ${topic.topicName}:`, error.message);
+        
+        // If Content Studio is not available, simulate Content Studio response format
+        const isContentStudioUnavailable = 
+          shouldUseFallback(error, 'ContentStudio') || 
+          error.message?.includes('CONTENT_STUDIO') ||
+          error.message?.includes('must be set in environment');
+        
+        if (isContentStudioUnavailable) {
+          console.warn(`[Course Structure] Content Studio unavailable, simulating Content Studio response for topic "${topic.topicName}"`);
+          
+          // Simulate Content Studio response - Content Studio returns topics[] array
+          // Each topic in the array becomes one lesson in Course Builder
+          // Content Studio typically returns 3-6 lessons per topic
+          const lessonsPerTopic = Math.max(3, Math.min(6, (skills?.length || 3) + 1));
+          
+          for (let i = 0; i < lessonsPerTopic; i++) {
+            const topicId = uuidv4(); // Content Studio topic_id
+            const skillForLesson = skills && skills.length > 0 ? skills[i % skills.length] : topic.topicName.split(' ')[0].toLowerCase();
+            
+            // Generate realistic lesson names matching Content Studio format
+            const lessonNames = [
+              `Introduction to ${skillForLesson}`,
+              `${skillForLesson} Fundamentals and Core Concepts`,
+              `Working with ${skillForLesson}`,
+              `Advanced ${skillForLesson} Techniques`,
+              `${skillForLesson} Best Practices and Patterns`,
+              `Mastering ${skillForLesson}`
+            ];
+            
+            const topicName = lessonNames[i % lessonNames.length];
+            const topicDescription = `Learn ${topicName.toLowerCase()} - ${topic.topicDescription || 'comprehensive coverage of essential concepts'}`;
+            
+            // Simulate Content Studio topic format (each topic = one lesson)
+            // Content Studio returns topics[] with contents[], devlab_exercises, etc.
+            const simulatedContentStudioTopic = {
+              topic_id: topicId,
+              topic_name: topicName,
+              topic_description: topicDescription,
+              topic_language: topic.topicLanguage || 'English',
+              format_order: ['text_audio', 'code', 'presentation'],
+              contents: [
+                {
+                  content_type: 'text_audio',
+                  content_data: {
+                    text: `This lesson provides a comprehensive introduction to ${topicName.toLowerCase()}. You'll learn the fundamentals and practical applications.`,
+                    audio_url: null
+                  }
+                },
+                {
+                  content_type: 'code',
+                  content_data: {
+                    code: `// Example: ${skillForLesson} code snippet\nfunction example() {\n  // Start learning ${skillForLesson} here\n  return 'Hello, ${skillForLesson}!'\n}`,
+                    language: skillForLesson === 'javascript' || skillForLesson === 'react' ? 'javascript' : 'python'
+                  }
+                },
+                {
+                  content_type: 'presentation',
+                  content_data: {
+                    slides: [
+                      { title: `Introduction to ${skillForLesson}`, content: 'Overview of key concepts' },
+                      { title: 'Core Principles', content: 'Fundamental building blocks' },
+                      { title: 'Practical Examples', content: 'Real-world applications' }
+                    ]
+                  }
+                }
+              ],
+              devlab_exercises: [
+                {
+                  exercise_id: `ex-${skillForLesson}-${i + 1}`,
+                  exercise_name: `${topicName} Practice Exercise`,
+                  difficulty: i === 0 ? 'beginner' : (i < 3 ? 'intermediate' : 'advanced'),
+                  description: `Practice what you learned about ${skillForLesson}`
+                }
+              ],
+              skills: [skillForLesson],
+              trainer_id: null,
+              trainer_name: null,
+              template_id: null
+            };
+            
+            // Store Content Studio topic directly (it will be processed like real Content Studio response)
+            // Content Studio topic_id becomes lessonId, topic_name becomes lessonName
+            const lessonId = simulatedContentStudioTopic.topic_id;
+            const lessonName = simulatedContentStudioTopic.topic_name;
+            
+            // Store the topic as lesson (Content Studio topic = Course Builder lesson)
+            const lessonData = {
+              ...simulatedContentStudioTopic,
+              // Map Content Studio topic fields to lesson fields for compatibility
+              lessonId: lessonId,
+              id: lessonId,
+              lessonName: lessonName,
+              title: lessonName,
+              name: lessonName,
+              lessonDescription: simulatedContentStudioTopic.topic_description,
+              description: simulatedContentStudioTopic.topic_description,
+              summary: simulatedContentStudioTopic.topic_description,
+              contentType: 'mixed',
+              type: 'mixed',
+              // Content Studio contents[] array → lesson content_data
+              content_data: simulatedContentStudioTopic.contents || [],
+              contents: simulatedContentStudioTopic.contents || [],
+              originalTopic: topic.topicName
+            };
+            
+            lessonIdMap.set(lessonId, lessonData);
+            allLessonsFromContentStudio.push({
+              lessonId,
+              lessonName,
+              lesson: lessonData
+            });
+          }
+          
+          console.log(`[Course Structure] Generated ${lessonsPerTopic} simulated Content Studio lessons for topic: ${topic.topicName}`);
+        }
         // Continue with other topics even if one fails
       }
     }
 
     console.log(`[Course Structure] Total lessons fetched: ${allLessonsFromContentStudio.length}`);
+    console.log(`[Course Structure] Lesson IDs in map: ${Array.from(lessonIdMap.keys()).join(', ')}`);
 
     // Check if we have any lessons
     if (allLessonsFromContentStudio.length === 0) {

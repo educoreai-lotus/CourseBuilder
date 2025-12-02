@@ -88,9 +88,11 @@ app.get('/health', (req, res) => {
 });
 
 // API Routes
+// IMPORTANT: Register inputRoutes BEFORE coursesRoutes to avoid route conflict
+// /api/v1/courses/input must be registered before /api/v1/courses/:id
+app.use('/api/v1', inputRoutes);
 app.use('/api/v1/courses', coursesRoutes);
 app.use('/api/v1', feedbackRoutes);
-app.use('/api/v1', inputRoutes);
 app.use('/api/v1/lessons', lessonsRoutes);
 // Unified integration endpoint: POST /api/fill-content-metrics
 app.use('/api', integrationRoutes);
