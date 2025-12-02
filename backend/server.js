@@ -20,7 +20,9 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Trust proxy for Railway/Heroku/etc (needed for rate limiting behind reverse proxy)
-app.set('trust proxy', true);
+// Set to 1 to trust first proxy (Railway's load balancer)
+// This is more secure than 'true' which trusts all proxies
+app.set('trust proxy', 1);
 
 // Middleware
 // CORS configuration - allow frontend URL from environment

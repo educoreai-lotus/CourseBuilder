@@ -18,6 +18,10 @@ export const apiLimiter = rateLimit({
   },
   standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
   legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+  // Skip validation warnings for trust proxy (we trust Railway's proxy)
+  validate: {
+    trustProxy: false // Disable trust proxy validation warning
+  },
   skip: (req) => {
     // Skip rate limiting for health checks
     return req.path === '/health';
