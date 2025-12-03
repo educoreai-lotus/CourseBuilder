@@ -32,7 +32,12 @@ describe('Coordinator Client', () => {
   describe('postToCoordinator', () => {
     it('should set X-Service-Name header', async () => {
       process.env.COORDINATOR_URL = 'https://coordinator.test';
-      process.env.PRIVATE_KEY = '-----BEGIN PRIVATE KEY-----\ntest\n-----END PRIVATE KEY-----';
+      // Use a valid test key instead of invalid one
+      const { privateKey } = crypto.generateKeyPairSync('ec', {
+        namedCurve: 'prime256v1',
+        privateKeyEncoding: { type: 'pkcs8', format: 'pem' }
+      });
+      process.env.PRIVATE_KEY = privateKey;
 
       global.fetch.mockResolvedValueOnce({
         ok: true,
@@ -45,11 +50,7 @@ describe('Coordinator Client', () => {
         }
       });
 
-      try {
-        await postToCoordinator(mockEnvelope);
-      } catch (error) {
-        // Expected to fail due to invalid key, but we can check headers
-      }
+      await postToCoordinator(mockEnvelope);
 
       expect(global.fetch).toHaveBeenCalled();
       const callArgs = global.fetch.mock.calls[0];
@@ -96,7 +97,12 @@ describe('Coordinator Client', () => {
 
     it('should send envelope as JSON in request body', async () => {
       process.env.COORDINATOR_URL = 'https://coordinator.test';
-      process.env.PRIVATE_KEY = '-----BEGIN PRIVATE KEY-----\ntest\n-----END PRIVATE KEY-----';
+      // Use a valid test key
+      const { privateKey } = crypto.generateKeyPairSync('ec', {
+        namedCurve: 'prime256v1',
+        privateKeyEncoding: { type: 'pkcs8', format: 'pem' }
+      });
+      process.env.PRIVATE_KEY = privateKey;
 
       global.fetch.mockResolvedValueOnce({
         ok: true,
@@ -106,11 +112,7 @@ describe('Coordinator Client', () => {
         }
       });
 
-      try {
-        await postToCoordinator(mockEnvelope);
-      } catch (error) {
-        // Expected
-      }
+      await postToCoordinator(mockEnvelope);
 
       expect(global.fetch).toHaveBeenCalled();
       const callArgs = global.fetch.mock.calls[0];

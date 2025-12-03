@@ -120,16 +120,17 @@ async function postToCoordinator(envelope) {
 
   const headers = {
     'Content-Type': 'application/json',
+    'X-Service-Name': SERVICE_NAME, // Always set service name
   };
 
   const privateKey = getPrivateKey();
   if (privateKey) {
     try {
       const signature = generateSignature(SERVICE_NAME, privateKey, envelope);
-      headers['X-Service-Name'] = SERVICE_NAME;
       headers['X-Signature'] = signature;
     } catch (err) {
       console.warn('[CoordinatorClient] Failed to generate signature:', err.message);
+      // X-Service-Name is already set, but signature is missing
     }
   } else {
     console.warn('[CoordinatorClient] PRIVATE_KEY is not set. Requests will not be signed and Coordinator will likely reject them.');
