@@ -1,7 +1,7 @@
 import db from '../config/database.js';
 import feedbackRepository from '../repositories/FeedbackRepository.js';
 import courseRepository from '../repositories/CourseRepository.js';
-import { sendToDirectory } from '../integration/clients/directoryClient.js';
+import { sendToDirectory } from './gateways/directoryGateway.js';
 import { sendCourseAnalytics } from '../integration/clients/learningAnalyticsClient.js';
 import { v4 as uuidv4 } from 'uuid';
 

@@ -1,6 +1,6 @@
 import db from '../config/database.js';
 import { v4 as uuidv4 } from 'uuid';
-import { sendToContentStudio } from '../integration/clients/contentStudioClient.js';
+import { sendToContentStudio } from './gateways/contentStudioGateway.js';
 import { generateCourseMetadata } from './courseMetadata.service.js';
 import { enrichLesson as enrichLessonAI } from './AIEnrichmentService.js';
 import { generateAIStructure } from './AIStructureGenerator.js';

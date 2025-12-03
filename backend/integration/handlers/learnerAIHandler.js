@@ -5,7 +5,7 @@
  */
 
 import learnerAIDTO from '../../dtoBuilders/learnerAIDTO.js';
-import { sendToContentStudio } from '../clients/contentStudioClient.js';
+import { sendToContentStudio } from '../../services/gateways/contentStudioGateway.js';
 import { handleContentStudioIntegration } from './contentStudioHandler.js';
 import { getFallbackData, shouldUseFallback } from '../fallbackData.js';
 

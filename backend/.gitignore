@@ -33,3 +33,9 @@ coverage/
 dist/
 build/
 
+# Service keys (DO NOT COMMIT)
+course-builder-private-key.pem
+course-builder-public-key.pem
+*.pem
+!**/node_modules/**/*.pem
+
