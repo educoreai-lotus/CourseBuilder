@@ -80,14 +80,21 @@ describe('Signature Utility', () => {
       }).toThrow('Missing serviceName or private key for signature');
     });
 
-    it('should generate same signature for same input', () => {
+    it('should generate valid signatures that verify correctly (ECDSA is non-deterministic)', () => {
       const serviceName = 'test-service';
       const payload = { test: 'data' };
       
+      // ECDSA signatures are non-deterministic - same input produces different signatures
+      // but all of them verify correctly
       const signature1 = generateSignature(serviceName, privateKeyPem, payload);
       const signature2 = generateSignature(serviceName, privateKeyPem, payload);
       
-      expect(signature1).toBe(signature2);
+      // Both signatures should be different (non-deterministic)
+      expect(signature1).not.toBe(signature2);
+      
+      // But both should verify correctly
+      expect(verifySignature(serviceName, signature1, publicKeyPem, payload)).toBe(true);
+      expect(verifySignature(serviceName, signature2, publicKeyPem, payload)).toBe(true);
     });
 
     it('should generate different signature for different payloads', () => {

@@ -2,11 +2,13 @@
  * Tests for Coordinator Client
  */
 
+// Mock fetch before importing coordinatorClient
+global.fetch = jest.fn();
+globalThis.fetch = global.fetch;
+
 import { postToCoordinator } from '../services/gateways/coordinatorClient.js';
 import { generateSignature } from '../utils/signature.js';
-
-// Mock fetch
-global.fetch = jest.fn();
+import crypto from 'crypto';
 
 describe('Coordinator Client', () => {
   const mockEnvelope = {
@@ -55,7 +57,6 @@ describe('Coordinator Client', () => {
       process.env.COORDINATOR_URL = 'https://coordinator.test';
       
       // Generate a valid test key
-      const crypto = await import('crypto');
       const { privateKey } = crypto.generateKeyPairSync('ec', {
         namedCurve: 'prime256v1',
         privateKeyEncoding: { type: 'pkcs8', format: 'pem' }
@@ -118,7 +119,6 @@ describe('Coordinator Client', () => {
       process.env.COORDINATOR_URL = 'https://coordinator.test';
       
       // Generate test keys
-      const crypto = await import('crypto');
       const { privateKey: coordinatorPrivateKey, publicKey: coordinatorPublicKey } = 
         crypto.generateKeyPairSync('ec', {
           namedCurve: 'prime256v1',
