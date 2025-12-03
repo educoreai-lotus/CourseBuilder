@@ -13,26 +13,55 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const SERVICE_NAME = process.env.SERVICE_NAME || 'course-builder-service';
-const COORDINATOR_URL = process.env.COORDINATOR_URL;
 
-// Load private key from environment or file
-let PRIVATE_KEY = process.env.PRIVATE_KEY;
-if (!PRIVATE_KEY) {
+// Cache for keys loaded from files
+let cachedPrivateKey = null;
+let cachedCoordinatorPublicKey = null;
+
+// Helper functions to get environment variables at runtime (for testing)
+function getCoordinatorUrl() {
+  return process.env.COORDINATOR_URL;
+}
+
+// Load private key from environment or file (with runtime fallback)
+function getPrivateKey() {
+  // First check environment variable (allows runtime changes for testing)
+  if (process.env.PRIVATE_KEY) {
+    return process.env.PRIVATE_KEY;
+  }
+  
+  // Fallback to cached value or file
+  if (cachedPrivateKey) {
+    return cachedPrivateKey;
+  }
+  
   // Try to load from local file (for development)
   const privateKeyPath = path.join(__dirname, '..', '..', 'course-builder-private-key.pem');
   try {
     if (fs.existsSync(privateKeyPath)) {
-      PRIVATE_KEY = fs.readFileSync(privateKeyPath, 'utf8');
+      cachedPrivateKey = fs.readFileSync(privateKeyPath, 'utf8');
       console.log('[CoordinatorClient] Loaded private key from file');
+      return cachedPrivateKey;
     }
   } catch (error) {
     console.warn('[CoordinatorClient] Could not load private key from file:', error.message);
   }
+  
+  return null;
 }
 
-// Load Coordinator public key from environment or file
-let COORDINATOR_PUBLIC_KEY = process.env.COORDINATOR_PUBLIC_KEY;
-if (!COORDINATOR_PUBLIC_KEY) {
+// Load Coordinator public key from environment or file (with runtime fallback)
+function getCoordinatorPublicKey() {
+  // First check environment variable (allows runtime changes for testing)
+  if (process.env.COORDINATOR_PUBLIC_KEY) {
+    return process.env.COORDINATOR_PUBLIC_KEY;
+  }
+  
+  // Fallback to cached value or file
+  if (cachedCoordinatorPublicKey) {
+    return cachedCoordinatorPublicKey;
+  }
+  
   // Try to load from repo file
   const coordinatorKeyPath = path.join(
     __dirname,
@@ -46,16 +75,15 @@ if (!COORDINATOR_PUBLIC_KEY) {
   );
   try {
     if (fs.existsSync(coordinatorKeyPath)) {
-      COORDINATOR_PUBLIC_KEY = fs.readFileSync(coordinatorKeyPath, 'utf8');
+      cachedCoordinatorPublicKey = fs.readFileSync(coordinatorKeyPath, 'utf8');
       console.log('[CoordinatorClient] Loaded Coordinator public key from file');
+      return cachedCoordinatorPublicKey;
     }
   } catch (error) {
     console.warn('[CoordinatorClient] Could not load Coordinator public key from file:', error.message);
   }
-}
-
-if (!COORDINATOR_URL) {
-  console.warn('[CoordinatorClient] COORDINATOR_URL is not set. Coordinator calls will fail.');
+  
+  return null;
 }
 
 /**
@@ -82,20 +110,22 @@ async function getFetch() {
  * @returns {Promise<Object>} Object with { resp, data }
  */
 async function postToCoordinator(envelope) {
-  if (!COORDINATOR_URL) {
+  const coordinatorUrl = getCoordinatorUrl();
+  if (!coordinatorUrl) {
     throw new Error('COORDINATOR_URL not set');
   }
 
-  const base = String(COORDINATOR_URL).replace(/\/+$/, '');
+  const base = String(coordinatorUrl).replace(/\/+$/, '');
   const url = `${base}/api/fill-content-metrics/`;
 
   const headers = {
     'Content-Type': 'application/json',
   };
 
-  if (PRIVATE_KEY) {
+  const privateKey = getPrivateKey();
+  if (privateKey) {
     try {
-      const signature = generateSignature(SERVICE_NAME, PRIVATE_KEY, envelope);
+      const signature = generateSignature(SERVICE_NAME, privateKey, envelope);
       headers['X-Service-Name'] = SERVICE_NAME;
       headers['X-Signature'] = signature;
     } catch (err) {
@@ -119,8 +149,9 @@ async function postToCoordinator(envelope) {
   const coordinatorSig =
     resp.headers.get('x-service-signature') || resp.headers.get('X-Service-Signature');
 
-  if (COORDINATOR_PUBLIC_KEY && coordinatorName === 'coordinator' && coordinatorSig) {
-    const ok = verifySignature('coordinator', coordinatorSig, COORDINATOR_PUBLIC_KEY, data);
+  const coordinatorPublicKey = getCoordinatorPublicKey();
+  if (coordinatorPublicKey && coordinatorName === 'coordinator' && coordinatorSig) {
+    const ok = verifySignature('coordinator', coordinatorSig, coordinatorPublicKey, data);
     if (!ok) {
       console.warn('[CoordinatorClient] Invalid Coordinator response signature');
     }
