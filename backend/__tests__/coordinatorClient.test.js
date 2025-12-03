@@ -2,10 +2,7 @@
  * Tests for Coordinator Client
  */
 
-// Mock fetch before importing coordinatorClient
-global.fetch = jest.fn();
-globalThis.fetch = global.fetch;
-
+import { jest, describe, it, expect, beforeAll, beforeEach } from '@jest/globals';
 import { postToCoordinator } from '../services/gateways/coordinatorClient.js';
 import { generateSignature } from '../utils/signature.js';
 import crypto from 'crypto';
@@ -17,11 +14,19 @@ describe('Coordinator Client', () => {
     response: {}
   };
 
+  // Set up fetch mock before all tests
+  beforeAll(() => {
+    // Mock fetch for all tests
+    global.fetch = jest.fn();
+    globalThis.fetch = global.fetch;
+  });
+
   beforeEach(() => {
     jest.clearAllMocks();
     // Reset environment
     delete process.env.COORDINATOR_URL;
     delete process.env.PRIVATE_KEY;
+    delete process.env.COORDINATOR_PUBLIC_KEY;
   });
 
   describe('postToCoordinator', () => {
