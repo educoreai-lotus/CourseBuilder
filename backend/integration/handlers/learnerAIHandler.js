@@ -1,7 +1,9 @@
 /**
  * Learner AI Integration Handler
- * Handles incoming data from Learner AI microservice
- * Flow: Learner AI → Course Builder → Content Studio → Course Builder (creates course)
+ * Handles incoming data from Learner AI microservice (via Coordinator)
+ * NOTE: This handler is for when Learner AI sends data TO Course Builder
+ * The NEW trigger flow is: Directory → Course Builder → Learner AI → Content Studio → Course Builder
+ * This handler is kept for backward compatibility if Learner AI sends responses directly
  */
 
 import learnerAIDTO from '../../dtoBuilders/learnerAIDTO.js';

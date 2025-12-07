@@ -473,35 +473,56 @@ Used when a trainer builds a structured course manually.
 }
 ```
 
-### Learner AI Integration (REST)
+### Directory Integration (REST) - NEW FLOW
 
-**Purpose:** Learner AI triggers personalized course generation by sending learner context and learning path.
+**Purpose:** Directory triggers personalized course generation. Flow: Directory → Course Builder → Learner AI → Content Studio → Course Builder
 
-**Endpoint:** `POST /api/v1/ai/trigger-personalized-course`
+**Endpoint:** `POST /api/v1/directory/trigger-learning-path`
 
-**Request:**
+**Request (Without Trainer):**
 ```json
 {
   "learner_id": "uuid",
   "learner_name": "string",
   "learner_company": "string",
-  "learning_path": [
-    {
-      "topic_id": "uuid",
-      "topic_name": "string",
-      "topic_language": "string",
-      "topic_description": "string"
-    }
-  ]
+  "tag": "competency | learning-path-name | etc",
+  "language": "en/he/..."
+}
+```
+
+**Request (With Trainer):**
+```json
+{
+  "learner_id": "uuid",
+  "learner_name": "string",
+  "learner_company": "string",
+  "tag": "competency | learning-path-name | etc",
+  "language": "en/he/...",
+  "trainer_id": "uuid",
+  "trainer_name": "string"
 }
 ```
 
 **Response:**
 ```json
 {
-  "status": "accepted",
-  "workflow_id": "uuid",
-  "message": "Personalized course generation started"
+  "status": "created",
+  "course_id": "uuid",
+  "course_name": "string",
+  "course_type": "learner_specific",
+  "learner_id": "uuid",
+  "created_at": "ISO8601 timestamp"
+}
+```
+
+**Note:** The old endpoint `POST /api/v1/ai/trigger-personalized-course` has been REMOVED. Personalized courses are now ONLY triggered by Directory service.
+
+### Learner AI Integration (REST) - DEPRECATED
+
+**Purpose:** ~~Learner AI triggers personalized course generation~~ - REMOVED
+**Old Endpoint:** ~~`POST /api/v1/ai/trigger-personalized-course`~~ - REMOVED
+
+**New Flow:** Directory → Course Builder → Learner AI (Course Builder calls Learner AI, not the other way around)
 }
 ```
 

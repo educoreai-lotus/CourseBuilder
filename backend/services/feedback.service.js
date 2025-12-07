@@ -77,32 +77,37 @@ export const submitFeedback = async (courseId, { learner_id, rating, comment }) 
     });
 
     // Share feedback with Directory and Learning Analytics (async, don't block response)
-    try {
-      // Get course for sharing
-      const courseForSharing = await courseRepository.findById(courseId);
-      
-      // Share with Directory
+    // Fire and forget - don't await to prevent blocking the response
+    (async () => {
       try {
-        await sendToDirectory(feedback, courseForSharing);
-        console.log('[Feedback Service] Feedback shared with Directory successfully');
-      } catch (dirError) {
-        console.error('[Feedback Service] Failed to share feedback with Directory:', dirError.message);
-        // Don't throw - feedback is saved, sharing is best-effort
-      }
+        // Get course for sharing
+        const courseForSharing = await courseRepository.findById(courseId);
+        
+        // Share with Directory (fire and forget)
+        sendToDirectory(feedback, courseForSharing)
+          .then(() => {
+            console.log('[Feedback Service] Feedback shared with Directory successfully');
+          })
+          .catch((dirError) => {
+            console.error('[Feedback Service] Failed to share feedback with Directory:', dirError.message);
+            // Don't throw - feedback is saved, sharing is best-effort
+          });
 
-      // Share with Learning Analytics
-      try {
+        // Share with Learning Analytics (fire and forget)
         const feedbackArray = [feedback];
-        await sendCourseAnalytics(courseForSharing, [], [], [], feedbackArray, []);
-        console.log('[Feedback Service] Feedback shared with Learning Analytics successfully');
-      } catch (analyticsError) {
-        console.error('[Feedback Service] Failed to share feedback with Learning Analytics:', analyticsError.message);
+        sendCourseAnalytics(courseForSharing, [], [], [], feedbackArray, [])
+          .then(() => {
+            console.log('[Feedback Service] Feedback shared with Learning Analytics successfully');
+          })
+          .catch((analyticsError) => {
+            console.error('[Feedback Service] Failed to share feedback with Learning Analytics:', analyticsError.message);
+            // Don't throw - feedback is saved, sharing is best-effort
+          });
+      } catch (shareError) {
+        console.error('[Feedback Service] Error during feedback sharing:', shareError.message);
         // Don't throw - feedback is saved, sharing is best-effort
       }
-    } catch (shareError) {
-      console.error('[Feedback Service] Error during feedback sharing:', shareError.message);
-      // Don't throw - feedback is saved, sharing is best-effort
-    }
+    })();
 
     return {
       message: 'Feedback submitted successfully',

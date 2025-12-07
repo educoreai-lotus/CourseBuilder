@@ -9,6 +9,11 @@ import contentStudioDTO from '../../dtoBuilders/contentStudioDTO.js';
 /**
  * Send request to Content Studio via Coordinator
  * @param {Object} payloadObject - Payload object (will be converted to envelope)
+ * @param {Object} payloadObject.learnerData - Learner data (learner_id, learner_name, learner_company)
+ * @param {Array} payloadObject.skills - Skills array
+ * @param {Array} payloadObject.learning_path - Learning path array (NEW: from Learner AI)
+ * @param {string} payloadObject.language - Language code (NEW: from Directory)
+ * @param {Object} payloadObject.trainerData - Trainer data (optional: trainer_id, trainer_name)
  * @returns {Promise<Object>} Response payload object
  */
 export async function sendToContentStudio(payloadObject) {
@@ -19,7 +24,19 @@ export async function sendToContentStudio(payloadObject) {
       payloadObject.skills || []
     );
 
-    // Add additional context if provided
+    // Add NEW fields for Directory → Learner AI → Content Studio flow
+    if (payloadObject.learning_path) {
+      sendPayload.learning_path = payloadObject.learning_path;
+    }
+    if (payloadObject.language) {
+      sendPayload.language = payloadObject.language;
+    }
+    if (payloadObject.trainerData) {
+      sendPayload.trainer_id = payloadObject.trainerData.trainer_id;
+      sendPayload.trainer_name = payloadObject.trainerData.trainer_name;
+    }
+
+    // Add additional context if provided (for marketplace courses)
     if (payloadObject.courseId) {
       sendPayload.courseId = payloadObject.courseId;
     }

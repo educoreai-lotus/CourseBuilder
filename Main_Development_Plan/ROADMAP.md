@@ -468,14 +468,17 @@ GET /api/v1/courses/:id/versions
 **Completion Date:** 2025-01-XX
 
 #### Implementation
-- ✅ Trigger personalized course (`POST /api/v1/ai/trigger-personalized-course`)
-- ✅ Accept learning path and skills
-- ✅ Course structure generation from learning path
+- ✅ Trigger personalized course via Directory (`POST /api/v1/directory/trigger-learning-path`)
+- ✅ Accept learner_id, tag, language from Directory
+- ✅ Call Learner AI via Coordinator to get learning_path
+- ✅ Call Content Studio via Coordinator with learning_path
+- ✅ Course structure generation from Content Studio response
 - 🟡 Mock implementation (gRPC pending)
 
 #### API Endpoints
 ```javascript
-POST /api/v1/ai/trigger-personalized-course
+POST /api/v1/directory/trigger-learning-path
+// OLD ENDPOINT REMOVED: POST /api/v1/ai/trigger-personalized-course
 ```
 
 #### Key Decisions

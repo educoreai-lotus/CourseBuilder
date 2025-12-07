@@ -170,38 +170,50 @@ All course generation endpoints return the same envelope:
 
 ---
 
-### 2. `POST /api/v1/ai/trigger-personalized-course`
+### 2. `POST /api/v1/directory/trigger-learning-path`
 
-- **Audience**: Learner-facing journeys (typically triggered from the marketplace or chatbot).
-- **Description**: Generates a personalised course outline for a learner by forwarding the request to the same generation pipeline used by trainer submissions.
+- **Audience**: Directory microservice (triggers personalized course generation)
+- **Description**: Generates a personalized course for a learner following the flow: Directory → Course Builder → Learner AI → Content Studio → Course Builder
+- **Flow**: 
+  1. Directory sends learner_id and tag to Course Builder
+  2. Course Builder calls Learner AI via Coordinator with { learner_id, tag }
+  3. Learner AI returns learning_path and skills
+  4. Course Builder calls Content Studio via Coordinator with learner details, learning_path, language, and optional trainer details
+  5. Content Studio generates course content
+  6. Course Builder creates and stores the course
 - **Headers**:
-  - `x-source-service: learner_journey`
-  - `x-request-id: <uuid>` (optional trace identifier)
-- **Query Parameters**:
-  - `sourceService=learner_journey` (optional mirror)
-  - `learnerId=<uuid>` (optional – overrides body `learner_id` if both supplied)
+  - `Authorization: Bearer <token>` (required for service/admin roles)
+  - `x-source-service: directory` (recommended)
+- **Authorization**: Requires `service` or `admin` role
 
 #### Success Response
 
 - **Status**: `201 Created`
-- **Body**: Unified response schema (the `meta.sourceService` reflects the learner entry point).
+- **Body**: Course creation response with course_id and metadata
 
-#### Sample Request
+#### Sample Request (Without Trainer)
 
 ```json
 {
-  "sourceService": "learner_journey",
   "learner_id": "a8ec0d36-1447-4e9a-98b1-c9bfd2ce6c6a",
-  "learning_path": [
-    {
-      "topic_name": "Product Analytics for PMs"
-    }
-  ],
-  "skills": ["sql", "product-analytics"],
-  "metadata": {
-    "interest_tags": ["growth", "experimentation"],
-    "preferred_format": "microlearning"
-  }
+  "learner_name": "John Doe",
+  "learner_company": "Acme Corp",
+  "tag": "competency:react-development",
+  "language": "en"
+}
+```
+
+#### Sample Request (With Trainer)
+
+```json
+{
+  "learner_id": "a8ec0d36-1447-4e9a-98b1-c9bfd2ce6c6a",
+  "learner_name": "John Doe",
+  "learner_company": "Acme Corp",
+  "tag": "learning-path:full-stack-bootcamp",
+  "language": "en",
+  "trainer_id": "b9fd1e47-2558-5f0b-a9c2-d0cge3df7d7b",
+  "trainer_name": "Jane Trainer"
 }
 ```
 
@@ -209,14 +221,21 @@ All course generation endpoints return the same envelope:
 
 ```json
 {
-  "status": "accepted",
+  "status": "created",
   "course_id": "07bb1605-6ab3-4cea-8f08-d54c2ac94446",
-  "structure": {
-    "id": "2cbd0678-b6db-4475-8e21-efa505198de9",
-    "modules": [
-      {
-        "moduleId": "58f33d69-567a-41f5-8e5b-d4d04d3d72dd",
-        "title": "Understanding Product Metrics",
+  "course_name": "Personalized React Development Path",
+  "course_type": "learner_specific",
+  "learner_id": "a8ec0d36-1447-4e9a-98b1-c9bfd2ce6c6a",
+  "trainer_id": "b9fd1e47-2558-5f0b-a9c2-d0cge3df7d7b",
+  "created_at": "2025-12-07T14:30:00.000Z"
+}
+```
+
+#### Notes
+
+- **Removed**: The old endpoint `POST /api/v1/ai/trigger-personalized-course` has been removed
+- **New Flow**: Personalized courses are now ONLY triggered by Directory service
+- **Marketplace Courses**: Trainer-driven courses still use `POST /api/v1/courses/input` (Content Studio → Course Builder)
         "lessons": [
           {
             "lessonId": "3d81c1de-a5f6-4a68-b737-4df0b9057ed5",

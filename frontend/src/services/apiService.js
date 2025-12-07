@@ -173,9 +173,9 @@ export function unpublishCourse(courseId) {
   return api.post(`/courses/${courseId}/unpublish`).then(r => r.data)
 }
 
-export function triggerPersonalizedCourse(payload) {
-  return api.post('/ai/trigger-personalized-course', payload).then(r => r.data)
-}
+// OLD ENDPOINT REMOVED: POST /api/v1/ai/trigger-personalized-course
+// NEW FLOW: Directory → Course Builder → Learner AI → Content Studio
+// Personalized courses are now triggered by Directory service, not directly by frontend
 
 export function getLessonById(lessonId) {
   return api.get(`/lessons/${lessonId}`).then(r => r.data)
@@ -226,7 +226,6 @@ export default {
   getFeedbackAnalytics,
   getCourseFilters,
   unpublishCourse,
-  triggerPersonalizedCourse,
   getLessonById,
   getLessonExercises,
   getLearnerProgress,
