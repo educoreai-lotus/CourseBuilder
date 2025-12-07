@@ -3,6 +3,9 @@ import { coursesService } from '../services/courses.service.js';
 /**
  * Browse courses with optional filters
  * GET /api/v1/courses
+ * 
+ * 
+ * 
  */
 export const browseCourses = async (req, res, next) => {
   try {
