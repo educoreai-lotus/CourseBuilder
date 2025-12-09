@@ -53,9 +53,15 @@ const pgp = pgPromise({
 
 // Configure SSL for Supabase
 let dbConfig = {};
-if (connectionString.includes('supabase')) {
+if (connectionString.includes('supabase') || connectionString.includes('pooler.supabase')) {
+  // Parse connection string to extract components
+  const url = new URL(connectionString);
   dbConfig = {
-    connectionString: connectionString,
+    host: url.hostname,
+    port: parseInt(url.port || '5432', 10),
+    database: url.pathname.slice(1) || 'postgres',
+    user: url.username,
+    password: url.password,
     ssl: {
       rejectUnauthorized: false
     }

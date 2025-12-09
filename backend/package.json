@@ -12,6 +12,8 @@
     "test:coverage": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --config ./jest.config.js --coverage",
     "db:setup": "node scripts/setup-database.js",
     "migrate": "node scripts/migrate.js",
+    "migrate:team": "node scripts/migrateToDatabase.js",
+    "migrate:custom": "node scripts/migrateToDatabase.js",
     "seed": "node scripts/seed.js",
     "seed:team": "node scripts/seedToDatabase.js",
     "seed:custom": "node scripts/seedToDatabase.js",
