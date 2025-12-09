@@ -42,6 +42,11 @@ const dbConfig = {
 // ⚠️ CRITICAL: In test environment, ensure we're using the test database
 let connectionString = process.env.DATABASE_URL;
 if (!connectionString) {
+  // In production, warn if DATABASE_URL is not set
+  if (process.env.NODE_ENV === 'production') {
+    console.warn('⚠️  WARNING: DATABASE_URL not set in production! Using fallback config.');
+    console.warn('⚠️  This will likely fail. Please set DATABASE_URL environment variable.');
+  }
   connectionString = `postgresql://${dbConfig.user}:${dbConfig.password}@${dbConfig.host}:${dbConfig.port}/${dbConfig.database}`;
 } else if (isTest) {
   // Ensure DATABASE_URL points to test database
@@ -50,8 +55,41 @@ if (!connectionString) {
   }
 }
 
+// Log database connection info (masked for security)
+if (connectionString) {
+  const maskedUrl = connectionString.replace(/:[^:@]+@/, ':****@');
+  console.log(`📡 Database: ${maskedUrl}`);
+}
+
+// Configure SSL for Supabase connections
+let dbConnectionConfig = connectionString;
+if (connectionString && (connectionString.includes('supabase') || connectionString.includes('pooler.supabase'))) {
+  // Parse connection string for Supabase
+  try {
+    const url = new URL(connectionString);
+    dbConnectionConfig = {
+      host: url.hostname,
+      port: parseInt(url.port || '5432', 10),
+      database: url.pathname.slice(1) || 'postgres',
+      user: url.username,
+      password: url.password,
+      ssl: {
+        rejectUnauthorized: false
+      }
+    };
+  } catch (error) {
+    // If URL parsing fails, use connection string with SSL config
+    dbConnectionConfig = {
+      connectionString: connectionString,
+      ssl: {
+        rejectUnauthorized: false
+      }
+    };
+  }
+}
+
 // Create database instance
-const db = pgp(connectionString);
+const db = pgp(dbConnectionConfig);
 
 // Test database connection (only in non-test environment to avoid startup delays)
 if (!isTest) {
