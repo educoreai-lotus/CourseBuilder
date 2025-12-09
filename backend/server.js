@@ -156,7 +156,7 @@ if (process.env.NODE_ENV !== 'test') {
       console.log(`📝 Environment: ${process.env.NODE_ENV || 'development'}`);
       console.log(`🔗 Health check: http://localhost:${PORT}/health`);
       
-      // Start scheduled publishing job
+      // Start scheduled publishing job (will handle missing tables gracefully)
       scheduledJobCleanup = startScheduledPublishingJob();
     });
   }).catch(error => {

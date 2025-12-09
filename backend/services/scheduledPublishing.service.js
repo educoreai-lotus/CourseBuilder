@@ -27,6 +27,11 @@ export const findScheduledCourses = async () => {
     const courses = await db.any(query);
     return courses;
   } catch (error) {
+    // Handle missing tables gracefully (database not migrated yet)
+    if (error.code === '42P01') {
+      console.warn('⚠️  Database tables not found. Skipping scheduled publishing check. Run migrations first.');
+      return [];
+    }
     console.error('Error finding scheduled courses:', error);
     throw error;
   }
@@ -78,6 +83,11 @@ export const processScheduledPublications = async () => {
 
     return results;
   } catch (error) {
+    // Handle missing tables gracefully (database not migrated yet)
+    if (error.code === '42P01') {
+      console.warn('⚠️  Database tables not found. Skipping scheduled publishing. Run migrations first.');
+      return { processed: 0, errors: [] };
+    }
     console.error('Error processing scheduled publications:', error);
     throw error;
   }
