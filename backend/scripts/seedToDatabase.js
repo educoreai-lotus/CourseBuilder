@@ -19,13 +19,15 @@ import { v4 as uuidv4 } from 'uuid';
 dotenv.config();
 
 // Get database URL from environment variable or command line argument
-const databaseUrl = process.env.DATABASE_URL || process.argv[2];
+// Priority: 1. Command line arg, 2. TEAM_DATABASE_URL, 3. DATABASE_URL
+const databaseUrl = process.argv[2] || process.env.TEAM_DATABASE_URL || process.env.DATABASE_URL;
 
 if (!databaseUrl) {
-  console.error('❌ ERROR: DATABASE_URL is required!');
+  console.error('❌ ERROR: Database URL is required!');
   console.error('\nUsage:');
-  console.error('  DATABASE_URL="postgresql://user:pass@host:port/db" node scripts/seedToDatabase.js');
-  console.error('  Or: npm run seed:team (if TEAM_DATABASE_URL is set in .env)');
+  console.error('  Option 1: Set TEAM_DATABASE_URL in .env file, then run: npm run seed:team');
+  console.error('  Option 2: Pass URL as argument: npm run seed:custom "postgresql://user:pass@host:port/db"');
+  console.error('  Option 3: Set DATABASE_URL env var: DATABASE_URL="..." npm run seed:custom');
   process.exit(1);
 }
 

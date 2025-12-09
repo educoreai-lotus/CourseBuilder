@@ -45,7 +45,18 @@ Uses `DATABASE_URL` from your `.env` file.
 
 ### Seed Another Database
 
-#### Option 1: Using Environment Variable
+#### Option 1: Using TEAM_DATABASE_URL in .env (Recommended)
+1. **Add to `backend/.env` file:**
+   ```env
+   TEAM_DATABASE_URL=postgresql://user:password@host:port/database
+   ```
+
+2. **Run the seed command:**
+   ```bash
+   npm run seed:team
+   ```
+
+#### Option 2: Using Environment Variable
 ```bash
 # Windows PowerShell
 $env:DATABASE_URL="postgresql://user:pass@host:port/db"; npm run seed:custom
@@ -54,12 +65,12 @@ $env:DATABASE_URL="postgresql://user:pass@host:port/db"; npm run seed:custom
 DATABASE_URL="postgresql://user:pass@host:port/db" npm run seed:custom
 ```
 
-#### Option 2: Using Command Line Argument
+#### Option 3: Using Command Line Argument
 ```bash
 npm run seed:custom "postgresql://user:pass@host:port/db"
 ```
 
-#### Option 3: Direct Node Command
+#### Option 4: Direct Node Command
 ```bash
 node scripts/seedToDatabase.js "postgresql://user:pass@host:port/db"
 ```
@@ -86,7 +97,23 @@ npm run db:test-connection
 
 ## Seeding Multiple Databases
 
-To seed a second database (e.g., team database):
+### Method 1: Using TEAM_DATABASE_URL (Easiest)
+
+1. **Add to `backend/.env` file:**
+   ```env
+   # Your primary database (used by default)
+   DATABASE_URL=postgresql://user:password@localhost:5432/coursebuilder
+   
+   # Your team/second database
+   TEAM_DATABASE_URL=postgresql://user:password@host:port/database
+   ```
+
+2. **Seed the team database:**
+   ```bash
+   npm run seed:team
+   ```
+
+### Method 2: Using Environment Variable
 
 1. **Set the database URL:**
    ```bash
@@ -102,10 +129,11 @@ To seed a second database (e.g., team database):
    npm run seed:custom
    ```
 
-   Or pass the URL directly:
-   ```bash
-   npm run seed:custom "postgresql://user:pass@host:port/db"
-   ```
+### Method 3: Pass URL Directly
+
+```bash
+npm run seed:custom "postgresql://user:pass@host:port/db"
+```
 
 ### Supabase Support
 
