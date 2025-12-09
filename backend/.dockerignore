@@ -17,3 +17,5 @@ Dockerfile
 # Exclude frontend entirely (backend image doesn't need it)
 ../frontend/
 
+docker-compose.yaml
+__pycache__
