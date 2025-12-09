@@ -58,12 +58,24 @@ const corsOptions = {
     const isWildcard = allowedOrigins.includes('*');
     const isExplicitMatch = allowedOrigins.includes(normalizedRequestOrigin);
     const isLocalhost = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(normalizedRequestOrigin);
+    
+    // Check if origin matches any Vercel preview URL pattern
+    // Vercel preview URLs: https://*-*.vercel.app or https://*-username.vercel.app
+    const isVercelPreview = /^https:\/\/[^.]+\.[^.]*vercel\.app$/i.test(normalizedRequestOrigin);
+    const hasVercelPattern = allowedOrigins.some(allowed => {
+      // Check if any allowed origin is a Vercel domain pattern
+      return allowed.includes('vercel.app') && (
+        allowed.includes('*') || 
+        /^https:\/\/[^.]+\.[^.]*vercel\.app$/i.test(allowed)
+      );
+    });
 
     if (
       isWildcard ||
       isExplicitMatch ||
       (isDevelopment && isLocalhost) ||
-      (isLocalhost && allowedOrigins.length === 0)
+      (isLocalhost && allowedOrigins.length === 0) ||
+      (isVercelPreview && hasVercelPattern) // Allow any Vercel preview if a Vercel domain is configured
     ) {
       callback(null, true);
     } else {
