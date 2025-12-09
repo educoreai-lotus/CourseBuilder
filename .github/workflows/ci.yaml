@@ -1,0 +1,34 @@
+name: CI - Test and Build
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  frontend-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run frontend tests
+        run: |
+          cd frontend
+          echo "Running frontend tests..."
+          # e.g., npm install && npm test
+
+  backend-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run backend tests
+        run: |
+          cd backend
+          echo "Running backend tests..."
+          # e.g., npm install && npm test
+

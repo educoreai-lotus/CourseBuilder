@@ -1,0 +1,60 @@
+name: CD - Deploy to EC2
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-frontend:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build & push
+        run: |
+          docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
+          
+          cd frontend
+          docker build -t ${{ secrets.DOCKER_USERNAME }}/frontend:latest .
+          docker push ${{ secrets.DOCKER_USERNAME }}/frontend:latest
+
+  build-backend:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build & push
+        run: |
+          docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
+          
+          cd backend
+          docker build -t ${{ secrets.DOCKER_USERNAME }}/backend:latest .
+          docker push ${{ secrets.DOCKER_USERNAME }}/backend:latest
+      
+  deploy:
+    needs:
+      - build-frontend
+      - build-backend
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to server
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ubuntu
+          key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
+          script: |
+            cd /home/ubuntu/YOUR_REPO_NAME || (git clone https://github.com/YOUR_USERNAME/YOUR_YOLO_REPO_NAME.git && cd YOUR_YOLO_REPO_NAME)
+            
+            docker compose pull
+            docker compose up -d
+
