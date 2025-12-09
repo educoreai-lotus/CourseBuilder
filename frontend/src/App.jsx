@@ -2,7 +2,7 @@ import { Routes, Route, Navigate, useParams } from 'react-router-dom'
 import { AppProvider } from './context/AppContext.jsx'
 import Header from './components/Header.jsx'
 import AccessibilityControls from './components/AccessibilityControls.jsx'
-import ChatbotWidget from './components/ChatbotWidget.jsx'
+import RAGChatbotInitializer from './components/RAGChatbotInitializer.jsx'
 import Toast from './components/Toast.jsx'
 import ErrorBoundary from './components/ErrorBoundary.jsx'
 import CoursesPage from './pages/CoursesPage.jsx'
@@ -90,7 +90,7 @@ function AppShell() {
       </main>
 
       <AccessibilityControls />
-      <ChatbotWidget />
+      <RAGChatbotInitializer />
       <Toast />
     </div>
   )
