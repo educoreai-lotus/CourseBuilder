@@ -1,0 +1,322 @@
+{
+  "migrationFile": {
+    "version": "1.0.0",
+    "database": {
+      "tables": [
+        {
+          "name": "courses",
+          "schema": {
+            "id": "UUID PRIMARY KEY DEFAULT uuid_generate_v4()",
+            "course_name": "TEXT NOT NULL",
+            "course_description": "TEXT",
+            "course_type": "course_type NOT NULL (ENUM: 'learner_specific', 'trainer')",
+            "status": "course_status DEFAULT 'draft' (ENUM: 'active', 'archived', 'draft')",
+            "level": "course_level (ENUM: 'beginner', 'intermediate', 'advanced')",
+            "duration_hours": "INT",
+            "start_date": "TIMESTAMP",
+            "created_at": "TIMESTAMP DEFAULT now()",
+            "updated_at": "TIMESTAMP DEFAULT now()",
+            "created_by_user_id": "UUID",
+            "learning_path_designation": "JSONB DEFAULT '{}'::jsonb",
+            "studentsIDDictionary": "JSONB DEFAULT '{}'::jsonb",
+            "feedbackDictionary": "JSONB DEFAULT '{}'::jsonb",
+            "lesson_completion_dictionary": "JSONB DEFAULT '{}'::jsonb",
+            "ai_assets": "JSONB DEFAULT '{}'::jsonb"
+          }
+        },
+        {
+          "name": "topics",
+          "schema": {
+            "id": "UUID PRIMARY KEY DEFAULT uuid_generate_v4()",
+            "course_id": "UUID NOT NULL REFERENCES courses(id) ON DELETE CASCADE",
+            "topic_name": "TEXT NOT NULL",
+            "topic_description": "TEXT"
+          }
+        },
+        {
+          "name": "modules",
+          "schema": {
+            "id": "UUID PRIMARY KEY DEFAULT uuid_generate_v4()",
+            "topic_id": "UUID NOT NULL REFERENCES topics(id) ON DELETE CASCADE",
+            "module_name": "TEXT NOT NULL",
+            "module_description": "TEXT"
+          }
+        },
+        {
+          "name": "lessons",
+          "schema": {
+            "id": "UUID PRIMARY KEY DEFAULT uuid_generate_v4()",
+            "module_id": "UUID NOT NULL REFERENCES modules(id) ON DELETE CASCADE",
+            "topic_id": "UUID NOT NULL REFERENCES topics(id) ON DELETE CASCADE",
+            "lesson_name": "TEXT NOT NULL",
+            "lesson_description": "TEXT",
+            "skills": "JSONB DEFAULT '[]'::jsonb NOT NULL",
+            "trainer_ids": "UUID[] DEFAULT '{}' NOT NULL",
+            "content_type": "TEXT",
+            "content_data": "JSONB DEFAULT '[]'::jsonb NOT NULL",
+            "devlab_exercises": "JSONB DEFAULT '[]'::jsonb NOT NULL"
+          }
+        },
+        {
+          "name": "assessments",
+          "schema": {
+            "id": "UUID PRIMARY KEY DEFAULT uuid_generate_v4()",
+            "learner_id": "UUID NOT NULL",
+            "learner_name": "TEXT",
+            "course_id": "UUID NOT NULL REFERENCES courses(id) ON DELETE CASCADE",
+            "exam_type": "exam_type NOT NULL DEFAULT 'postcourse' (ENUM: 'postcourse')",
+            "passing_grade": "NUMERIC(5,2) DEFAULT 70.00",
+            "final_grade": "NUMERIC(5,2)",
+            "passed": "BOOLEAN"
+          }
+        },
+        {
+          "name": "feedback",
+          "schema": {
+            "id": "UUID PRIMARY KEY DEFAULT uuid_generate_v4()",
+            "learner_id": "UUID NOT NULL",
+            "course_id": "UUID NOT NULL REFERENCES courses(id) ON DELETE CASCADE",
+            "rating": "INT NOT NULL CHECK (rating BETWEEN 1 AND 5)",
+            "comment": "TEXT",
+            "submitted_at": "TIMESTAMP DEFAULT now()"
+          }
+        },
+        {
+          "name": "registrations",
+          "schema": {
+            "id": "UUID PRIMARY KEY DEFAULT uuid_generate_v4()",
+            "learner_id": "UUID NOT NULL",
+            "learner_name": "TEXT",
+            "course_id": "UUID NOT NULL REFERENCES courses(id) ON DELETE CASCADE",
+            "company_id": "UUID",
+            "company_name": "TEXT",
+            "status": "registration_status DEFAULT 'in_progress' (ENUM: 'completed', 'in_progress', 'failed')",
+            "enrolled_date": "TIMESTAMP DEFAULT now()",
+            "completed_date": "TIMESTAMP",
+            "constraint": "UNIQUE (course_id, learner_id)"
+          }
+        },
+        {
+          "name": "versions",
+          "schema": {
+            "id": "UUID PRIMARY KEY DEFAULT uuid_generate_v4()",
+            "entity_type": "version_entity_type NOT NULL (ENUM: 'course', 'topic', 'module', 'lesson')",
+            "entity_id": "UUID NOT NULL",
+            "version_number": "INT NOT NULL",
+            "data": "JSONB DEFAULT '{}'::jsonb",
+            "created_at": "TIMESTAMP DEFAULT now()",
+            "constraint": "UNIQUE (entity_type, entity_id, version_number)"
+          }
+        }
+      ],
+      "migrations": []
+    },
+    "api": {
+      "endpoints": [
+        {
+          "path": "/api/v1/courses/input",
+          "method": "POST",
+          "description": "Accept course input from Content Studio (trainer-driven marketplace courses)",
+          "requestSchema": {
+            "sourceService": "string (optional)",
+            "learner_id": "string (optional, UUID)",
+            "learner_name": "string (optional)",
+            "learner_company": "string (optional)",
+            "learning_path": "array of topic objects",
+            "skills": "array of strings",
+            "level": "string (optional: 'beginner' | 'intermediate' | 'advanced')",
+            "duration": "integer (optional, minutes)",
+            "metadata": "object (optional)"
+          },
+          "responseSchema": {
+            "status": "string",
+            "course_id": "uuid",
+            "structure": "object with course structure"
+          }
+        },
+        {
+          "path": "/api/v1/directory/trigger-learning-path",
+          "method": "POST",
+          "description": "Directory trigger for personalized course generation. Flow: Directory → Course Builder → Learner AI → Content Studio → Course Builder",
+          "requestSchema": {
+            "learner_id": "string (required, UUID)",
+            "learner_name": "string (required)",
+            "learner_company": "string (optional)",
+            "tag": "string (required: 'competency' | 'learning-path-name' | etc)",
+            "language": "string (required: 'en' | 'he' | etc)",
+            "trainer_id": "string (optional, UUID)",
+            "trainer_name": "string (optional)"
+          },
+          "responseSchema": {
+            "status": "string",
+            "course_id": "uuid",
+            "course_name": "string",
+            "course_description": "string",
+            "structure": "object"
+          }
+        },
+        {
+          "path": "/api/fill-content-metrics",
+          "method": "POST",
+          "description": "Unified endpoint for all microservice integrations using envelope structure (requester_service, payload, response)",
+          "requestSchema": {
+            "requester_service": "string (required, lowercase with underscores)",
+            "payload": "object (required)",
+            "response": "object (optional, template for expected response)"
+          },
+          "responseSchema": {
+            "requester_service": "string",
+            "payload": "object",
+            "response": "object"
+          }
+        }
+      ],
+      "outboundCalls": [
+        {
+          "service": "coordinator",
+          "targetService": "learner_ai",
+          "method": "POST",
+          "description": "Request learning path from Learner AI via Coordinator",
+          "requestSchema": {
+            "requester_service": "course_builder",
+            "payload": {
+              "user_id": "string (required, UUID)",
+              "tag": "string (required)"
+            },
+            "response": {
+              "learning_path": "array",
+              "skills": "array"
+            }
+          }
+        },
+        {
+          "service": "coordinator",
+          "targetService": "content_studio",
+          "method": "POST",
+          "description": "Request course content from Content Studio via Coordinator",
+          "requestSchema": {
+            "requester_service": "course_builder",
+            "payload": {
+              "learner_id": "string (optional, UUID)",
+              "learner_name": "string (optional)",
+              "learner_company": "string (optional)",
+              "skills": "array of strings",
+              "learning_path": "array of topic objects",
+              "language": "string",
+              "trainer_id": "string (optional, UUID)",
+              "trainer_name": "string (optional)"
+            },
+            "response": {
+              "course": "array"
+            }
+          }
+        },
+        {
+          "service": "coordinator",
+          "targetService": "assessment",
+          "method": "POST",
+          "description": "Send assessment request to Assessment service via Coordinator",
+          "requestSchema": {
+            "requester_service": "course_builder",
+            "payload": {
+              "learner_id": "string (required, UUID)",
+              "learner_name": "string (required)",
+              "course_id": "string (required, UUID)",
+              "coverage_map": "object"
+            },
+            "response": {
+              "assessment_session_id": "string",
+              "redirect_url": "string"
+            }
+          }
+        },
+        {
+          "service": "coordinator",
+          "targetService": "directory",
+          "method": "POST",
+          "description": "Send feedback to Directory service via Coordinator",
+          "requestSchema": {
+            "requester_service": "course_builder",
+            "payload": {
+              "learner_id": "string (required, UUID)",
+              "course_id": "string (required, UUID)",
+              "course_name": "string (required)",
+              "rating": "integer (required, 1-5)",
+              "comment": "string (optional)"
+            },
+            "response": {}
+          }
+        },
+        {
+          "service": "coordinator",
+          "targetService": "learning_analytics",
+          "method": "POST",
+          "description": "Send analytics data to Learning Analytics via Coordinator",
+          "requestSchema": {
+            "requester_service": "course_builder",
+            "payload": {
+              "course_id": "string (required, UUID)",
+              "course_name": "string (required)",
+              "totalEnrollments": "integer",
+              "activeEnrollment": "integer",
+              "completionRate": "number",
+              "averageRating": "number",
+              "feedbackDictionary": "object",
+              "lesson_completion_dictionary": "object",
+              "studentsIDDictionary": "object",
+              "learning_path": "array"
+            },
+            "response": {}
+          }
+        },
+        {
+          "service": "coordinator",
+          "targetService": "management_reporting",
+          "method": "POST",
+          "description": "Send reporting data to Management Reporting via Coordinator",
+          "requestSchema": {
+            "requester_service": "course_builder",
+            "payload": {
+              "course_id": "string (required, UUID)",
+              "course_name": "string (required)",
+              "totalEnrollments": "integer",
+              "activeEnrollment": "integer",
+              "completionRate": "number",
+              "averageRating": "number"
+            },
+            "response": {}
+          }
+        }
+      ]
+    },
+    "dependencies": [
+      "coordinator",
+      "learner_ai",
+      "content_studio",
+      "assessment",
+      "directory",
+      "learning_analytics",
+      "management_reporting"
+    ],
+    "events": {
+      "publishes": [
+        "course.created",
+        "course.updated",
+        "course.published",
+        "course.scheduled",
+        "course.unpublished",
+        "registration.completed",
+        "registration.cancelled",
+        "feedback.submitted",
+        "feedback.updated",
+        "feedback.deleted",
+        "lesson.completed",
+        "progress.updated",
+        "assessment.completed",
+        "course.validated"
+      ],
+      "subscribes": []
+    }
+  }
+}
+
