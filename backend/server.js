@@ -40,9 +40,15 @@ const allowedOrigins = rawAllowedOrigins
 
 const isDevelopment = (process.env.NODE_ENV || 'development') !== 'production';
 
+// Log CORS configuration (for debugging)
+console.log('🌐 CORS Configuration:');
+console.log(`   Allowed origins: ${allowedOrigins.length > 0 ? allowedOrigins.join(', ') : 'none (using wildcard)'}`);
+console.log(`   Environment: ${process.env.NODE_ENV || 'development'}`);
+
 const corsOptions = {
   origin: (origin, callback) => {
     if (!origin) {
+      // No origin (e.g., same-origin request, Postman, curl)
       callback(null, true);
       return;
     }
@@ -61,11 +67,15 @@ const corsOptions = {
     ) {
       callback(null, true);
     } else {
-      callback(new Error('Not allowed by CORS'));
+      console.warn(`⚠️  CORS blocked request from origin: ${normalizedRequestOrigin}`);
+      console.warn(`   Allowed origins: ${allowedOrigins.join(', ') || 'none'}`);
+      callback(new Error(`Not allowed by CORS. Origin: ${normalizedRequestOrigin} not in allowed list.`));
     }
   },
   credentials: true,
-  optionsSuccessStatus: 200
+  optionsSuccessStatus: 200,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-User-Id', 'X-User-Role', 'X-User-Name', 'X-Service-Name', 'X-Signature', 'x-user-role', 'x-service-id', 'x-api-key']
 };
 app.use(cors(corsOptions));
 app.use(express.json());
