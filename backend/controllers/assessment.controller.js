@@ -102,7 +102,9 @@ export const startAssessment = async (req, res, next) => {
   }
 };
 
-export default {
+export const assessmentController = {
   startAssessment
 };
+
+export default assessmentController;
 
