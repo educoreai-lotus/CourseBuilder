@@ -969,5 +969,5 @@ seed()
   })
   .catch((error) => {
     console.error('\n❌ Seed script failed:', error.message);
-    process.exit(1);
-  });
+  process.exit(1);
+});

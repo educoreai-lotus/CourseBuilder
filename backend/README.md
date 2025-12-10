@@ -16,7 +16,7 @@ cp .env.example .env
 
 3. Update `.env` with your PostgreSQL connection details:
 ```
-DATABASE_URL=postgresql://user:password@localhost:5432/coursebuilder
+DATABASE_URL=postgresql://postgres.nqqlicxidsdskkqvedgd:SanaMohanna2@aws-1-ap-south-1.pooler.supabase.com:5432/postgres
 ```
 
 4. Start the server:
