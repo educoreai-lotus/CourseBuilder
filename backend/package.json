@@ -27,7 +27,8 @@
     "test:ai-course": "node test-api-course.js",
     "generate-secrets": "node scripts/generate-secrets.js",
     "generate-service-keys": "node scripts/generate-service-keys.js",
-    "migrate:ai-assets": "node scripts/add-ai-assets-column.js"
+    "migrate:ai-assets": "node scripts/add-ai-assets-column.js",
+    "register:coordinator": "node scripts/registerWithCoordinator.js"
   },
   "keywords": [
     "course-builder",
