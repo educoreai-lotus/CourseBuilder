@@ -19,6 +19,7 @@ export async function sendToLearnerAI(payloadObject = {}) {
     // Directory → Course Builder → Learner AI
     // Course Builder sends: { learner_id, tag }
     const sendPayload = {
+      action: 'get_learning_path',
       user_id: payloadObject.user_id || payloadObject.learner_id || null,
       tag: payloadObject.tag || null
     };

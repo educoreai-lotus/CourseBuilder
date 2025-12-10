@@ -206,6 +206,10 @@ export function updateCourseProgress(courseId, body) {
   return api.patch(`/courses/${courseId}/progress`, body).then(r => r.data)
 }
 
+export function startAssessment(courseId, body = {}) {
+  return api.post(`/courses/${courseId}/assessment/start`, body).then(r => r.data)
+}
+
 export const fetchEnrichmentAssets = (payload) => enrichAssetsRequest(payload)
 
 export default {

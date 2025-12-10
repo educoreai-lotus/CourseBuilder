@@ -12,14 +12,14 @@ import {
 } from 'lucide-react'
 import Button from '../components/Button.jsx'
 import LoadingSpinner from '../components/LoadingSpinner.jsx'
-import { getCourseById } from '../services/apiService.js'
+import { getCourseById, startAssessment } from '../services/apiService.js'
 import { useApp } from '../context/AppContext'
 import Container from '../components/Container.jsx'
 
 export default function AssessmentPage() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { showToast } = useApp()
+  const { showToast, userProfile } = useApp()
   const [course, setCourse] = useState(null)
   const [loading, setLoading] = useState(true)
   const [redirecting, setRedirecting] = useState(false)
@@ -40,13 +40,42 @@ export default function AssessmentPage() {
     loadCourse()
   }, [id, showToast])
 
-  const handleStartAssessment = () => {
+  const handleStartAssessment = async () => {
+    if (redirecting) return
+    
     setRedirecting(true)
-    showToast('Assessment launching... good luck!', 'success')
-    setTimeout(() => {
-      showToast('Great job! Share your feedback with the course team.', 'success')
-      navigate(`/course/${id}/feedback`)
-    }, 2000)
+    showToast('Starting assessment...', 'info')
+    
+    try {
+      // Call backend API to start assessment via Coordinator
+      const response = await startAssessment(id, {
+        learner_id: userProfile?.id,
+        learner_name: userProfile?.name
+      })
+
+      // If Assessment service returns a redirect_url, redirect to it
+      if (response?.redirect_url) {
+        showToast('Redirecting to assessment...', 'success')
+        // Redirect to external Assessment service
+        window.location.href = response.redirect_url
+        return
+      }
+
+      // Fallback: If no redirect_url, show success message and navigate to feedback
+      // This happens if Assessment service is not fully integrated yet
+      showToast('Assessment session created!', 'success')
+      setTimeout(() => {
+        showToast('Great job! Share your feedback with the course team.', 'success')
+        navigate(`/course/${id}/feedback`)
+      }, 2000)
+    } catch (error) {
+      console.error('Error starting assessment:', error)
+      showToast(
+        error?.response?.data?.message || 'Failed to start assessment. Please try again.',
+        'error'
+      )
+      setRedirecting(false)
+    }
   }
 
   if (loading) {

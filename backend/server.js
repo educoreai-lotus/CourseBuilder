@@ -42,7 +42,16 @@ const isDevelopment = (process.env.NODE_ENV || 'development') !== 'production';
 
 // Log CORS configuration (for debugging)
 console.log('🌐 CORS Configuration:');
-console.log(`   Allowed origins: ${allowedOrigins.length > 0 ? allowedOrigins.join(', ') : 'none (using wildcard)'}`);
+if (allowedOrigins.length > 0) {
+  console.log(`   Allowed origins: ${allowedOrigins.join(', ')}`);
+  // Check if Vercel preview URLs will be allowed
+  const hasVercelDomain = allowedOrigins.some(origin => origin.includes('vercel.app'));
+  if (hasVercelDomain) {
+    console.log(`   ✅ Vercel preview URLs will be automatically allowed`);
+  }
+} else {
+  console.log(`   Allowed origins: none (using wildcard *)`);
+}
 console.log(`   Environment: ${process.env.NODE_ENV || 'development'}`);
 
 const corsOptions = {

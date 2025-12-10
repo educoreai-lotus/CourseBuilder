@@ -23,6 +23,9 @@ export async function sendToContentStudio(payloadObject) {
       payloadObject.learnerData || {},
       payloadObject.skills || []
     );
+    
+    // Add action field for Coordinator routing
+    sendPayload.action = 'generate_course_content';
 
     // Add NEW fields for Directory → Learner AI → Content Studio flow
     if (payloadObject.learning_path) {

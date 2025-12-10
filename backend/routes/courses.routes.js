@@ -1,6 +1,7 @@
 import express from 'express';
 import { coursesController, cancelEnrollment } from '../controllers/courses.controller.js';
 import { feedbackController } from '../controllers/feedback.controller.js';
+import { assessmentController } from '../controllers/assessment.controller.js';
 import { authorizeRoles } from '../middleware/auth.middleware.js';
 import { courseCreationLimiter } from '../middleware/rateLimiter.middleware.js';
 
@@ -114,6 +115,12 @@ router.post('/:id/unpublish', authorizeRoles('trainer', 'admin'), coursesControl
  * Get course version history (Trainer/Admin)
  */
 router.get('/:id/versions', coursesController.getCourseVersions);
+
+/**
+ * POST /api/v1/courses/:id/assessment/start
+ * Start assessment for a learner
+ */
+router.post('/:id/assessment/start', authorizeRoles('learner'), assessmentController.startAssessment);
 
 export default router;
 
