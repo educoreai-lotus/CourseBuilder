@@ -1,18 +1,14 @@
 /**
  * AI Query Builder Service
- * Uses AI (Gemini) to generate SQL SELECT queries based on payload and response template
+ * Uses AI (OpenAI) to generate SQL SELECT queries based on payload and response template
  * 
  * IMPORTANT: This service does NOT make assumptions about payload/response structure.
  * It extracts meaning from the ACTUAL runtime request.
  */
 
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import OpenAI from 'openai';
 
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-
-if (!GEMINI_API_KEY) {
-  console.warn('⚠️  GEMINI_API_KEY not found. AI query generation will fail.');
-}
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 
 // Database schema information for AI context
 const DB_SCHEMA_CONTEXT = `
@@ -114,12 +110,12 @@ function responseTemplateHasFields(responseTemplate) {
 export async function generateSQLQuery(payloadObject, responseTemplate) {
   console.log('[AI Query Builder] Starting SQL query generation...');
   
-  if (!GEMINI_API_KEY) {
-    console.error('[AI Query Builder] ❌ ERROR: GEMINI_API_KEY not configured in environment variables');
-    console.error('[AI Query Builder] Please set GEMINI_API_KEY in Railway environment variables');
-    throw new Error('GEMINI_API_KEY not configured. Cannot generate SQL queries.');
+  if (!OPENAI_API_KEY) {
+    console.error('[AI Query Builder] ❌ ERROR: OPENAI_API_KEY not configured in environment variables');
+    console.error('[AI Query Builder] Please set OPENAI_API_KEY in Railway environment variables');
+    throw new Error('OPENAI_API_KEY not configured. Cannot generate SQL queries.');
   }
-  console.log('[AI Query Builder] ✅ GEMINI_API_KEY found in environment');
+  console.log('[AI Query Builder] ✅ OPENAI_API_KEY found in environment');
 
   // Safety check: Ensure response template has fields to fill
   // Per requirements: "If the response_template is empty: Output nothing (AI should not be invoked)"
@@ -130,25 +126,43 @@ export async function generateSQLQuery(payloadObject, responseTemplate) {
   console.log('[AI Query Builder] ✅ Response template has fields to fill');
 
   try {
-    console.log('[AI Query Builder] Initializing Gemini AI...');
-    const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
-    console.log('[AI Query Builder] ✅ Gemini AI initialized with model: gemini-2.5-flash');
+    console.log('[AI Query Builder] Initializing OpenAI...');
+    const client = new OpenAI({ apiKey: OPENAI_API_KEY });
+    const modelName = process.env.OPENAI_MODEL || 'gpt-4o-mini';
+    console.log(`[AI Query Builder] ✅ OpenAI initialized with model: ${modelName}`);
 
     // Build the prompt
     console.log('[AI Query Builder] Building prompt with field normalization rules...');
     const prompt = buildQueryGenerationPrompt(payloadObject, responseTemplate);
     console.log('[AI Query Builder] ✅ Prompt built successfully');
 
-    // Generate SQL query using Gemini AI
-    console.log('[AI Query Builder] 🚀 Calling Gemini AI to generate SQL query...');
+    // Generate SQL query using OpenAI
+    console.log('[AI Query Builder] 🚀 Calling OpenAI to generate SQL query...');
     const startTime = Date.now();
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    const text = response.text();
+    const completion = await client.chat.completions.create({
+      model: modelName,
+      messages: [
+        {
+          role: 'system',
+          content: 'You are an expert SQL query generator for PostgreSQL. Generate only valid SELECT queries. Never use INSERT, UPDATE, DELETE, or any other non-SELECT statements.'
+        },
+        {
+          role: 'user',
+          content: prompt
+        }
+      ],
+      temperature: 0.1, // Low temperature for more deterministic SQL generation
+      max_tokens: 1000
+    });
+    
+    const text = completion.choices[0]?.message?.content || '';
     const duration = Date.now() - startTime;
-    console.log(`[AI Query Builder] ✅ Gemini AI responded in ${duration}ms`);
+    console.log(`[AI Query Builder] ✅ OpenAI responded in ${duration}ms`);
     console.log('[AI Query Builder] Raw AI response length:', text.length, 'characters');
+
+    if (!text) {
+      throw new Error('OpenAI returned empty response');
+    }
 
     // Extract SQL from response (may contain markdown code fences)
     console.log('[AI Query Builder] Extracting SQL from AI response...');
