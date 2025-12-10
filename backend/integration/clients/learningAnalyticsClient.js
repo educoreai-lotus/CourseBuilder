@@ -29,8 +29,9 @@ export async function sendToLearningAnalytics(course, analyticsData = {}) {
     // Build payload using DTO
     const sendPayload = learningAnalyticsDTO.buildSendPayload(course, analyticsData);
     
-    // Add action field for Coordinator routing
+    // Add action and description fields for Coordinator routing
     sendPayload.action = 'send_analytics';
+    sendPayload.description = 'Send course analytics data including enrollments, completion rates, and ratings';
 
     // Convert to string
     const payloadString = JSON.stringify(sendPayload);
@@ -83,8 +84,9 @@ export async function sendCourseAnalytics(course, topics = [], lessons = [], reg
       assessments
     );
     
-    // Add action field for Coordinator routing
+    // Add action and description fields for Coordinator routing
     sendPayload.action = 'send_course_analytics';
+    sendPayload.description = 'Send comprehensive course analytics data including structure, enrollments, feedback, and assessments';
 
     // Convert to string
     const payloadString = JSON.stringify(sendPayload);

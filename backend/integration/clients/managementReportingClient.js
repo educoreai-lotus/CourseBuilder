@@ -30,8 +30,9 @@ export async function sendToManagementReporting(course, registrations = [], feed
     // Build payload using DTO
     const sendPayload = managementReportingDTO.buildFromCourseStats(course, registrations, feedback);
     
-    // Add action field for Coordinator routing
+    // Add action and description fields for Coordinator routing
     sendPayload.action = 'send_course_statistics';
+    sendPayload.description = 'Send course statistics including enrollment counts, completion rates, and average ratings for management reporting';
 
     // Convert to string
     const payloadString = JSON.stringify(sendPayload);

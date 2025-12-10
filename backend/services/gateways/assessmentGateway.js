@@ -37,8 +37,9 @@ export async function sendToAssessment(course, learnerId, learnerName, lessons =
     // Build payload using DTO (coverage_map built dynamically from lessons)
     const sendPayload = assessmentDTO.buildSendPayload(course, learnerId, learnerName, lessons);
     
-    // Add action field for Coordinator routing
+    // Add action and description fields for Coordinator routing
     sendPayload.action = 'create_assessment';
+    sendPayload.description = 'Create a new assessment session for a learner to take a course exam';
 
     // Build response template (Assessment will fill it)
     const responseTemplate = {

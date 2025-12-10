@@ -17,8 +17,9 @@ export async function sendToDirectory(feedback, course) {
     // Build payload using DTO (looks up course_name from course entity)
     const sendPayload = directoryDTO.buildSendPayload(feedback, course);
     
-    // Add action field for Coordinator routing
+    // Add action and description fields for Coordinator routing
     sendPayload.action = 'submit_feedback';
+    sendPayload.description = 'Submit learner feedback about a course including rating and comments';
 
     // Build response template (empty, Directory doesn't return data for feedback)
     const responseTemplate = {};
