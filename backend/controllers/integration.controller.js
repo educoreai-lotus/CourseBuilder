@@ -148,7 +148,10 @@ function isDataFillingMode(responseTemplate) {
 
 /**
  * Determine target service based on response template and payload
- * NEW LOGIC: Course Builder handles ALL requests with response templates via AI
+ * NEW LOGIC: 
+ * - If response template has structured fields → Course Builder Handler (Data-Filling mode)
+ * - If response template is {} or {answer: ""} → Check payload first for specialized handlers, otherwise Course Builder (Action mode)
+ * - If response template is missing → Use specialized handler based on payload structure
  * 
  * @param {Object} payloadObject - Payload from request
  * @param {Object} responseTemplate - Response template from request
@@ -156,18 +159,41 @@ function isDataFillingMode(responseTemplate) {
  */
 function determineTargetService(payloadObject, responseTemplate) {
   // NEW ROUTING LOGIC:
-  // 1. If response template exists (even if empty or {answer: ""}) → Use Course Builder Handler (AI)
-  // 2. If response template is missing → Use specialized handler based on payload structure
+  // 1. If response template is missing → Use specialized handler based on payload structure
+  // 2. If response template is {} or {answer: ""} → Check payload for specialized handlers first, otherwise Course Builder (Action mode)
+  // 3. If response template has structured fields → Course Builder Handler (Data-Filling mode)
   
-  // Check if response template exists (even if empty)
-  if (responseTemplate !== undefined && responseTemplate !== null) {
-    // Response template exists → Use AI-powered Course Builder Handler
-    // AI will determine if it's Data-Filling or Action mode
+  // Check if response template is missing
+  if (responseTemplate === undefined || responseTemplate === null) {
+    // Response template is missing → Use specialized handler based on payload structure
+    return inferSpecializedServiceFromPayload(payloadObject);
+  }
+  
+  // Response template exists - check if it's Action mode or Data mode
+  if (isActionMode(responseTemplate)) {
+    // Action mode: {} or {answer: ""}
+    // First, check if payload matches a specialized handler pattern
+    // If yes, use that handler (specialized handlers can handle empty response)
+    const specializedService = inferSpecializedServiceFromPayload(payloadObject);
+    if (specializedService) {
+      return specializedService;
+    }
+    // If no specialized handler matches and response is empty {},
+    // return null to indicate no service can handle this request
+    // (Course Builder Action mode requires AI, which may not be available)
+    if (Object.keys(responseTemplate).length === 0) {
+      return null;
+    }
+    // If response is {answer: ""}, try Course Builder Action mode
+    return 'CourseBuilder';
+  } else if (isDataFillingMode(responseTemplate)) {
+    // Data mode: structured fields
+    // Always use Course Builder Data-Filling mode
     return 'CourseBuilder';
   }
   
-  // Response template is missing → Use specialized handler based on payload structure
-  return inferSpecializedServiceFromPayload(payloadObject);
+  // Fallback: shouldn't reach here, but default to Course Builder
+  return 'CourseBuilder';
 }
 
 
