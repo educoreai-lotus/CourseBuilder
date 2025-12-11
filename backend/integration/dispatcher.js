@@ -18,9 +18,11 @@ import { handleCourseBuilderIntegration } from './handlers/courseBuilderHandler.
  * @param {string} serviceName - Name of the service (e.g., "ContentStudio", "LearnerAI", "CourseBuilder")
  * @param {Object} payloadObject - Parsed payload object
  * @param {Object} responseTemplate - Response template object (may be empty {} for specialized handlers, or have fields for AI handler)
- * @returns {Promise<Object>} Filled response object
+ * @param {string|null} action - Action from payload.action (optional, for CourseBuilder handler)
+ * @param {string|null} requesterService - Requester service name (optional, for CourseBuilder handler)
+ * @returns {Promise<Object>} Filled response object (or full object {requester_service, payload, response} for CourseBuilder)
  */
-export async function dispatchIntegrationRequest(serviceName, payloadObject, responseTemplate) {
+export async function dispatchIntegrationRequest(serviceName, payloadObject, responseTemplate, action = null, requesterService = null) {
   if (!serviceName || typeof serviceName !== 'string') {
     throw new Error('serviceName is required and must be a string');
   }
@@ -37,7 +39,9 @@ export async function dispatchIntegrationRequest(serviceName, payloadObject, res
   switch (normalizedServiceName) {
     case 'CourseBuilder':
       // Use AI-powered query generation to fill Course Builder's own response templates
-      return await handleCourseBuilderIntegration(payloadObject, responseTemplate);
+      // Pass action if available (extract from payload if not provided)
+      const actionToUse = action || payloadObject.action || null;
+      return await handleCourseBuilderIntegration(payloadObject, responseTemplate, actionToUse, requesterService);
 
     case 'ContentStudio':
       return await handleContentStudioIntegration(payloadObject, responseTemplate);

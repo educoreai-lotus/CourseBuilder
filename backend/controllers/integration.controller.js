@@ -90,8 +90,65 @@ function inferSpecializedServiceFromPayload(payloadObject) {
 }
 
 /**
+ * Check if response template is Action/Command mode
+ * Action mode: {} or { "answer": "" }
+ * @param {Object} responseTemplate - Response template to check
+ * @returns {boolean} - True if action mode
+ */
+function isActionMode(responseTemplate) {
+  if (!responseTemplate || typeof responseTemplate !== 'object') {
+    return true; // Empty/null is action mode
+  }
+  
+  const keys = Object.keys(responseTemplate);
+  
+  // Empty object is action mode
+  if (keys.length === 0) {
+    return true;
+  }
+  
+  // Only "answer" field is action mode
+  if (keys.length === 1 && keys[0] === 'answer') {
+    const answerValue = responseTemplate.answer;
+    // Empty string, null, or undefined means action mode
+    if (answerValue === '' || answerValue === null || answerValue === undefined) {
+      return true;
+    }
+  }
+  
+  return false;
+}
+
+/**
+ * Check if response template is Data-Filling mode
+ * Data mode: multiple fields, nested objects, arrays, structured data
+ * @param {Object} responseTemplate - Response template to check
+ * @returns {boolean} - True if data-filling mode
+ */
+function isDataFillingMode(responseTemplate) {
+  if (!responseTemplate || typeof responseTemplate !== 'object') {
+    return false;
+  }
+  
+  const keys = Object.keys(responseTemplate);
+  
+  // Empty is not data mode
+  if (keys.length === 0) {
+    return false;
+  }
+  
+  // Only "answer" is not data mode
+  if (keys.length === 1 && keys[0] === 'answer') {
+    return false;
+  }
+  
+  // Multiple fields or structured data is data mode
+  return true;
+}
+
+/**
  * Determine target service based on response template and payload
- * NEW LOGIC: AI is used ONLY when response template has fields to fill
+ * NEW LOGIC: Course Builder handles ALL requests with response templates via AI
  * 
  * @param {Object} payloadObject - Payload from request
  * @param {Object} responseTemplate - Response template from request
@@ -99,16 +156,17 @@ function inferSpecializedServiceFromPayload(payloadObject) {
  */
 function determineTargetService(payloadObject, responseTemplate) {
   // NEW ROUTING LOGIC:
-  // 1. If response template has fields → Use Course Builder Handler (AI)
-  // 2. If response template is empty → Use specialized handler based on payload structure
+  // 1. If response template exists (even if empty or {answer: ""}) → Use Course Builder Handler (AI)
+  // 2. If response template is missing → Use specialized handler based on payload structure
   
-  // Check if response template has fields to fill
-  if (responseTemplateHasFields(responseTemplate)) {
-    // Response template has fields → Use AI-powered Course Builder Handler
+  // Check if response template exists (even if empty)
+  if (responseTemplate !== undefined && responseTemplate !== null) {
+    // Response template exists → Use AI-powered Course Builder Handler
+    // AI will determine if it's Data-Filling or Action mode
     return 'CourseBuilder';
   }
   
-  // Response template is empty → Use specialized handler based on payload structure
+  // Response template is missing → Use specialized handler based on payload structure
   return inferSpecializedServiceFromPayload(payloadObject);
 }
 
@@ -129,17 +187,56 @@ function determineTargetService(payloadObject, responseTemplate) {
  */
 export async function handleFillContentMetrics(req, res) {
   try {
-    // Body should be a regular JSON object (parsed by Express.json() middleware)
-    const envelope = req.body;
+    // Request body comes as a string from Coordinator - we need to parse it manually
+    let envelope;
+    
+    // Check if body is already parsed (object) or still a string
+    if (typeof req.body === 'string') {
+      // Body is a string - parse it to JSON
+      try {
+        envelope = JSON.parse(req.body);
+      } catch (parseError) {
+        const errorPayload = {
+          error: 'Bad Request',
+          message: 'Request body must be a valid JSON string'
+        };
+        res.setHeader('Content-Type', 'application/json');
+        return res.status(400).json(errorPayload);
+      }
+    } else if (typeof req.body === 'object' && req.body !== null) {
+      // Body is already parsed (fallback if Express.json() parsed it)
+      envelope = req.body;
+    } else {
+      // Try to get raw body as string
+      const rawBody = req.body?.toString() || '';
+      if (!rawBody) {
+      const errorPayload = {
+        error: 'Bad Request',
+        message: 'Request body is empty or invalid'
+      };
+      res.setHeader('Content-Type', 'application/json');
+      return res.status(400).send(JSON.stringify(errorPayload));
+      }
+      try {
+        envelope = JSON.parse(rawBody);
+      } catch (parseError) {
+        const errorPayload = {
+          error: 'Bad Request',
+          message: 'Request body must be a valid JSON string'
+        };
+        res.setHeader('Content-Type', 'application/json');
+        return res.status(400).json(errorPayload);
+      }
+    }
 
-    // Validate body is an object
+    // Validate envelope is an object after parsing
     if (!envelope || typeof envelope !== 'object') {
       const errorPayload = {
         error: 'Bad Request',
         message: 'Request body must be a valid JSON object'
       };
       res.setHeader('Content-Type', 'application/json');
-      return res.status(400).json(errorPayload);
+      return res.status(400).send(JSON.stringify(errorPayload));
     }
 
     // Validate required fields and structure
@@ -156,7 +253,7 @@ export async function handleFillContentMetrics(req, res) {
         message: 'Envelope must include "requester_service" (string, lowercase with underscores) and "payload" (JSON object). "response" is optional (can be {} or omitted for one-way communications).'
       };
       res.setHeader('Content-Type', 'application/json');
-      return res.status(400).json(errorPayload);
+      return res.status(400).send(JSON.stringify(errorPayload));
     }
 
     // Payload and response are already objects (NOT stringified)
@@ -164,11 +261,17 @@ export async function handleFillContentMetrics(req, res) {
     const payloadObject = envelope.payload;
     const responseObject = envelope.response || {};  // Default to {} if response is missing
 
+    // Extract action from payload.action (action is inside payload, not top-level)
+    const action = payloadObject.action || null;
+    
     // Determine target service based on NEW routing logic:
-    // - If response template has fields → Course Builder Handler (AI)
-    // - If response template is empty → Specialized handler based on payload structure
+    // - If response template exists → Course Builder Handler (AI) - handles both Data and Action modes
+    // - If response template is missing → Specialized handler based on payload structure
     console.log('[Integration Controller] 🔍 Determining target service...');
-    console.log('[Integration Controller] Response template has fields:', responseTemplateHasFields(responseObject));
+    console.log('[Integration Controller] Action (from payload.action):', action);
+    console.log('[Integration Controller] Response template mode:', 
+      isActionMode(responseObject) ? 'Action/Command' : 
+      isDataFillingMode(responseObject) ? 'Data-Filling' : 'Empty/Missing');
     const targetService = determineTargetService(payloadObject, responseObject);
     console.log('[Integration Controller] ✅ Target service determined:', targetService);
     
@@ -178,32 +281,42 @@ export async function handleFillContentMetrics(req, res) {
         message: 'Could not determine target service. Please ensure payload matches a known service pattern, or provide a response template with fields to fill.'
       };
       res.setHeader('Content-Type', 'application/json');
-      return res.status(400).json(errorPayload);
+      return res.status(400).send(JSON.stringify(errorPayload));
     }
 
     // Call dispatcher with target service, payload, and response template
     console.log(`[Integration Controller] 📤 Routing to ${targetService} handler...`);
     if (targetService === 'CourseBuilder') {
-      console.log('[Integration Controller] 🤖 Using AI-powered Course Builder Handler (OpenAI will be called)');
+      const mode = isActionMode(responseObject) ? 'Action/Command' : 'Data-Filling';
+      console.log(`[Integration Controller] 🤖 Using AI-powered Course Builder Handler (${mode} mode)`);
     }
-    const filledResponse = await dispatchIntegrationRequest(targetService, payloadObject, responseObject);
+    const filledResponse = await dispatchIntegrationRequest(targetService, payloadObject, responseObject, action, requesterService);
     console.log(`[Integration Controller] ✅ ${targetService} handler completed successfully`);
 
-    // Handler returns the filled response object
-    // Response is already a regular object (NOT stringified)
-    // For one-way communications (Learner AI, Directory, etc.), filledResponse will be {}
-    
-    // Return only the three fields: requester_service, payload, response
-    // Routing information (target_service) is internal and not exposed
-    const responseEnvelope = {
-      requester_service: envelope.requester_service, // Keep original requester_service
-      payload: payloadObject, // Keep original payload
-      response: filledResponse || {} // Return filled response object (or {} for one-way)
-    };
+    // For Course Builder AI handler: it returns the full request object with filled response
+    // For other handlers: they return just the filled response object
+    let responseEnvelope;
+    if (targetService === 'CourseBuilder' && filledResponse && filledResponse.requester_service) {
+      // AI handler returned full object: { requester_service, payload, response }
+      // Use it as-is (exact same structure - only response is filled)
+      responseEnvelope = filledResponse;
+    } else {
+      // Handler returns the filled response object
+      // Response is already a regular object (NOT stringified)
+      // For one-way communications (Learner AI, Directory, etc.), filledResponse will be {}
+      
+      // Return only the three fields: requester_service, payload, response
+      // Routing information (target_service) is internal and not exposed
+      responseEnvelope = {
+        requester_service: envelope.requester_service, // Keep original requester_service
+        payload: payloadObject, // Keep original payload
+        response: filledResponse || {} // Return filled response object (or {} for one-way)
+      };
+    }
 
-    // Return the full envelope as regular JSON object
+    // Return the full envelope as JSON string (Coordinator expects string)
     res.setHeader('Content-Type', 'application/json');
-    return res.status(200).json(responseEnvelope);
+    return res.status(200).send(JSON.stringify(responseEnvelope));
   } catch (error) {
     console.error('[Integration Controller] Error processing request:', error);
     const status = error.status || 500;
@@ -212,7 +325,7 @@ export async function handleFillContentMetrics(req, res) {
       message: error.message || 'Unhandled error'
     };
     res.setHeader('Content-Type', 'application/json');
-    return res.status(status).json(errorPayload);
+    return res.status(status).send(JSON.stringify(errorPayload));
   }
 }
 

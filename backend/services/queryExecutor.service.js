@@ -11,42 +11,75 @@
 import db from '../config/database.js';
 
 /**
- * Execute a SQL SELECT query safely
- * @param {string} sqlQuery - SQL SELECT query (may contain parameter placeholders $1, $2, etc.)
+ * Execute a SQL query safely (supports SELECT, INSERT, UPDATE, DELETE)
+ * @param {string} sqlQuery - SQL query (may contain parameter placeholders $1, $2, etc.)
  * @param {Array} params - Parameters for the query (values for $1, $2, etc.)
- * @returns {Promise<Object|Array>} - Query results (single object for one(), array for many())
+ * @param {boolean} isActionMode - True if Action mode (allows writes)
+ * @returns {Promise<Object|Array>} - Query results
  */
-export async function executeQuery(sqlQuery, params = []) {
+export async function executeQuery(sqlQuery, params = [], isActionMode = false) {
   if (!sqlQuery || typeof sqlQuery !== 'string') {
     throw new Error('Invalid query: SQL query must be a non-empty string');
   }
 
   // Final security check (in addition to AI builder validation)
-  validateQuerySecurity(sqlQuery);
+  validateQuerySecurity(sqlQuery, isActionMode);
 
   try {
     console.log('[Query Executor] 🔍 Executing SQL query with params:', params);
     console.log('[Query Executor] SQL Query:', sqlQuery);
+    console.log('[Query Executor] Mode:', isActionMode ? 'Action/Command' : 'Data-Filling');
     
-    // Use parameterized queries to prevent SQL injection
-    // db.one() returns a single row, db.many() returns multiple rows
-    // db.oneOrNone() returns a single row or null
-    
-    // Determine which method to use based on expected result
-    // For now, try oneOrNone to handle both single and no results gracefully
+    const upperQuery = sqlQuery.toUpperCase().trim();
     const startTime = Date.now();
-    const result = await db.oneOrNone(sqlQuery, params);
-    const duration = Date.now() - startTime;
+    let result;
     
+    // Determine execution method based on query type
+    if (upperQuery.startsWith('SELECT')) {
+      // SELECT query: use oneOrNone to handle both single and no results gracefully
+      result = await db.oneOrNone(sqlQuery, params);
+      result = result || {}; // Return empty object if no results
+    } else if (upperQuery.startsWith('INSERT')) {
+      // INSERT query: use oneOrNone to get RETURNING clause results, or return success
+      if (upperQuery.includes('RETURNING')) {
+        result = await db.oneOrNone(sqlQuery, params);
+        result = result || { answer: 'OK' };
+      } else {
+        await db.none(sqlQuery, params);
+        result = { answer: 'OK' };
+      }
+    } else if (upperQuery.startsWith('UPDATE')) {
+      // UPDATE query: use oneOrNone to get RETURNING clause results, or return success
+      if (upperQuery.includes('RETURNING')) {
+        result = await db.oneOrNone(sqlQuery, params);
+        result = result || { answer: 'OK' };
+      } else {
+        await db.none(sqlQuery, params);
+        result = { answer: 'OK' };
+      }
+    } else if (upperQuery.startsWith('DELETE')) {
+      // DELETE query: use oneOrNone to get RETURNING clause results, or return success
+      if (upperQuery.includes('RETURNING')) {
+        result = await db.oneOrNone(sqlQuery, params);
+        result = result || { answer: 'OK' };
+      } else {
+        await db.none(sqlQuery, params);
+        result = { answer: 'OK' };
+      }
+    } else {
+      throw new Error(`Unsupported query type: ${sqlQuery.substring(0, 20)}...`);
+    }
+    
+    const duration = Date.now() - startTime;
     console.log(`[Query Executor] ✅ Query executed successfully in ${duration}ms`);
     console.log('[Query Executor] Query results:', result ? JSON.stringify(result).substring(0, 200) + '...' : 'No results');
     
-    return result || {}; // Return empty object if no results
+    return result;
   } catch (error) {
     // Handle specific PostgreSQL errors
     if (error.code === 'PGRST116') {
-      // No rows returned - return empty object
-      return {};
+      // No rows returned - return empty object for SELECT, OK for writes
+      return isActionMode ? { answer: 'OK' } : {};
     }
     
     console.error('[Query Executor] Error executing query:', error);
@@ -193,26 +226,48 @@ export function extractQueryParams(payloadObject, sqlQuery) {
 
 /**
  * Validate query security (final check before execution)
+ * @param {string} sqlQuery - SQL query to validate
+ * @param {boolean} isActionMode - True if Action mode (allows writes)
  */
-function validateQuerySecurity(sqlQuery) {
+function validateQuerySecurity(sqlQuery, isActionMode = false) {
   const upperQuery = sqlQuery.toUpperCase().trim();
 
-  // Must start with SELECT
-  if (!upperQuery.startsWith('SELECT')) {
-    throw new Error('Security violation: Only SELECT queries are allowed');
-  }
-
-  // Check for dangerous keywords
-  const dangerousKeywords = [
-    'INSERT', 'UPDATE', 'DELETE', 'DROP', 'ALTER', 'CREATE',
-    'TRUNCATE', 'EXEC', 'EXECUTE', 'CALL', 'GRANT', 'REVOKE'
+  // Always forbidden keywords (regardless of mode)
+  const alwaysForbidden = [
+    'DROP', 'ALTER', 'CREATE', 'TRUNCATE', 'EXEC', 'EXECUTE', 
+    'CALL', 'GRANT', 'REVOKE', 'REINDEX', 'VACUUM'
   ];
   
-  for (const keyword of dangerousKeywords) {
+  for (const keyword of alwaysForbidden) {
     // Check for keyword as a standalone word (not part of another word)
     const regex = new RegExp(`\\b${keyword}\\b`, 'i');
     if (regex.test(sqlQuery)) {
       throw new Error(`Security violation: Query contains forbidden keyword: ${keyword}`);
+    }
+  }
+
+  // Mode-specific validation
+  if (!isActionMode) {
+    // Data mode: Only SELECT allowed
+    if (!upperQuery.startsWith('SELECT')) {
+      throw new Error('Security violation: Data-Filling mode only allows SELECT queries');
+    }
+    
+    // Check for write operations in data mode
+    const writeKeywords = ['INSERT', 'UPDATE', 'DELETE'];
+    for (const keyword of writeKeywords) {
+      const regex = new RegExp(`\\b${keyword}\\b`, 'i');
+      if (regex.test(sqlQuery)) {
+        throw new Error(`Security violation: Data-Filling mode cannot use ${keyword} statements`);
+      }
+    }
+  } else {
+    // Action mode: Allow INSERT, UPDATE, DELETE, SELECT
+    const allowedKeywords = ['INSERT', 'UPDATE', 'DELETE', 'SELECT'];
+    const startsWithAllowed = allowedKeywords.some(keyword => upperQuery.startsWith(keyword));
+    
+    if (!startsWithAllowed) {
+      throw new Error(`Security violation: Action mode query must start with one of: ${allowedKeywords.join(', ')}`);
     }
   }
 

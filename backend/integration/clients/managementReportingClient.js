@@ -32,7 +32,7 @@ export async function sendToManagementReporting(course, registrations = [], feed
     
     // Add action and description fields for Coordinator routing
     sendPayload.action = 'send_course_statistics';
-    sendPayload.description = 'Send course statistics including enrollment counts, completion rates, and average ratings for management reporting';
+    sendPayload.description = 'Send course statistics including enrollment counts, completion rates, and average ratings';
 
     // Convert to string
     const payloadString = JSON.stringify(sendPayload);

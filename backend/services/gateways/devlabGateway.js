@@ -18,19 +18,14 @@ export async function sendToDevlab(course, learnerId) {
     const sendPayload = devlabDTO.buildSendPayload(course, learnerId);
     
     // Add action and description fields for Coordinator routing
-    sendPayload.action = 'request_devlab_exercises';
-    sendPayload.description = 'Request DevLab exercises for a learner who has completed a course and passed the exam';
+    sendPayload.action = 'notify_learner_passed';
+    sendPayload.description = 'Notify that a learner has completed a course and passed the exam';
 
-    // Build response template (empty, DevLab will fill it)
-    const responseTemplate = {
-      devlab_exercises: []
-    };
-
-    // Build envelope for Coordinator
+    // Build envelope for Coordinator (empty response - fire-and-forget)
     const envelope = {
       requester_service: 'course_builder',
       payload: sendPayload,
-      response: responseTemplate
+      response: {}
     };
 
     console.log('[DevLab Gateway] Sending request to Coordinator:', {

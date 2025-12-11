@@ -12,10 +12,13 @@ const router = express.Router();
  * POST /api/fill-content-metrics
  * Unified endpoint for all microservice integrations
  * 
- * Request Body (regular JSON object):
+ * Request Body (JSON string - Coordinator sends as string):
+ *   String: '{"requester_service":"content_studio","payload":{"action":"...","key":"value"},"response":{"field1":"","field2":[]}}'
+ * 
+ * After parsing:
  *   {
  *     "requester_service": "content_studio", // Service name making the request (lowercase with underscores)
- *     "payload": { "key": "value" }, // JSON object - data sent to target microservice
+ *     "payload": { "action": "...", "key": "value" }, // JSON object - data sent to target microservice
  *     "response": { "field1": "", "field2": [] } // JSON object - template for expected response structure (optional)
  *   }
  * 
@@ -23,13 +26,10 @@ const router = express.Router();
  * - If response template has fields to fill → Course Builder Handler (AI-powered SQL generation)
  * - If response template is empty {} → Specialized handler based on payload structure (ContentStudio, Assessment, etc.)
  * 
- * Response (regular JSON object):
- *   {
- *     "requester_service": "content_studio",
- *     "payload": { ... }, // Same as request payload
- *     "response": { "field1": "filled", "field2": [...] } // Filled by service (or {} for one-way communications)
- *   }
+ * Response (JSON string - Course Builder returns as string):
+ *   String: '{"requester_service":"content_studio","payload":{...},"response":{...}}'
  */
-router.post('/fill-content-metrics', integrationController.handleFillContentMetrics);
+// Use express.text() to receive body as string, then parse manually in controller
+router.post('/fill-content-metrics', express.text({ type: 'application/json' }), integrationController.handleFillContentMetrics);
 
 export default router;

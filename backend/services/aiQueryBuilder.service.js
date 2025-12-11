@@ -102,13 +102,17 @@ function responseTemplateHasFields(responseTemplate) {
 
 /**
  * Generate SQL query using AI based on payload and response template
+ * Supports both Data-Filling mode (SELECT) and Action/Command mode (INSERT/UPDATE/DELETE/SELECT)
  * @param {Object} payloadObject - Parsed payload from request
  * @param {Object} responseTemplate - Parsed response template showing what fields need to be filled
- * @returns {Promise<string>} - Generated SQL SELECT query
- * @throws {Error} - If response template is empty or invalid
+ * @param {string|null} action - Action from payload (optional)
+ * @param {boolean} isActionMode - True if Action/Command mode, false if Data-Filling mode
+ * @returns {Promise<string>} - Generated SQL query
+ * @throws {Error} - If response template is invalid
  */
-export async function generateSQLQuery(payloadObject, responseTemplate) {
+export async function generateSQLQuery(payloadObject, responseTemplate, action = null, isActionMode = false) {
   console.log('[AI Query Builder] Starting SQL query generation...');
+  console.log('[AI Query Builder] Mode:', isActionMode ? 'Action/Command' : 'Data-Filling');
   
   if (!OPENAI_API_KEY) {
     console.error('[AI Query Builder] ❌ ERROR: OPENAI_API_KEY not configured in environment variables');
@@ -116,14 +120,6 @@ export async function generateSQLQuery(payloadObject, responseTemplate) {
     throw new Error('OPENAI_API_KEY not configured. Cannot generate SQL queries.');
   }
   console.log('[AI Query Builder] ✅ OPENAI_API_KEY found in environment');
-
-  // Safety check: Ensure response template has fields to fill
-  // Per requirements: "If the response_template is empty: Output nothing (AI should not be invoked)"
-  if (!responseTemplateHasFields(responseTemplate)) {
-    console.warn('[AI Query Builder] ⚠️ Response template is empty - AI should not be invoked');
-    throw new Error('Response template is empty. AI should not be invoked when there are no fields to fill.');
-  }
-  console.log('[AI Query Builder] ✅ Response template has fields to fill');
 
   try {
     console.log('[AI Query Builder] Initializing OpenAI...');
@@ -133,8 +129,13 @@ export async function generateSQLQuery(payloadObject, responseTemplate) {
 
     // Build the prompt
     console.log('[AI Query Builder] Building prompt with field normalization rules...');
-    const prompt = buildQueryGenerationPrompt(payloadObject, responseTemplate);
+    const prompt = buildQueryGenerationPrompt(payloadObject, responseTemplate, action, isActionMode);
     console.log('[AI Query Builder] ✅ Prompt built successfully');
+
+    // System message depends on mode
+    const systemMessage = isActionMode
+      ? 'You are an expert SQL query generator for PostgreSQL. Generate valid SQL queries including INSERT, UPDATE, DELETE, or SELECT validation queries. For Action mode, you may write to the database or validate state.'
+      : 'You are an expert SQL query generator for PostgreSQL. Generate only valid SELECT queries for reading data. Never use INSERT, UPDATE, DELETE, or any other non-SELECT statements.';
 
     // Generate SQL query using OpenAI
     console.log('[AI Query Builder] 🚀 Calling OpenAI to generate SQL query...');
@@ -144,7 +145,7 @@ export async function generateSQLQuery(payloadObject, responseTemplate) {
       messages: [
         {
           role: 'system',
-          content: 'You are an expert SQL query generator for PostgreSQL. Generate only valid SELECT queries. Never use INSERT, UPDATE, DELETE, or any other non-SELECT statements.'
+          content: systemMessage
         },
         {
           role: 'user',
@@ -166,12 +167,12 @@ export async function generateSQLQuery(payloadObject, responseTemplate) {
 
     // Extract SQL from response (may contain markdown code fences)
     console.log('[AI Query Builder] Extracting SQL from AI response...');
-    const sqlQuery = extractSQLFromResponse(text);
+    const sqlQuery = extractSQLFromResponse(text, isActionMode);
     console.log('[AI Query Builder] ✅ SQL extracted:', sqlQuery.substring(0, 100) + '...');
 
-    // Validate the query is SELECT only
-    console.log('[AI Query Builder] Validating SQL query (SELECT-only check)...');
-    validateQueryIsSelectOnly(sqlQuery);
+    // Validate the query based on mode
+    console.log('[AI Query Builder] Validating SQL query...');
+    validateQuery(sqlQuery, isActionMode);
     console.log('[AI Query Builder] ✅ SQL query validated successfully');
 
     const finalQuery = sqlQuery.trim();
@@ -186,13 +187,33 @@ export async function generateSQLQuery(payloadObject, responseTemplate) {
 
 /**
  * Build prompt for AI to generate SQL query
- * Uses exact system prompt as specified in requirements
+ * Supports both Data-Filling and Action/Command modes
  */
-function buildQueryGenerationPrompt(payloadObject, responseTemplate) {
+function buildQueryGenerationPrompt(payloadObject, responseTemplate, action = null, isActionMode = false) {
   const payloadStr = JSON.stringify(payloadObject, null, 2);
   const templateStr = JSON.stringify(responseTemplate, null, 2);
+  const actionStr = action ? `\nAction: ${action}` : '';
 
-  return `You are the "Course Builder SQL Generator" — an expert system that produces safe SQL SELECT queries for the Course Builder microservice.
+  const modeInstructions = isActionMode
+    ? `ACTION/COMMAND MODE:
+- You may generate INSERT, UPDATE, DELETE, or SELECT validation queries
+- Perform the operation requested by the action
+- If response_template contains "answer", your SQL MUST return one row with a column named "answer"
+- For empty response_template {}, perform the operation and return no data (or return "OK" as answer if needed)
+- Examples:
+  * INSERT INTO registrations (learner_id, course_id) VALUES ($1, $2) RETURNING 'OK' AS answer
+  * UPDATE assessments SET passed = true WHERE learner_id = $1 AND course_id = $2 RETURNING CASE WHEN passed THEN 'OK' ELSE 'FAILED' END AS answer
+  * SELECT CASE WHEN passed = true THEN 'OK' ELSE 'FAILED' END AS answer FROM assessments WHERE learner_id = $1 AND course_id = $2`
+    : `DATA-FILLING MODE:
+- Generate ONLY SELECT queries to read data
+- Return exactly the columns required by response_template
+- Use column aliases (AS) to match response template field names
+- Never use INSERT, UPDATE, DELETE, or any write operations`;
+
+  return `You are the "Course Builder SQL Generator" — an expert system that produces safe SQL queries for the Course Builder microservice.
+
+MODE: ${isActionMode ? 'ACTION/COMMAND' : 'DATA-FILLING'}
+${modeInstructions}
 
 CRITICAL RULES - YOU MUST FOLLOW THESE EXACTLY:
 
@@ -230,6 +251,7 @@ CRITICAL RULES - YOU MUST FOLLOW THESE EXACTLY:
 
 Database Schema:
 ${DB_SCHEMA_CONTEXT}
+${actionStr}
 
 Payload (requester fields - normalize to real schema):
 ${payloadStr}
@@ -249,24 +271,28 @@ JOIN REQUIREMENTS:
 - To get registrations: JOIN registrations ON registrations.course_id = courses.id
 - To get feedback: JOIN feedback ON feedback.course_id = courses.id
 
-Generate SQL SELECT query that:
+Generate SQL query that:
 1. Normalizes all requester field names to real Course Builder schema
-2. Uses proper JOINs to connect tables through foreign keys
+2. Uses proper JOINs to connect tables through foreign keys (for SELECT queries)
 3. Uses parameter placeholders ($1, $2, etc.) for payload values
 4. Uses column aliases (AS) to match response template field names
-5. Uses ONLY SELECT statements (no INSERT/UPDATE/DELETE/TRUNCATE/ALTER/CREATE)
+5. ${isActionMode ? 'Uses INSERT, UPDATE, DELETE, or SELECT validation as appropriate for the action' : 'Uses ONLY SELECT statements (no INSERT/UPDATE/DELETE/TRUNCATE/ALTER/CREATE)'}
 6. Uses PostgreSQL syntax
-7. Returns exactly the fields needed to fill the response template
+7. Returns exactly the fields needed to fill the response template (or "answer" for action mode)
 
-CRITICAL: Normalize field names from payload/response template to real Course Builder schema. Never use unknown tables or columns.
+CRITICAL: 
+- Normalize field names from payload/response template to real Course Builder schema
+- Never use unknown tables or columns
+- ${isActionMode ? 'For action mode, perform the operation and return appropriate response (answer field if needed)' : 'For data mode, only read data with SELECT queries'}
 
 SQL Query:`;
 }
 
 /**
  * Extract SQL query from AI response (removes markdown code fences if present)
+ * Supports SELECT, INSERT, UPDATE, DELETE queries
  */
-function extractSQLFromResponse(text) {
+function extractSQLFromResponse(text, isActionMode = false) {
   if (!text || typeof text !== 'string') {
     throw new Error('AI response is empty or invalid');
   }
@@ -278,14 +304,26 @@ function extractSQLFromResponse(text) {
     .replace(/```$/i, '')
     .trim();
 
-  // Find the SQL query (between first SELECT and last semicolon or end of string)
-  const selectIndex = cleaned.toUpperCase().indexOf('SELECT');
-  if (selectIndex === -1) {
-    throw new Error('No SELECT statement found in AI response');
+  // Find the SQL query (look for common SQL keywords)
+  const upperCleaned = cleaned.toUpperCase();
+  const sqlKeywords = ['SELECT', 'INSERT', 'UPDATE', 'DELETE'];
+  let sqlStartIndex = -1;
+  let sqlKeyword = null;
+  
+  for (const keyword of sqlKeywords) {
+    const index = upperCleaned.indexOf(keyword);
+    if (index !== -1 && (sqlStartIndex === -1 || index < sqlStartIndex)) {
+      sqlStartIndex = index;
+      sqlKeyword = keyword;
+    }
+  }
+  
+  if (sqlStartIndex === -1) {
+    throw new Error('No SQL statement found in AI response');
   }
 
-  // Extract from SELECT to the end
-  let sql = cleaned.substring(selectIndex);
+  // Extract from SQL keyword to the end
+  let sql = cleaned.substring(sqlStartIndex);
 
   // Remove trailing semicolon if present
   sql = sql.replace(/;?\s*$/, '').trim();
@@ -294,33 +332,54 @@ function extractSQLFromResponse(text) {
 }
 
 /**
- * Validate that the query is SELECT only (security check)
+ * Validate SQL query based on mode
+ * @param {string} sqlQuery - SQL query to validate
+ * @param {boolean} isActionMode - True if Action mode (allows INSERT/UPDATE/DELETE)
  */
-function validateQueryIsSelectOnly(sqlQuery) {
+function validateQuery(sqlQuery, isActionMode = false) {
   if (!sqlQuery || typeof sqlQuery !== 'string') {
     throw new Error('Invalid SQL query: query is empty');
   }
 
   const upperQuery = sqlQuery.toUpperCase().trim();
 
-  // Check for dangerous keywords
-  const dangerousKeywords = ['INSERT', 'UPDATE', 'DELETE', 'DROP', 'ALTER', 'CREATE', 'TRUNCATE', 'EXEC', 'EXECUTE'];
+  // Always forbidden keywords (regardless of mode)
+  const alwaysForbidden = ['DROP', 'ALTER', 'CREATE', 'TRUNCATE', 'EXEC', 'EXECUTE', 'GRANT', 'REVOKE'];
   
-  for (const keyword of dangerousKeywords) {
+  for (const keyword of alwaysForbidden) {
     if (upperQuery.includes(keyword)) {
       throw new Error(`Security violation: Query contains forbidden keyword: ${keyword}`);
     }
-  }
-
-  // Must start with SELECT
-  if (!upperQuery.startsWith('SELECT')) {
-    throw new Error('Security violation: Query must be a SELECT statement');
   }
 
   // Check for semicolons that might allow multiple statements
   const semicolonCount = (sqlQuery.match(/;/g) || []).length;
   if (semicolonCount > 1) {
     throw new Error('Security violation: Query appears to contain multiple statements');
+  }
+
+  // Mode-specific validation
+  if (isActionMode) {
+    // Action mode: Allow INSERT, UPDATE, DELETE, SELECT
+    const allowedKeywords = ['INSERT', 'UPDATE', 'DELETE', 'SELECT'];
+    const startsWithAllowed = allowedKeywords.some(keyword => upperQuery.startsWith(keyword));
+    
+    if (!startsWithAllowed) {
+      throw new Error(`Security violation: Action mode query must start with one of: ${allowedKeywords.join(', ')}`);
+    }
+  } else {
+    // Data mode: Only SELECT allowed
+    if (!upperQuery.startsWith('SELECT')) {
+      throw new Error('Security violation: Data-Filling mode query must be a SELECT statement');
+    }
+    
+    // Check for write operations in data mode
+    const writeKeywords = ['INSERT', 'UPDATE', 'DELETE'];
+    for (const keyword of writeKeywords) {
+      if (upperQuery.includes(keyword)) {
+        throw new Error(`Security violation: Data-Filling mode cannot use ${keyword} statements`);
+      }
+    }
   }
 }
 
