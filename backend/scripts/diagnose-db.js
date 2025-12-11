@@ -1,12 +1,21 @@
 /**
  * Database Diagnostic Script
  * Checks connection, tables, and data status
+ * Uses DATABASE_URL only (Supabase)
  */
 
 import db, { pgp } from '../config/database.js';
 import dotenv from 'dotenv';
 
 dotenv.config();
+
+// Ensure DATABASE_URL is set (required for Supabase)
+if (!process.env.DATABASE_URL) {
+  console.error('❌ ERROR: DATABASE_URL is required!');
+  console.error('   Please set DATABASE_URL in your .env file');
+  console.error('   DATABASE_URL should point to your Supabase database');
+  process.exit(1);
+}
 
 async function diagnose() {
   console.log('🔍 Database Diagnostic Report\n');
@@ -112,8 +121,8 @@ async function diagnose() {
       }
       
       if (courseCount.count === 0) {
-        console.log('   🌱 Seed mock data: npm run seed:mock');
-        console.log('   🔄 Or reset completely: npm run db:reset-mock');
+        console.log('   🌱 Seed data: npm run db:seed');
+        console.log('   🔄 Or reset completely: npm run db:reset');
       } else {
         console.log('   ✅ Database has data');
       }

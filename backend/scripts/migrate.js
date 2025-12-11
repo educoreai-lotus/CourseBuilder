@@ -6,6 +6,14 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
+// Ensure DATABASE_URL is set (required for Supabase)
+if (!process.env.DATABASE_URL) {
+  console.error('❌ ERROR: DATABASE_URL is required!');
+  console.error('   Please set DATABASE_URL in your .env file');
+  console.error('   DATABASE_URL should point to your Supabase database');
+  process.exit(1);
+}
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 

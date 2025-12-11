@@ -1,12 +1,21 @@
 /**
  * Clear all data from database
  * Deletes in proper order to respect foreign key constraints
+ * Uses DATABASE_URL only (Supabase)
  */
 
 import db, { pgp } from '../config/database.js';
 import dotenv from 'dotenv';
 
 dotenv.config();
+
+// Ensure DATABASE_URL is set (required for Supabase)
+if (!process.env.DATABASE_URL) {
+  console.error('❌ ERROR: DATABASE_URL is required!');
+  console.error('   Please set DATABASE_URL in your .env file');
+  console.error('   DATABASE_URL should point to your Supabase database');
+  process.exit(1);
+}
 
 async function clearDatabase() {
   try {

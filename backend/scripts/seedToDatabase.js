@@ -1,10 +1,11 @@
 /**
  * Seed Database with Sample Data (Flexible Database URL)
  * Creates sample courses, topics, modules, and lessons for testing
+ * Uses same seed data as seed.js (from seed-data.js)
  * 
  * Usage: 
  *   DATABASE_URL="postgresql://user:pass@host:port/db" node scripts/seedToDatabase.js
- *   Or: npm run seed:team
+ *   Or: npm run db:seed:team
  */
 
 import pgPromise from 'pg-promise';
@@ -15,6 +16,7 @@ import { Lesson } from '../models/Lesson.js';
 import { Feedback } from '../models/Feedback.js';
 import dotenv from 'dotenv';
 import { v4 as uuidv4 } from 'uuid';
+import { getSeedData, TRAINER_ID, LEARNER_ID, LEARNER_NAME, LEARNER_COMPANY } from './seed-data.js';
 
 dotenv.config();
 
@@ -25,9 +27,9 @@ const databaseUrl = process.argv[2] || process.env.TEAM_DATABASE_URL || process.
 if (!databaseUrl) {
   console.error('❌ ERROR: Database URL is required!');
   console.error('\nUsage:');
-  console.error('  Option 1: Set TEAM_DATABASE_URL in .env file, then run: npm run seed:team');
-  console.error('  Option 2: Pass URL as argument: npm run seed:custom "postgresql://user:pass@host:port/db"');
-  console.error('  Option 3: Set DATABASE_URL env var: DATABASE_URL="..." npm run seed:custom');
+  console.error('  Option 1: Set TEAM_DATABASE_URL in .env file, then run: npm run db:seed:team');
+  console.error('  Option 2: Pass URL as argument: node scripts/seedToDatabase.js "postgresql://user:pass@host:port/db"');
+  console.error('  Option 3: Set DATABASE_URL env var: DATABASE_URL="..." node scripts/seedToDatabase.js');
   process.exit(1);
 }
 
@@ -74,11 +76,7 @@ if (connectionString.includes('supabase') || connectionString.includes('pooler.s
 
 const db = pgp(dbConfig);
 
-// Mock User IDs (matching frontend AppContext)
-const TRAINER_ID = '20000000-0000-0000-0000-000000000001'; // Tristan Trainer
-const LEARNER_ID = '10000000-0000-0000-0000-000000000001'; // Alice Learner
-const LEARNER_NAME = 'Alice Learner';
-const LEARNER_COMPANY = 'Emerald Learning';
+// User IDs are imported from seed-data.js
 
 async function seed() {
   try {
@@ -238,233 +236,86 @@ async function seed() {
       return Feedback.fromRow(row);
     }
 
-    // 1. Create Marketplace Courses (Trainer courses)
-    console.log('📚 Creating marketplace courses...');
+    // Get seed data from shared module (same as seed.js)
+    const seedData = getSeedData();
+
+    // 1. Create all courses from seed data
+    console.log('📚 Creating courses...\n');
     
-    const jsCourse = await createCourse({
-      id: 'c3d4e5f6-a7b8-9012-cdef-123456789012',
-      course_name: 'JavaScript Fundamentals',
-      course_description: 'Learn the fundamentals of JavaScript programming',
-      course_type: 'trainer',
-      status: 'active',
-      level: 'beginner',
-      duration_hours: 20,
-      created_by_user_id: TRAINER_ID
-    });
-
-    const pythonCourse = await createCourse({
-      id: 'd4e5f6a7-b8c9-0123-def0-234567890123',
-      course_name: 'Python for Data Science',
-      course_description: 'Master Python for data analysis and visualization',
-      course_type: 'trainer',
-      status: 'active',
-      level: 'intermediate',
-      duration_hours: 30,
-      created_by_user_id: TRAINER_ID
-    });
-
-    const reactCourse = await createCourse({
-      id: 'e5f6a7b8-c9d0-1234-efab-345678901234',
-      course_name: 'React Advanced Patterns',
-      course_description: 'Advanced React patterns and best practices',
-      course_type: 'trainer',
-      status: 'active',
-      level: 'advanced',
-      duration_hours: 25,
-      created_by_user_id: TRAINER_ID
-    });
-
-    console.log('✅ Created 3 marketplace courses\n');
-
-    // 2. Create Personalized Courses (Learner-specific)
-    console.log('🎯 Creating personalized courses...');
-    
-    const personalizedCourse1 = await createCourse({
-      id: 'f6a7b8c9-d0e1-2345-fabc-456789012345',
-      course_name: 'Personalized Web Development Path',
-      course_description: 'Customized learning path for web development',
-      course_type: 'learner_specific',
-      status: 'active',
-      level: 'beginner',
-      duration_hours: 40,
-      learning_path_designation: {
-        is_designated: true,
-        target_competency: {
-          competency_id: 'web-dev-001',
-          competency_name: 'Web Development',
-          target_level: 'intermediate'
+    const createdCourses = [];
+    for (const courseData of seedData.courses) {
+      const course = await createCourse(courseData);
+      createdCourses.push(course);
+      
+      // Create topics, modules, and lessons for this course
+      for (const topicData of courseData.topics) {
+        const topic = await createTopic({
+          course_id: course.id,
+          topic_name: topicData.name,
+          topic_description: topicData.description
+        });
+        
+        for (const moduleData of topicData.modules) {
+          const module = await createModule({
+            topic_id: topic.id,
+            module_name: moduleData.name,
+            module_description: moduleData.description
+          });
+          
+          for (const lessonData of moduleData.lessons) {
+            // Ensure arrays are properly formatted
+            const skills = Array.isArray(lessonData.skills) ? lessonData.skills : [];
+            const trainer_ids = Array.isArray(lessonData.trainer_ids) ? lessonData.trainer_ids : [TRAINER_ID];
+            const content_data = Array.isArray(lessonData.content_data) ? lessonData.content_data : [];
+            const devlab_exercises = Array.isArray(lessonData.devlab_exercises) ? lessonData.devlab_exercises : [];
+            
+            await createLesson({
+              module_id: module.id,
+              topic_id: topic.id,
+              lesson_name: lessonData.name,
+              lesson_description: lessonData.description || null,
+              skills: skills,
+              trainer_ids: trainer_ids,
+              content_type: lessonData.content_type || 'text',
+              content_data: content_data,
+              devlab_exercises: devlab_exercises
+            });
+          }
         }
       }
-    });
+    }
 
-    const personalizedCourse2 = await createCourse({
-      id: 'a7b8c9d0-e1f2-3456-abcd-567890123456',
-      course_name: 'Personalized Machine Learning Journey',
-      course_description: 'Tailored ML course based on your learning style',
-      course_type: 'learner_specific',
-      status: 'active',
-      level: 'intermediate',
-      duration_hours: 50
-    });
+    console.log(`✅ Created ${createdCourses.length} courses with full structure\n`);
 
-    console.log('✅ Created 2 personalized courses\n');
-
-    // 3. Create Topics for JavaScript Course
-    console.log('📖 Creating topics for JavaScript course...');
+    // 2. Create Registrations
+    console.log('📋 Creating registrations...\n');
     
-    const jsTopic1 = await createTopic({
-      course_id: jsCourse.id,
-      topic_name: 'Variables and Data Types',
-      topic_description: 'Understanding JavaScript variables and data types'
-    });
+    for (let i = 0; i < Math.min(seedData.registrations.length, createdCourses.length); i++) {
+      await createRegistration({
+        learner_id: seedData.registrations[i].learner_id,
+        learner_name: seedData.registrations[i].learner_name,
+        course_id: createdCourses[i].id,
+        company_id: seedData.registrations[i].company_id,
+        company_name: seedData.registrations[i].company_name,
+        status: seedData.registrations[i].status
+      });
+    }
 
-    const jsTopic2 = await createTopic({
-      course_id: jsCourse.id,
-      topic_name: 'Functions and Scope',
-      topic_description: 'Working with functions and understanding scope'
-    });
+    console.log(`✅ Created ${Math.min(seedData.registrations.length, createdCourses.length)} registrations\n`);
 
-    const jsTopic3 = await createTopic({
-      course_id: jsCourse.id,
-      topic_name: 'Objects and Arrays',
-      topic_description: 'Manipulating objects and arrays in JavaScript'
-    });
-
-    console.log('✅ Created 3 topics for JavaScript course\n');
-
-    // 4. Create Modules for Topics
-    console.log('📦 Creating modules...');
+    // 3. Create Feedback
+    console.log('💬 Creating feedback...\n');
     
-    const jsModule1 = await createModule({
-      topic_id: jsTopic1.id,
-      module_name: 'Introduction to Variables',
-      module_description: 'Learn about var, let, and const'
-    });
+    for (let i = 0; i < Math.min(seedData.feedback.length, createdCourses.length); i++) {
+      await createFeedback({
+        learner_id: seedData.feedback[i].learner_id,
+        course_id: createdCourses[i].id,
+        rating: seedData.feedback[i].rating,
+        comment: seedData.feedback[i].comment || null
+      });
+    }
 
-    const jsModule2 = await createModule({
-      topic_id: jsTopic1.id,
-      module_name: 'Data Types Overview',
-      module_description: 'Understanding primitive and reference types'
-    });
-
-    const jsModule3 = await createModule({
-      topic_id: jsTopic2.id,
-      module_name: 'Function Declarations',
-      module_description: 'Different ways to declare functions'
-    });
-
-    console.log('✅ Created 3 modules\n');
-
-    // 5. Create Lessons
-    console.log('📝 Creating lessons...');
-    
-    await createLesson({
-      module_id: jsModule1.id,
-      topic_id: jsTopic1.id,
-      lesson_name: 'Understanding var, let, and const',
-      lesson_description: 'Learn the differences between variable declarations',
-      skills: ['javascript', 'variables', 'scope'],
-      trainer_ids: [TRAINER_ID],
-      content_type: 'text',
-      content_data: [
-        {
-          type: 'paragraph',
-          content: 'JavaScript has three ways to declare variables: var, let, and const.'
-        },
-        {
-          type: 'paragraph',
-          content: 'Each has different scoping rules and use cases.'
-        }
-      ],
-      devlab_exercises: []
-    });
-
-    await createLesson({
-      module_id: jsModule2.id,
-      topic_id: jsTopic1.id,
-      lesson_name: 'Primitive Types',
-      lesson_description: 'Understanding JavaScript primitive data types',
-      skills: ['javascript', 'data-types'],
-      trainer_ids: [TRAINER_ID],
-      content_type: 'text',
-      content_data: [
-        {
-          type: 'paragraph',
-          content: 'JavaScript has 7 primitive types: string, number, bigint, boolean, undefined, null, and symbol.'
-        }
-      ],
-      devlab_exercises: []
-    });
-
-    await createLesson({
-      module_id: jsModule3.id,
-      topic_id: jsTopic2.id,
-      lesson_name: 'Function Expressions vs Declarations',
-      lesson_description: 'Understanding function declarations and expressions',
-      skills: ['javascript', 'functions'],
-      trainer_ids: [TRAINER_ID],
-      content_type: 'text',
-      content_data: [
-        {
-          type: 'paragraph',
-          content: 'Functions can be declared using function declarations or function expressions.'
-        }
-      ],
-      devlab_exercises: []
-    });
-
-    console.log('✅ Created 3 lessons\n');
-
-    // 6. Create Registrations
-    console.log('📋 Creating registrations...');
-    
-    await createRegistration({
-      learner_id: LEARNER_ID,
-      learner_name: LEARNER_NAME,
-      course_id: jsCourse.id,
-      company_id: uuidv4(),
-      company_name: LEARNER_COMPANY,
-      status: 'in_progress'
-    });
-
-    await createRegistration({
-      learner_id: LEARNER_ID,
-      learner_name: LEARNER_NAME,
-      course_id: pythonCourse.id,
-      company_id: uuidv4(),
-      company_name: LEARNER_COMPANY,
-      status: 'in_progress'
-    });
-
-    await createRegistration({
-      learner_id: LEARNER_ID,
-      learner_name: LEARNER_NAME,
-      course_id: personalizedCourse1.id,
-      company_id: uuidv4(),
-      company_name: LEARNER_COMPANY,
-      status: 'in_progress'
-    });
-
-    console.log('✅ Created 3 registrations\n');
-
-    // 7. Create Feedback
-    console.log('💬 Creating feedback...');
-    
-    await createFeedback({
-      learner_id: LEARNER_ID,
-      course_id: jsCourse.id,
-      rating: 5,
-      comment: 'Great course! Very well structured.'
-    });
-
-    await createFeedback({
-      learner_id: LEARNER_ID,
-      course_id: pythonCourse.id,
-      rating: 4,
-      comment: 'Good content, but could use more examples.'
-    });
-
-    console.log('✅ Created 2 feedback entries\n');
+    console.log(`✅ Created ${Math.min(seedData.feedback.length, createdCourses.length)} feedback entries\n`);
 
     // Summary
     const courseCount = await db.one('SELECT COUNT(*)::int as count FROM courses');

@@ -6,6 +6,8 @@
 import assessmentRepository from '../../repositories/AssessmentRepository.js';
 import assessmentDTO from '../../dtoBuilders/assessmentDTO.js';
 import { getFallbackData, shouldUseFallback } from '../fallbackData.js';
+import { sendToDevlab } from '../../services/gateways/devlabGateway.js';
+import courseRepository from '../../repositories/CourseRepository.js';
 
 /**
  * Handle Assessment integration request
@@ -44,6 +46,11 @@ export async function handleAssessmentIntegration(payloadObject, responseTemplat
     responseTemplate.final_grade = assessment.final_grade || null;
     responseTemplate.passed = assessment.passed || false;
     
+    // If learner passed the exam, trigger DevLab request
+    if (assessment.passed === true) {
+      triggerDevLabRequest(assessment.course_id, assessment.learner_id, responseTemplate.course_name);
+    }
+    
     // Return the filled response template
     return responseTemplate;
   } catch (error) {
@@ -62,6 +69,11 @@ export async function handleAssessmentIntegration(payloadObject, responseTemplat
       responseTemplate.final_grade = fallback.final_grade || payloadObject.final_grade || null;
       responseTemplate.passed = fallback.passed !== undefined ? fallback.passed : (payloadObject.passed || false);
       
+      // If learner passed, trigger DevLab (even in fallback scenario)
+      if (responseTemplate.passed === true && responseTemplate.course_id) {
+        triggerDevLabRequest(responseTemplate.course_id, responseTemplate.learner_id, responseTemplate.course_name);
+      }
+      
       return responseTemplate;
     }
     
@@ -74,6 +86,11 @@ export async function handleAssessmentIntegration(payloadObject, responseTemplat
       responseTemplate.passing_grade = payloadObject.passing_grade || 70.00;
       responseTemplate.final_grade = payloadObject.final_grade || null;
       responseTemplate.passed = payloadObject.passed || false;
+      
+      // If learner passed, trigger DevLab
+      if (responseTemplate.passed === true && responseTemplate.course_id) {
+        triggerDevLabRequest(responseTemplate.course_id, responseTemplate.learner_id, responseTemplate.course_name);
+      }
       
       return responseTemplate;
     } catch (fallbackError) {
@@ -89,6 +106,36 @@ export async function handleAssessmentIntegration(payloadObject, responseTemplat
         passed: fallback.passed || false
       };
     }
+  }
+}
+
+/**
+ * Helper function to trigger DevLab request (fire-and-forget)
+ * @param {string} courseId - Course ID
+ * @param {string} learnerId - Learner ID
+ * @param {string} courseName - Course name (optional, for logging)
+ */
+async function triggerDevLabRequest(courseId, learnerId, courseName = '') {
+  try {
+    console.log('[Assessment Handler] Learner passed exam - sending request to DevLab via Coordinator:', {
+      learner_id: learnerId,
+      course_id: courseId,
+      course_name: courseName
+    });
+    
+    // Fetch course details
+    const course = await courseRepository.findById(courseId);
+    if (course) {
+      // Send request to DevLab via Coordinator (fire-and-forget, don't wait for response)
+      sendToDevlab(course, learnerId).catch((error) => {
+        console.error('[Assessment Handler] DevLab request failed (non-blocking):', error.message);
+      });
+    } else {
+      console.warn('[Assessment Handler] Course not found for DevLab request:', courseId);
+    }
+  } catch (error) {
+    console.error('[Assessment Handler] Error triggering DevLab request:', error.message);
+    // Don't throw - continue with assessment response
   }
 }
 
