@@ -51,7 +51,7 @@ jobs:
           DB_NAME: coursebuilder_test
           DB_USER: postgres
           DB_PASSWORD: postgres
-        run: npm run migrate
+        run: npm run db:migrate
 
       - name: Seed database
         env:
@@ -61,7 +61,7 @@ jobs:
           DB_NAME: coursebuilder_test
           DB_USER: postgres
           DB_PASSWORD: postgres
-        run: npm run seed
+        run: npm run db:seed
 
       - name: Run tests
         run: npm test

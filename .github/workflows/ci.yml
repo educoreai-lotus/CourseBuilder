@@ -63,11 +63,11 @@ jobs:
 
       - name: Run backend migrations
         working-directory: ./backend
-        run: npm run migrate
+        run: npm run db:migrate
 
       - name: Seed backend database
         working-directory: ./backend
-        run: npm run seed
+        run: npm run db:seed
 
       - name: Run backend tests
         working-directory: ./backend
