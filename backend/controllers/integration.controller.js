@@ -219,11 +219,16 @@ function determineTargetService(payloadObject, responseTemplate) {
     if (specializedService) {
       return specializedService;
     }
-    // If no specialized handler matches and response is empty {},
-    // return null to indicate no service can handle this request
-    // (Course Builder Action mode requires AI, which may not be available)
+    // Empty {} response for write operations must execute (command-only request)
+    // But only if it's a recognized write operation (has action that's a write)
+    // If no action or action is not a write, and no specialized service matches, return null (400)
+    if (action && isWriteAction(action)) {
+      // Write operation with empty response - route to CourseBuilder Action mode
+      return 'CourseBuilder';
+    }
+    // Empty {} with no recognized action and no specialized service - cannot determine target
     if (Object.keys(responseTemplate).length === 0) {
-      return null;
+      return null; // Will trigger 400 error
     }
     // If response is {answer: ""} or write operation with result fields, try Course Builder Action mode
     return 'CourseBuilder';

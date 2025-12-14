@@ -12,12 +12,14 @@ import db from '../config/database.js';
 
 /**
  * Execute a SQL query safely (supports SELECT, INSERT, UPDATE, DELETE)
+ * Supports transactions for batch operations (all-or-nothing)
  * @param {string} sqlQuery - SQL query (may contain parameter placeholders $1, $2, etc.)
  * @param {Array} params - Parameters for the query (values for $1, $2, etc.)
  * @param {boolean} isActionMode - True if Action mode (allows writes)
+ * @param {Object} payloadObject - Original payload (for detecting batch operations)
  * @returns {Promise<Object|Array>} - Query results
  */
-export async function executeQuery(sqlQuery, params = [], isActionMode = false) {
+export async function executeQuery(sqlQuery, params = [], isActionMode = false, payloadObject = null) {
   if (!sqlQuery || typeof sqlQuery !== 'string') {
     throw new Error('Invalid query: SQL query must be a non-empty string');
   }
@@ -34,6 +36,64 @@ export async function executeQuery(sqlQuery, params = [], isActionMode = false) 
     const startTime = Date.now();
     let result;
     
+    // Check if this is a batch enrollment operation (multiple learners)
+    const isBatchEnrollment = payloadObject && 
+                              Array.isArray(payloadObject.learners) && 
+                              payloadObject.learners.length > 1 &&
+                              isActionMode &&
+                              (upperQuery.startsWith('INSERT') || upperQuery.includes('INSERT'));
+    
+    // For batch enrollment, wrap in transaction (all-or-nothing)
+    if (isBatchEnrollment) {
+      console.log('[Query Executor] 🔄 Batch enrollment detected - using transaction (all-or-nothing)');
+      return await db.tx(async (t) => {
+        try {
+          // Execute the query within transaction
+          if (upperQuery.startsWith('SELECT')) {
+            result = await t.oneOrNone(sqlQuery, params);
+            result = result || {};
+          } else if (upperQuery.startsWith('INSERT')) {
+            if (upperQuery.includes('RETURNING')) {
+              result = await t.oneOrNone(sqlQuery, params);
+              result = result || { answer: 'OK' };
+            } else {
+              await t.none(sqlQuery, params);
+              result = { answer: 'OK' };
+            }
+          } else if (upperQuery.startsWith('UPDATE')) {
+            if (upperQuery.includes('RETURNING')) {
+              result = await t.oneOrNone(sqlQuery, params);
+              result = result || { answer: 'OK' };
+            } else {
+              await t.none(sqlQuery, params);
+              result = { answer: 'OK' };
+            }
+          } else if (upperQuery.startsWith('DELETE')) {
+            if (upperQuery.includes('RETURNING')) {
+              result = await t.oneOrNone(sqlQuery, params);
+              result = result || { answer: 'OK' };
+            } else {
+              await t.none(sqlQuery, params);
+              result = { answer: 'OK' };
+            }
+          } else {
+            throw new Error(`Unsupported query type: ${sqlQuery.substring(0, 20)}...`);
+          }
+          
+          const duration = Date.now() - startTime;
+          console.log(`[Query Executor] ✅ Transaction executed successfully in ${duration}ms`);
+          console.log('[Query Executor] Query results:', result ? JSON.stringify(result).substring(0, 200) + '...' : 'No results');
+          
+          return result;
+        } catch (error) {
+          // Transaction will automatically rollback on error
+          console.error('[Query Executor] ❌ Transaction failed - rolling back:', error.message);
+          throw error;
+        }
+      });
+    }
+    
+    // Regular execution (no transaction needed for single operations)
     // Determine execution method based on query type
     if (upperQuery.startsWith('SELECT')) {
       // SELECT query: use oneOrNone to handle both single and no results gracefully
@@ -148,19 +208,41 @@ export function extractQueryParams(payloadObject, sqlQuery) {
   const fieldValues = {};
   
   // Flatten payload to include both snake_case and camelCase keys
+  // Also handle nested structures like learners array
   const flattened = {};
   for (const key in payloadObject) {
     if (payloadObject.hasOwnProperty(key)) {
-      flattened[key] = payloadObject[key];
+      const value = payloadObject[key];
+      
+      // Handle learners array - extract individual learner fields
+      if (key === 'learners' && Array.isArray(value)) {
+        // For batch operations, the AI should handle the array in SQL
+        // But we can flatten first learner's fields for parameter matching
+        if (value.length > 0 && typeof value[0] === 'object') {
+          const firstLearner = value[0];
+          for (const learnerKey in firstLearner) {
+            if (firstLearner.hasOwnProperty(learnerKey)) {
+              flattened[`learners_${learnerKey}`] = firstLearner[learnerKey];
+              // Also add without prefix for direct matching
+              flattened[learnerKey] = firstLearner[learnerKey];
+            }
+          }
+        }
+        // Keep the array itself for reference
+        flattened[key] = value;
+      } else {
+        flattened[key] = value;
+      }
+      
       // Add snake_case version
       const snakeKey = key.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
       if (snakeKey !== key && !(snakeKey in flattened)) {
-        flattened[snakeKey] = payloadObject[key];
+        flattened[snakeKey] = value;
       }
       // Add camelCase version
       const camelKey = key.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
       if (camelKey !== key && !(camelKey in flattened)) {
-        flattened[camelKey] = payloadObject[key];
+        flattened[camelKey] = value;
       }
     }
   }

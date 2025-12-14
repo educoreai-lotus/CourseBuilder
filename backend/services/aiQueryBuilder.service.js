@@ -200,10 +200,22 @@ function buildQueryGenerationPrompt(payloadObject, responseTemplate, action = nu
 - Perform the operation requested by the action
 - If response_template contains "answer", your SQL MUST return one row with a column named "answer"
 - For empty response_template {}, perform the operation and return no data (or return "OK" as answer if needed)
-- For enrollment/registration operations:
-  * INSERT INTO registrations (learner_id, learner_name, course_id, company_id, company_name, status) VALUES ($1, $2, $3, $4, $5, 'in_progress') RETURNING id AS enrollment_batch_id, 'Success' AS message, true AS success
-  * For batch enrollments, use a transaction or multiple INSERTs with RETURNING
-  * Return success=true, message, enrollment_batch_id, and failed_employee_ids array
+- For enrollment/registration operations (enroll_employees_career_path, enroll_employees_career_path):
+  * Payload structure: { learners: [{ learner_id, learner_name, preferred_language, course_id? }], company_id, company_name, learning_flow }
+  * For CAREER_PATH_DRIVEN enrollment:
+    - course_id is pre-determined and added to each learner object in the payload
+    - Use learners[].course_id for each learner's enrollment
+    - If course_id is null/missing for a learner, skip that learner (or handle error)
+  * For batch enrollments, generate INSERT statements for each learner in the learners array
+  * Use VALUES clause with multiple rows OR loop through learners array
+  * INSERT INTO registrations (learner_id, learner_name, course_id, company_id, company_name, status) VALUES 
+    ($1, $2, $3, $4, $5, 'in_progress'), ($6, $7, $8, $9, $10, 'in_progress'), ...
+  * Use payload.company_id and payload.company_name (top-level) for all learners
+  * For empty response_template {}, perform the operation and return empty result or 'OK' as answer
+  * For structured response_template with success/message/enrollment_batch_id:
+    - Return success=true if all enrollments succeed
+    - Return enrollment_batch_id (can be a generated UUID or first registration id)
+    - Return failed_employee_ids as empty array if all succeed, or array of learner_ids that failed
 - Examples:
   * INSERT INTO registrations (learner_id, course_id) VALUES ($1, $2) RETURNING 'OK' AS answer
   * UPDATE assessments SET passed = true WHERE learner_id = $1 AND course_id = $2 RETURNING CASE WHEN passed THEN 'OK' ELSE 'FAILED' END AS answer
@@ -214,85 +226,113 @@ function buildQueryGenerationPrompt(payloadObject, responseTemplate, action = nu
 - Use column aliases (AS) to match response template field names
 - Never use INSERT, UPDATE, DELETE, or any write operations`;
 
-  return `You are the "Course Builder SQL Generator" — an expert system that produces safe SQL queries for the Course Builder microservice.
+  return `You are a "Response-Driven SQL Generator" for the Course Builder microservice.
+
+You are NOT a chat assistant.
+You are NOT allowed to explain, describe, or suggest.
+
+Your responsibility is to generate a SINGLE SQL query that,
+when executed, COMPLETELY FILLS the given response template.
+
+============================================================
+RESPONSE CONTRACT (CRITICAL)
+============================================================
+
+• The response template is a STRICT CONTRACT.
+• EVERY field in the response template MUST be returned by the SQL query.
+• If ANY response field cannot be resolved correctly → FAIL.
+• Do NOT guess.
+• Do NOT return NULL unless the field is logically nullable.
+
+You are responsible for the correctness of the RESULT, not only the SQL.
+
+============================================================
+RESPONSE-FIRST LOGIC
+============================================================
+
+• You MUST start from the response template.
+• The payload is used ONLY for filters and parameters.
+• The SELECT list MUST mirror the response template exactly
+  using column aliases (AS).
+
+============================================================
+DERIVED & MISSING FIELDS
+============================================================
+
+If a response field does NOT exist directly in the database:
+• You MUST derive it using:
+  - JOINs
+  - COUNT / AVG / SUM
+  - CASE expressions
+  - Boolean or arithmetic logic
+
+Examples:
+• total_lessons → COUNT(lessons.id)
+• completed_lessons → COUNT(...) with filters
+• progress_percentage → (completed_lessons / total_lessons) * 100
+• passed → CASE WHEN final_grade >= passing_grade THEN true ELSE false END
+
+============================================================
+MODE
+============================================================
 
 MODE: ${isActionMode ? 'ACTION/COMMAND' : 'DATA-FILLING'}
 ${modeInstructions}
 
-CRITICAL RULES - YOU MUST FOLLOW THESE EXACTLY:
+============================================================
+CRITICAL RULES - YOU MUST FOLLOW THESE EXACTLY
+============================================================
 
 1. USE ONLY REAL COURSE BUILDER TABLES AND COLUMNS
    - NEVER invent table names or column names
-   - If a table/field doesn't exist → map to the closest real field based on context
-   - Always use the actual Course Builder schema (provided below)
+   - If a field does not exist → derive it logically
+   - Always use the provided Course Builder schema
 
 2. FIELD NAME NORMALIZATION (MANDATORY)
    - DO NOT use requester field names literally
-   - INTERPRET requester fields and map them to real Course Builder schema
+   - Map requester fields to real schema fields
    - Examples:
-     * requester says "user_id" → use "learner_id" (real column name)
-     * requester says "enrolled" → use COUNT(registrations.learner_id)
-     * requester says "instructor" → use "created_by_user_id" (in courses table)
-     * requester says "rating" → use "rating" (in feedback table)
-     * requester says "lessons_count" → use COUNT(lessons.id)
+     * user_id → learner_id
+     * enrolled → COUNT(registrations.learner_id)
+     * instructor → created_by_user_id
+     * lessons_count → COUNT(lessons.id)
 
-3. IF REQUESTER USES DIFFERENT FIELD NAMES:
-   - Normalize them using the mapping rules below
-   - NEVER create invalid SQL with unknown tables/columns
-   - Choose the nearest correct Course Builder table/field
+3. OUTPUT FORMAT
+   - ONLY raw SQL
+   - No markdown
+   - No comments
+   - No explanations
+   - Use column aliases to match response field names EXACTLY
+   - Use parameter placeholders ($1, $2, …)
 
-4. ALWAYS GENERATE VALID SQL
-   - Use ONLY tables that exist in the schema
-   - Use ONLY columns that exist in those tables
-   - If uncertain, default to the most logical Course Builder table
+============================================================
+DATABASE SCHEMA (SOURCE OF TRUTH)
+============================================================
 
-5. OUTPUT FORMAT
-   - ONLY raw SQL SELECT query
-   - No Markdown code fences
-   - No explanations or comments
-   - Use column aliases (AS) to match response template field names
-   - Use parameter placeholders ($1, $2, etc.) for payload values
-
-Database Schema:
 ${DB_SCHEMA_CONTEXT}
 ${actionStr}
 
-Payload (requester fields - normalize to real schema):
+============================================================
+PAYLOAD (FILTERS & CONTEXT ONLY)
+============================================================
+
 ${payloadStr}
 
-Response Template (fields that must be filled - use aliases to match these names):
+============================================================
+RESPONSE TEMPLATE (FIELDS THAT MUST BE FILLED)
+============================================================
+
 ${templateStr}
 
-FIELD NORMALIZATION EXAMPLES:
-- payload.user_id → WHERE learner_id = $1 (NOT user_id)
-- payload.learner_id → WHERE learner_id = $1 (use as-is)
-- payload.learners[].learner_id → Use in INSERT VALUES for batch operations
-- response.enrolled → SELECT COUNT(registrations.learner_id) AS enrolled ...
-- response.instructor → SELECT created_by_user_id AS instructor ...
-- response.lessons_count → SELECT COUNT(lessons.id) AS lessons_count ... (join properly)
-- response.success → Return true/false based on operation result (for INSERT/UPDATE operations)
-- response.enrollment_batch_id → RETURNING id AS enrollment_batch_id (for INSERT operations)
-- response.failed_employee_ids → Return ARRAY[]::UUID[] for failed enrollments
-- payload.course_id → WHERE course_id = $1 (real column name - use as-is)
+============================================================
+FINAL REQUIREMENTS
+============================================================
 
-JOIN REQUIREMENTS:
-- To get lessons for a course: JOIN topics ON topics.course_id = courses.id JOIN modules ON modules.topic_id = topics.id JOIN lessons ON lessons.module_id = modules.id
-- To get registrations: JOIN registrations ON registrations.course_id = courses.id
-- To get feedback: JOIN feedback ON feedback.course_id = courses.id
-
-Generate SQL query that:
-1. Normalizes all requester field names to real Course Builder schema
-2. Uses proper JOINs to connect tables through foreign keys (for SELECT queries)
-3. Uses parameter placeholders ($1, $2, etc.) for payload values
-4. Uses column aliases (AS) to match response template field names
-5. ${isActionMode ? 'Uses INSERT, UPDATE, DELETE, or SELECT validation as appropriate for the action' : 'Uses ONLY SELECT statements (no INSERT/UPDATE/DELETE/TRUNCATE/ALTER/CREATE)'}
-6. Uses PostgreSQL syntax
-7. Returns exactly the fields needed to fill the response template (or "answer" for action mode)
-
-CRITICAL: 
-- Normalize field names from payload/response template to real Course Builder schema
-- Never use unknown tables or columns
-- ${isActionMode ? 'For action mode, perform the operation and return appropriate response (answer field if needed)' : 'For data mode, only read data with SELECT queries'}
+• Generate exactly ONE SQL query
+• Return exactly ONE row
+• Fill ALL response fields
+• No missing fields
+• No silent NULLs
 
 SQL Query:`;
 }
@@ -356,7 +396,9 @@ function validateQuery(sqlQuery, isActionMode = false) {
   const alwaysForbidden = ['DROP', 'ALTER', 'CREATE', 'TRUNCATE', 'EXEC', 'EXECUTE', 'GRANT', 'REVOKE'];
   
   for (const keyword of alwaysForbidden) {
-    if (upperQuery.includes(keyword)) {
+    // Use word boundaries to avoid false positives (e.g., "created_at" should not match "CREATE")
+    const regex = new RegExp(`\\b${keyword}\\b`, 'i');
+    if (regex.test(sqlQuery)) {
       throw new Error(`Security violation: Query contains forbidden keyword: ${keyword}`);
     }
   }
