@@ -10,14 +10,13 @@ import { generateSQLQuery } from './aiQueryBuilder.service.js';
 import { executeQuery, extractQueryParams } from './queryExecutor.service.js';
 import { fillTemplate } from '../utils/responseTemplateFiller.js';
 import { sendToLearnerAI } from '../services/gateways/learnerAIGateway.js';
-import { sendToContentStudio } from '../services/gateways/contentStudioGateway.js';
-import { handleContentStudioIntegration } from '../integration/handlers/contentStudioHandler.js';
+import { buildCourseFromLearningPath } from './buildCourseFromLearningPath.service.js';
 import courseRepository from '../repositories/CourseRepository.js';
 import { PendingCourseCreationError } from '../utils/PendingCourseCreationError.js';
 
 /**
  * Trigger course creation pipeline for CAREER_PATH_DRIVEN enrollment
- * Flow: Learner AI → Content Studio → Course Builder creates course
+ * Flow: Learner AI (returns structured JSON) → Course Builder builds course directly
  * @param {Object} learner - Learner object with learner_id, learner_name, etc.
  * @param {string} competencyTag - Competency tag (e.g., "Node.js Backend Development")
  * @param {string} companyId - Company ID
@@ -29,7 +28,7 @@ async function triggerCourseCreationPipeline(learner, competencyTag, companyId, 
     console.log(`[Fill Content Metrics] Triggering course creation pipeline for learner: ${learner.learner_id}`);
     console.log(`[Fill Content Metrics] Competency tag: ${competencyTag}`);
     
-    // Step 1: Call Learner AI to get learning path and skills
+    // Step 1: Call Learner AI to get structured Learning Path JSON
     console.log('[Fill Content Metrics] Step 1: Calling Learner AI...');
     const learnerAIResponse = await sendToLearnerAI({
       user_id: learner.learner_id,
@@ -37,104 +36,22 @@ async function triggerCourseCreationPipeline(learner, competencyTag, companyId, 
     });
     
     console.log('[Fill Content Metrics] Learner AI response:', {
-      has_learning_path: !!learnerAIResponse.learning_path,
-      has_skills: !!learnerAIResponse.skills,
-      skills_count: learnerAIResponse.skills?.length || 0
+      has_learner_id: !!learnerAIResponse.learner_id,
+      has_path_title: !!learnerAIResponse.path_title,
+      has_learning_modules: !!learnerAIResponse.learning_modules,
+      learning_modules_count: learnerAIResponse.learning_modules?.length || 0
     });
     
-    // Check if Learner AI returned no learning path/skills
-    const hasNoLearningPath = !learnerAIResponse.learning_path || 
-                              (Array.isArray(learnerAIResponse.learning_path) && learnerAIResponse.learning_path.length === 0);
-    const hasNoSkills = !learnerAIResponse.skills || 
-                       (Array.isArray(learnerAIResponse.skills) && learnerAIResponse.skills.length === 0);
-    
-    if (hasNoLearningPath && hasNoSkills) {
-      console.warn(`[Fill Content Metrics] Learner AI returned no learning path or skills for learner: ${learner.learner_id}`);
+    // Validate that Learner AI returned structured Learning Path JSON
+    if (!learnerAIResponse.learner_id) {
+      learnerAIResponse.learner_id = learner.learner_id; // Use learner_id from request if not in response
     }
     
-    // Step 2: Call Content Studio to generate course content
-    console.log('[Fill Content Metrics] Step 2: Calling Content Studio...');
-    const contentStudioPayload = {
-      learnerData: {
-        learner_id: learner.learner_id,
-        learner_name: learner.learner_name || '',
-        learner_company: companyName || ''
-      },
-      skills: learnerAIResponse.skills || []
-    };
+    // Step 2: Build course directly from structured Learning Path JSON
+    // NO Content Studio call - Learner AI provides complete blueprint
+    console.log('[Fill Content Metrics] Step 2: Building course from structured Learning Path JSON...');
     
-    const contentStudioResponse = await sendToContentStudio(contentStudioPayload);
-    console.log('[Fill Content Metrics] Content Studio response:', {
-      has_topics: !!contentStudioResponse.topics,
-      topics_count: contentStudioResponse.topics?.length || 0
-    });
-    
-    // Step 3: Create course structure using Content Studio handler
-    console.log('[Fill Content Metrics] Step 3: Creating course structure...');
-    
-    // Check if Content Studio returned no topics (even after fallback)
-    if (!contentStudioResponse.topics || contentStudioResponse.topics.length === 0) {
-      // This is a PENDING state, not a failure
-      // Learner AI returned no learning path/skills AND fallback couldn't produce topics
-      const reason = hasNoLearningPath && hasNoSkills
-        ? `Learner AI returned no learning path or skills for learner ${learner.learner_id}, and fallback logic could not produce course topics. Course creation is pending.`
-        : `Content Studio returned no topics for course creation. Course creation is pending.`;
-      
-      throw new PendingCourseCreationError(
-        `Course creation cannot complete yet - no course topics available`,
-        reason
-      );
-    }
-    
-    // Prepare payload for Content Studio handler
-    const contentStudioHandlerPayload = {
-      learner_id: learner.learner_id,
-      learner_name: learner.learner_name || '',
-      learner_company: companyName || '',
-      skills: learnerAIResponse.skills || [],
-      topics: contentStudioResponse.topics
-    };
-    
-    const contentStudioResponseTemplate = {
-      learner_id: learner.learner_id,
-      learner_name: learner.learner_name || '',
-      learner_company: companyName || '',
-      topics: contentStudioResponse.topics
-    };
-    
-    // Create the course (this will create course, topics, modules, lessons)
-    const courseCreationResult = await handleContentStudioIntegration(
-      contentStudioHandlerPayload,
-      contentStudioResponseTemplate
-    );
-    
-    // Step 4: Extract course_id from the handler response
-    // The handler returns { course: [{ course_id, ... }] }
-    console.log('[Fill Content Metrics] Step 4: Extracting course_id from creation result...');
-    
-    let courseId = null;
-    if (courseCreationResult && courseCreationResult.course && Array.isArray(courseCreationResult.course) && courseCreationResult.course.length > 0) {
-      courseId = courseCreationResult.course[0].course_id;
-    }
-    
-    // Fallback: If course_id not in response, find it by learner_id
-    if (!courseId) {
-      console.log('[Fill Content Metrics] Course ID not in response, searching by learner_id...');
-      const courses = await courseRepository.findAll({
-        course_type: 'learner_specific',
-        status: 'active',
-        created_by_user_id: learner.learner_id
-      });
-      
-      if (courses.length > 0) {
-        // Get the most recently created course (first in DESC order)
-        courseId = courses[0].id;
-      }
-    }
-    
-    if (!courseId) {
-      throw new Error(`Course creation failed - no course_id found for learner: ${learner.learner_id}`);
-    }
+    const courseId = await buildCourseFromLearningPath(learnerAIResponse);
     
     console.log(`[Fill Content Metrics] ✅ Course created successfully: ${courseId}`);
     

@@ -31,9 +31,12 @@ export async function sendToLearnerAI(payloadObject = {}) {
     }
 
     // Build response template (empty, Learner AI will fill it)
+    // NEW: Learner AI returns structured Learning Path JSON
     const responseTemplate = {
-      learning_path: [],
-      skills: []
+      learner_id: null,
+      path_title: '',
+      learning_modules: [],
+      total_estimated_duration_hours: 0
     };
 
     // Build envelope for Coordinator
@@ -49,7 +52,7 @@ export async function sendToLearnerAI(payloadObject = {}) {
     // Coordinator returns the envelope with filled response field
     const result = json && json.response ? json.response : (json && json.success ? json.data : json);
 
-    // Return response data (should contain learning_path and skills)
+    // Return response data (should contain structured Learning Path JSON)
     return result;
   } catch (error) {
     console.error('[LearnerAI Gateway] Error:', error);
