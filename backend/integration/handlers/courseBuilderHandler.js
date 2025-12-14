@@ -75,10 +75,16 @@ function isDataFillingMode(responseTemplate) {
  * @param {Object} responseTemplate - Response template to fill
  * @param {string|null} action - Action from payload.action (optional)
  * @param {string} requesterService - Requester service name (from envelope)
+ * @param {string|null} requestId - Request ID for logging (optional)
  * @returns {Promise<Object>} - Full request object: { requester_service, payload, response }
  */
-export async function handleCourseBuilderIntegration(payloadObject, responseTemplate, action = null, requesterService = null) {
+export async function handleCourseBuilderIntegration(payloadObject, responseTemplate, action = null, requesterService = null, requestId = null) {
+  const logPrefix = requestId ? `[Course Builder Handler] [${requestId}]` : '[Course Builder Handler]';
+  const startTime = Date.now();
+  
   try {
+    console.log(`${logPrefix} 🚀 Starting Course Builder handler`);
+    
     // Extract action from payload if not provided
     const actionToUse = action || payloadObject.action || null;
     
@@ -87,29 +93,41 @@ export async function handleCourseBuilderIntegration(payloadObject, responseTemp
     const isData = isDataFillingMode(responseTemplate);
     const mode = isAction ? 'Action/Command' : isData ? 'Data-Filling' : 'Unknown';
     
-    console.log('[Course Builder Handler] Processing request with AI-powered query generation');
-    console.log('[Course Builder Handler] Mode:', mode);
-    console.log('[Course Builder Handler] Action (from payload.action):', actionToUse);
-    console.log('[Course Builder Handler] Requester Service:', requesterService);
-    console.log('[Course Builder Handler] Payload:', JSON.stringify(payloadObject, null, 2));
-    console.log('[Course Builder Handler] Response Template:', JSON.stringify(responseTemplate, null, 2));
+    console.log(`${logPrefix} 📋 Request Details:`);
+    console.log(`${logPrefix}   - Mode: ${mode}`);
+    console.log(`${logPrefix}   - Action: ${actionToUse || 'N/A'}`);
+    console.log(`${logPrefix}   - Requester Service: ${requesterService || 'N/A'}`);
+    console.log(`${logPrefix}   - Payload:`, JSON.stringify(payloadObject, null, 2));
+    console.log(`${logPrefix}   - Response Template:`, JSON.stringify(responseTemplate, null, 2));
 
     // Use AI-powered service to fill the template
     // AI will determine SQL type based on mode
-    const filledTemplate = await fillContentMetrics(payloadObject, responseTemplate, actionToUse, isAction);
+    console.log(`${logPrefix} ⏳ Calling fillContentMetrics service...`);
+    const serviceStartTime = Date.now();
+    const filledTemplate = await fillContentMetrics(payloadObject, responseTemplate, actionToUse, isAction, requestId);
+    const serviceDuration = Date.now() - serviceStartTime;
+    console.log(`${logPrefix} ✅ fillContentMetrics completed in ${serviceDuration}ms`);
 
-    console.log('[Course Builder Handler] Filled template:', JSON.stringify(filledTemplate, null, 2));
+    console.log(`${logPrefix} 📦 Filled Template:`, JSON.stringify(filledTemplate, null, 2));
 
     // Return the same request object with filled response
     // Contract: { requester_service, payload, response }
     // Must preserve exact structure - only response is filled
-    return {
+    const result = {
       requester_service: requesterService || 'course_builder', // Preserve original requester_service
       payload: payloadObject, // Keep original payload unchanged (includes action inside)
       response: filledTemplate || {} // Return filled response template
     };
+    
+    const totalDuration = Date.now() - startTime;
+    console.log(`${logPrefix} ✅ Handler completed in ${totalDuration}ms`);
+    console.log(`${logPrefix} 📤 Returning envelope with filled response`);
+    
+    return result;
   } catch (error) {
-    console.error('[Course Builder Handler] Error:', error);
+    const totalDuration = Date.now() - startTime;
+    console.error(`${logPrefix} ❌ ERROR after ${totalDuration}ms:`, error);
+    console.error(`${logPrefix} Error stack:`, error.stack);
     throw new Error(`Course Builder handler failed: ${error.message}`);
   }
 }
