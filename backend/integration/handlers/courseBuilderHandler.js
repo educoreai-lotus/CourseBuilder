@@ -10,12 +10,38 @@
 import { fillContentMetrics } from '../../services/fillContentMetrics.service.js';
 
 /**
+ * Check if action is a write operation (enrollment, registration, etc.)
+ * @param {string|null} action - Action from payload
+ * @returns {boolean} - True if action requires write operation
+ */
+function isWriteAction(action) {
+  if (!action || typeof action !== 'string') {
+    return false;
+  }
+  
+  const writeActionPatterns = [
+    'enroll',
+    'register',
+    'create',
+    'update',
+    'delete',
+    'cancel',
+    'submit',
+    'assign'
+  ];
+  
+  const lowerAction = action.toLowerCase();
+  return writeActionPatterns.some(pattern => lowerAction.includes(pattern));
+}
+
+/**
  * Check if response template is Action/Command mode
- * Action mode: {} or { "answer": "" }
+ * Action mode: {} or { "answer": "" } OR response template with action result fields (success, message, etc.)
  * @param {Object} responseTemplate - Response template to check
+ * @param {string|null} action - Action from payload (optional, for detecting write operations)
  * @returns {boolean} - True if action mode
  */
-function isActionMode(responseTemplate) {
+function isActionMode(responseTemplate, action = null) {
   if (!responseTemplate || typeof responseTemplate !== 'object') {
     return true; // Empty/null is action mode
   }
@@ -33,6 +59,18 @@ function isActionMode(responseTemplate) {
     // Empty string, null, or undefined means action mode
     if (answerValue === '' || answerValue === null || answerValue === undefined) {
       return true;
+    }
+  }
+  
+  // If action is a write operation (enroll, register, etc.) and response has action result fields,
+  // treat as Action mode even if it has structured fields
+  if (action && isWriteAction(action)) {
+    // Check if response template has action result fields (success, message, etc.)
+    const actionResultFields = ['success', 'message', 'error', 'status', 'result'];
+    const hasActionResultFields = keys.some(key => actionResultFields.includes(key.toLowerCase()));
+    
+    if (hasActionResultFields) {
+      return true; // This is an action that returns a result, not a data query
     }
   }
   
@@ -82,8 +120,8 @@ export async function handleCourseBuilderIntegration(payloadObject, responseTemp
     // Extract action from payload if not provided
     const actionToUse = action || payloadObject.action || null;
     
-    // Determine mode
-    const isAction = isActionMode(responseTemplate);
+    // Determine mode (pass action to isActionMode to detect write operations)
+    const isAction = isActionMode(responseTemplate, actionToUse);
     const isData = isDataFillingMode(responseTemplate);
     const mode = isAction ? 'Action/Command' : isData ? 'Data-Filling' : 'Unknown';
     
