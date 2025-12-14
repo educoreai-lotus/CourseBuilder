@@ -154,27 +154,6 @@ app.get('/api/test/openai', async (req, res) => {
   }
 });
 
-// Test endpoint for logging (to verify Railway logs are working)
-app.get('/api/test/logs', (req, res) => {
-  const timestamp = new Date().toISOString();
-  console.log('='.repeat(80));
-  console.log(`[Test Logs] 📝 Test log entry at ${timestamp}`);
-  console.log(`[Test Logs] Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`[Test Logs] Port: ${PORT}`);
-  console.log(`[Test Logs] Request method: ${req.method}`);
-  console.log(`[Test Logs] Request path: ${req.path}`);
-  console.log(`[Test Logs] Request headers:`, JSON.stringify(req.headers, null, 2));
-  console.log('='.repeat(80));
-  
-  res.json({
-    status: 'success',
-    message: 'Logs test completed - check Railway logs',
-    timestamp,
-    environment: process.env.NODE_ENV || 'development',
-    port: PORT
-  });
-});
-
 // 404 handler
 app.use((req, res) => {
   res.status(404).json({
@@ -201,39 +180,23 @@ let serverInstance;
 let scheduledJobCleanup = null;
 
 if (process.env.NODE_ENV !== 'test') {
-  // Log startup information immediately (for Railway visibility)
-  console.log('='.repeat(80));
-  console.log('🚀 Starting Course Builder Service...');
-  console.log(`📝 Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`🌐 Port: ${PORT}`);
-  console.log(`⏰ Start Time: ${new Date().toISOString()}`);
-  console.log('='.repeat(80));
-  
   // Initialize cache and start server
   initCache().then(() => {
     serverInstance = app.listen(PORT, () => {
-      console.log('='.repeat(80));
-      console.log(`✅ Course Builder API server running on port ${PORT}`);
+      console.log(`🚀 Course Builder API server running on port ${PORT}`);
       console.log(`📝 Environment: ${process.env.NODE_ENV || 'development'}`);
       console.log(`🔗 Health check: http://localhost:${PORT}/health`);
-      console.log(`🧪 Test logs endpoint: http://localhost:${PORT}/api/test/logs`);
-      console.log('='.repeat(80));
       
       // Start scheduled publishing job (will handle missing tables gracefully)
       scheduledJobCleanup = startScheduledPublishingJob();
     });
   }).catch(error => {
-    console.error('='.repeat(80));
-    console.error('❌ Error initializing cache:', error);
-    console.error('='.repeat(80));
+    console.error('Error initializing cache:', error);
     // Start server anyway (cache is optional)
     serverInstance = app.listen(PORT, () => {
-      console.log('='.repeat(80));
-      console.log(`✅ Course Builder API server running on port ${PORT} (cache disabled)`);
+      console.log(`🚀 Course Builder API server running on port ${PORT}`);
       console.log(`📝 Environment: ${process.env.NODE_ENV || 'development'}`);
       console.log(`🔗 Health check: http://localhost:${PORT}/health`);
-      console.log(`🧪 Test logs endpoint: http://localhost:${PORT}/api/test/logs`);
-      console.log('='.repeat(80));
       
       scheduledJobCleanup = startScheduledPublishingJob();
     });
