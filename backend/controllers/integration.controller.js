@@ -5,6 +5,7 @@
  */
 
 import { dispatchIntegrationRequest } from '../integration/dispatcher.js';
+import { PendingCourseCreationError } from '../utils/PendingCourseCreationError.js';
 
 /**
  * Check if response template has fields to fill
@@ -391,6 +392,19 @@ export async function handleFillContentMetrics(req, res) {
     return res.status(200).send(JSON.stringify(responseEnvelope));
   } catch (error) {
     console.error('[Integration Controller] Error processing request:', error);
+    
+    // Handle pending course creation (202 Accepted)
+    if (error instanceof PendingCourseCreationError) {
+      console.log('[Integration Controller] Course creation pending - returning 202 Accepted');
+      const pendingPayload = {
+        status: 'PENDING',
+        reason: error.reason || error.message || 'Course creation is pending'
+      };
+      res.setHeader('Content-Type', 'application/json');
+      return res.status(202).send(JSON.stringify(pendingPayload));
+    }
+    
+    // Handle other errors (4xx/5xx for real failures)
     const status = error.status || 500;
     const errorPayload = {
       error: status === 500 ? 'Internal Server Error' : 'Error',

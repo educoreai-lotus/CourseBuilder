@@ -13,6 +13,7 @@ import { sendToLearnerAI } from '../services/gateways/learnerAIGateway.js';
 import { sendToContentStudio } from '../services/gateways/contentStudioGateway.js';
 import { handleContentStudioIntegration } from '../integration/handlers/contentStudioHandler.js';
 import courseRepository from '../repositories/CourseRepository.js';
+import { PendingCourseCreationError } from '../utils/PendingCourseCreationError.js';
 
 /**
  * Trigger course creation pipeline for CAREER_PATH_DRIVEN enrollment
@@ -41,6 +42,16 @@ async function triggerCourseCreationPipeline(learner, competencyTag, companyId, 
       skills_count: learnerAIResponse.skills?.length || 0
     });
     
+    // Check if Learner AI returned no learning path/skills
+    const hasNoLearningPath = !learnerAIResponse.learning_path || 
+                              (Array.isArray(learnerAIResponse.learning_path) && learnerAIResponse.learning_path.length === 0);
+    const hasNoSkills = !learnerAIResponse.skills || 
+                       (Array.isArray(learnerAIResponse.skills) && learnerAIResponse.skills.length === 0);
+    
+    if (hasNoLearningPath && hasNoSkills) {
+      console.warn(`[Fill Content Metrics] Learner AI returned no learning path or skills for learner: ${learner.learner_id}`);
+    }
+    
     // Step 2: Call Content Studio to generate course content
     console.log('[Fill Content Metrics] Step 2: Calling Content Studio...');
     const contentStudioPayload = {
@@ -60,8 +71,19 @@ async function triggerCourseCreationPipeline(learner, competencyTag, companyId, 
     
     // Step 3: Create course structure using Content Studio handler
     console.log('[Fill Content Metrics] Step 3: Creating course structure...');
+    
+    // Check if Content Studio returned no topics (even after fallback)
     if (!contentStudioResponse.topics || contentStudioResponse.topics.length === 0) {
-      throw new Error('Content Studio returned no topics for course creation');
+      // This is a PENDING state, not a failure
+      // Learner AI returned no learning path/skills AND fallback couldn't produce topics
+      const reason = hasNoLearningPath && hasNoSkills
+        ? `Learner AI returned no learning path or skills for learner ${learner.learner_id}, and fallback logic could not produce course topics. Course creation is pending.`
+        : `Content Studio returned no topics for course creation. Course creation is pending.`;
+      
+      throw new PendingCourseCreationError(
+        `Course creation cannot complete yet - no course topics available`,
+        reason
+      );
     }
     
     // Prepare payload for Content Studio handler
@@ -118,6 +140,12 @@ async function triggerCourseCreationPipeline(learner, competencyTag, companyId, 
     
     return courseId;
   } catch (error) {
+    // If it's already a PendingCourseCreationError, re-throw it as-is
+    if (error instanceof PendingCourseCreationError) {
+      throw error;
+    }
+    
+    // For other errors, wrap in generic error (these are real failures)
     console.error(`[Fill Content Metrics] Error in course creation pipeline for learner ${learner.learner_id}:`, error);
     throw new Error(`Failed to create course for enrollment: ${error.message}`);
   }
