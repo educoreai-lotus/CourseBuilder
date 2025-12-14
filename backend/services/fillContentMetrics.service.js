@@ -9,60 +9,162 @@
 import { generateSQLQuery } from './aiQueryBuilder.service.js';
 import { executeQuery, extractQueryParams } from './queryExecutor.service.js';
 import { fillTemplate } from '../utils/responseTemplateFiller.js';
+import { sendToLearnerAI } from '../services/gateways/learnerAIGateway.js';
+import { sendToContentStudio } from '../services/gateways/contentStudioGateway.js';
+import { handleContentStudioIntegration } from '../integration/handlers/contentStudioHandler.js';
 import courseRepository from '../repositories/CourseRepository.js';
-import db from '../config/database.js';
 
 /**
- * Determine course_id for CAREER_PATH_DRIVEN enrollment
- * Finds active learner-specific course created for the learner
- * @param {string} learnerId - Learner ID
- * @returns {Promise<string|null>} - Course ID or null if not found
+ * Trigger course creation pipeline for CAREER_PATH_DRIVEN enrollment
+ * Flow: Learner AI → Content Studio → Course Builder creates course
+ * @param {Object} learner - Learner object with learner_id, learner_name, etc.
+ * @param {string} competencyTag - Competency tag (e.g., "Node.js Backend Development")
+ * @param {string} companyId - Company ID
+ * @param {string} companyName - Company name
+ * @returns {Promise<string>} - Course ID of created course
  */
-async function determineCourseIdForEnrollment(learnerId) {
+async function triggerCourseCreationPipeline(learner, competencyTag, companyId, companyName) {
   try {
-    // Find active learner-specific course where created_by_user_id = learner_id
-    const courses = await courseRepository.findAll({
-      course_type: 'learner_specific',
-      status: 'active',
-      created_by_user_id: learnerId
+    console.log(`[Fill Content Metrics] Triggering course creation pipeline for learner: ${learner.learner_id}`);
+    console.log(`[Fill Content Metrics] Competency tag: ${competencyTag}`);
+    
+    // Step 1: Call Learner AI to get learning path and skills
+    console.log('[Fill Content Metrics] Step 1: Calling Learner AI...');
+    const learnerAIResponse = await sendToLearnerAI({
+      user_id: learner.learner_id,
+      tag: competencyTag || 'General Learning Path'
     });
     
-    if (courses.length === 0) {
-      console.warn(`[Fill Content Metrics] No active learner-specific course found for learner: ${learnerId}`);
-      return null;
+    console.log('[Fill Content Metrics] Learner AI response:', {
+      has_learning_path: !!learnerAIResponse.learning_path,
+      has_skills: !!learnerAIResponse.skills,
+      skills_count: learnerAIResponse.skills?.length || 0
+    });
+    
+    // Step 2: Call Content Studio to generate course content
+    console.log('[Fill Content Metrics] Step 2: Calling Content Studio...');
+    const contentStudioPayload = {
+      learnerData: {
+        learner_id: learner.learner_id,
+        learner_name: learner.learner_name || '',
+        learner_company: companyName || ''
+      },
+      skills: learnerAIResponse.skills || []
+    };
+    
+    const contentStudioResponse = await sendToContentStudio(contentStudioPayload);
+    console.log('[Fill Content Metrics] Content Studio response:', {
+      has_topics: !!contentStudioResponse.topics,
+      topics_count: contentStudioResponse.topics?.length || 0
+    });
+    
+    // Step 3: Create course structure using Content Studio handler
+    console.log('[Fill Content Metrics] Step 3: Creating course structure...');
+    if (!contentStudioResponse.topics || contentStudioResponse.topics.length === 0) {
+      throw new Error('Content Studio returned no topics for course creation');
     }
     
-    // Return the most recently created course (first in DESC order)
-    const courseId = courses[0].id;
-    console.log(`[Fill Content Metrics] Determined course_id: ${courseId} for learner: ${learnerId}`);
+    // Prepare payload for Content Studio handler
+    const contentStudioHandlerPayload = {
+      learner_id: learner.learner_id,
+      learner_name: learner.learner_name || '',
+      learner_company: companyName || '',
+      skills: learnerAIResponse.skills || [],
+      topics: contentStudioResponse.topics
+    };
+    
+    const contentStudioResponseTemplate = {
+      learner_id: learner.learner_id,
+      learner_name: learner.learner_name || '',
+      learner_company: companyName || '',
+      topics: contentStudioResponse.topics
+    };
+    
+    // Create the course (this will create course, topics, modules, lessons)
+    const courseCreationResult = await handleContentStudioIntegration(
+      contentStudioHandlerPayload,
+      contentStudioResponseTemplate
+    );
+    
+    // Step 4: Extract course_id from the handler response
+    // The handler returns { course: [{ course_id, ... }] }
+    console.log('[Fill Content Metrics] Step 4: Extracting course_id from creation result...');
+    
+    let courseId = null;
+    if (courseCreationResult && courseCreationResult.course && Array.isArray(courseCreationResult.course) && courseCreationResult.course.length > 0) {
+      courseId = courseCreationResult.course[0].course_id;
+    }
+    
+    // Fallback: If course_id not in response, find it by learner_id
+    if (!courseId) {
+      console.log('[Fill Content Metrics] Course ID not in response, searching by learner_id...');
+      const courses = await courseRepository.findAll({
+        course_type: 'learner_specific',
+        status: 'active',
+        created_by_user_id: learner.learner_id
+      });
+      
+      if (courses.length > 0) {
+        // Get the most recently created course (first in DESC order)
+        courseId = courses[0].id;
+      }
+    }
+    
+    if (!courseId) {
+      throw new Error(`Course creation failed - no course_id found for learner: ${learner.learner_id}`);
+    }
+    
+    console.log(`[Fill Content Metrics] ✅ Course created successfully: ${courseId}`);
+    
     return courseId;
   } catch (error) {
-    console.error(`[Fill Content Metrics] Error determining course_id for learner ${learnerId}:`, error);
-    return null;
+    console.error(`[Fill Content Metrics] Error in course creation pipeline for learner ${learner.learner_id}:`, error);
+    throw new Error(`Failed to create course for enrollment: ${error.message}`);
   }
 }
 
 /**
  * Pre-process payload for enrollment operations
- * Determines course_id for each learner if missing
+ * Triggers course creation pipeline if course_id is missing for CAREER_PATH_DRIVEN
  * @param {Object} payloadObject - Original payload
  * @param {string|null} action - Action from payload
- * @returns {Promise<Object>} - Payload with course_id added if needed
+ * @returns {Promise<Object>} - Payload with course_id added for each learner
  */
 async function preprocessEnrollmentPayload(payloadObject, action) {
   // Check if this is a CAREER_PATH_DRIVEN enrollment
   if (action && action.includes('enroll') && payloadObject.learning_flow === 'CAREER_PATH_DRIVEN') {
-    // If learners array exists, determine course_id for each learner
+    // If learners array exists, ensure course_id for each learner
     if (Array.isArray(payloadObject.learners) && payloadObject.learners.length > 0) {
       const enrichedLearners = await Promise.all(
         payloadObject.learners.map(async (learner) => {
           // If course_id is already provided, use it
           if (learner.course_id) {
+            console.log(`[Fill Content Metrics] Learner ${learner.learner_id} already has course_id: ${learner.course_id}`);
             return learner;
           }
           
-          // Determine course_id for this learner
-          const courseId = await determineCourseIdForEnrollment(learner.learner_id);
+          // Course_id is missing - trigger course creation pipeline
+          console.log(`[Fill Content Metrics] Learner ${learner.learner_id} missing course_id - triggering course creation...`);
+          
+          // Extract competency tag from learner or use default
+          // The competency tag might be in learner.learning_flow_tag or payloadObject.competency_name
+          const competencyTag = learner.learning_flow_tag || 
+                              learner.competency_name || 
+                              payloadObject.competency_name || 
+                              'General Learning Path';
+          
+          // Trigger course creation pipeline
+          const courseId = await triggerCourseCreationPipeline(
+            learner,
+            competencyTag,
+            payloadObject.company_id,
+            payloadObject.company_name
+          );
+          
+          if (!courseId) {
+            throw new Error(`Course creation failed for learner: ${learner.learner_id}`);
+          }
+          
           return {
             ...learner,
             course_id: courseId
@@ -82,12 +184,22 @@ async function preprocessEnrollmentPayload(payloadObject, action) {
 
 export async function fillContentMetrics(payloadObject, responseTemplate, action = null, isActionMode = false) {
   try {
-    // Step 0: Pre-process payload for enrollment operations (determine course_id)
+    // Step 0: Pre-process payload for enrollment operations (trigger course creation if needed)
+    // For CAREER_PATH_DRIVEN enrollment, if course_id is missing, trigger course creation pipeline
+    // Flow: Learner AI → Content Studio → Course Builder creates course → then enrollment
     let processedPayload = payloadObject;
     if (isActionMode && action && action.includes('enroll')) {
       console.log('[Fill Content Metrics] Pre-processing enrollment payload...');
       processedPayload = await preprocessEnrollmentPayload(payloadObject, action);
       console.log('[Fill Content Metrics] Processed payload:', JSON.stringify(processedPayload, null, 2));
+      
+      // Validate that all learners now have course_id
+      if (Array.isArray(processedPayload.learners)) {
+        const learnersWithoutCourseId = processedPayload.learners.filter(l => !l.course_id);
+        if (learnersWithoutCourseId.length > 0) {
+          throw new Error(`Enrollment cannot proceed - ${learnersWithoutCourseId.length} learner(s) missing course_id. Course creation pipeline must complete before enrollment.`);
+        }
+      }
     }
     
     // Step 1: Generate SQL query using AI

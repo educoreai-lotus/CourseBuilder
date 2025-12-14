@@ -39,11 +39,13 @@ export async function handleContentStudioIntegration(payloadObject, responseTemp
       });
     } else if (!course && !isTrainerCourse) {
       // Create learner-specific course
+      // Set created_by_user_id to learner_id if provided (for CAREER_PATH_DRIVEN enrollment)
       course = await courseRepository.create({
         course_name: normalized.course_name || 'Personalized Course',
         course_description: normalized.course_description,
         course_type: 'learner_specific',
-        status: 'draft',
+        status: 'active', // Set to active for enrollment flow
+        created_by_user_id: normalized.learner_id || null, // Set learner_id as creator
         learning_path_designation: {
           is_designated: true
         }

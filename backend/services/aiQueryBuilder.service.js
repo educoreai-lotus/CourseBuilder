@@ -201,11 +201,11 @@ function buildQueryGenerationPrompt(payloadObject, responseTemplate, action = nu
 - If response_template contains "answer", your SQL MUST return one row with a column named "answer"
 - For empty response_template {}, perform the operation and return no data (or return "OK" as answer if needed)
 - For enrollment/registration operations (enroll_employees_career_path, enroll_employees_career_path):
-  * Payload structure: { learners: [{ learner_id, learner_name, preferred_language, course_id? }], company_id, company_name, learning_flow }
+  * Payload structure: { learners: [{ learner_id, learner_name, preferred_language, course_id }], company_id, company_name, learning_flow }
   * For CAREER_PATH_DRIVEN enrollment:
-    - course_id is pre-determined and added to each learner object in the payload
+    - course_id is ALWAYS provided in the payload (created via course creation pipeline before SQL generation)
     - Use learners[].course_id for each learner's enrollment
-    - If course_id is null/missing for a learner, skip that learner (or handle error)
+    - course_id is guaranteed to exist - never null/missing
   * For batch enrollments, generate INSERT statements for each learner in the learners array
   * Use VALUES clause with multiple rows OR loop through learners array
   * INSERT INTO registrations (learner_id, learner_name, course_id, company_id, company_name, status) VALUES 

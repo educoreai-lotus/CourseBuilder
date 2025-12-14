@@ -96,6 +96,7 @@ export function normalizeContentStudioPayload(payload) {
     course_language: payload.course_language,
     trainer_id: payload.trainer_id,
     trainer_name: payload.trainer_name,
+    learner_id: payload.learner_id, // Extract learner_id for course creation
     // Content Studio topics[] array → Course Builder lessons[] array
     // Each Content Studio topic becomes a Course Builder lesson
     lessons: []
