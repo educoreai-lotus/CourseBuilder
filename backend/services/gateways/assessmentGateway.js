@@ -57,7 +57,7 @@ export async function sendToAssessment(course, learnerId, learnerName, lessons =
 
     // Build envelope for Coordinator
     const envelope = {
-      requester_service: 'course_builder',
+      requester_service: 'course-builder-service',
       payload: sendPayload,
       response: responseTemplate
     };

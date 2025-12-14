@@ -26,7 +26,7 @@ export async function sendToDirectory(feedback, course) {
 
     // Build envelope for Coordinator
     const envelope = {
-      requester_service: 'course_builder',
+      requester_service: 'course-builder-service',
       payload: sendPayload,
       response: responseTemplate
     };

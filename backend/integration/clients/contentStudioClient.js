@@ -54,7 +54,7 @@ export async function sendToContentStudio(payloadObject) {
     // Send using unified endpoint format (three-field structure)
     // Use lowercase with underscores for requester_service
     const requestBody = {
-      requester_service: 'course_builder',
+      requester_service: 'course-builder-service',
       payload: sendPayload, // Regular object, NOT stringified
       response: responseTemplate // Regular object, NOT stringified
     };
