@@ -90,12 +90,38 @@ function inferSpecializedServiceFromPayload(payloadObject) {
 }
 
 /**
+ * Check if action is a write operation (enrollment, registration, etc.)
+ * @param {string|null} action - Action from payload
+ * @returns {boolean} - True if action requires write operation
+ */
+function isWriteAction(action) {
+  if (!action || typeof action !== 'string') {
+    return false;
+  }
+  
+  const writeActionPatterns = [
+    'enroll',
+    'register',
+    'create',
+    'update',
+    'delete',
+    'cancel',
+    'submit',
+    'assign'
+  ];
+  
+  const lowerAction = action.toLowerCase();
+  return writeActionPatterns.some(pattern => lowerAction.includes(pattern));
+}
+
+/**
  * Check if response template is Action/Command mode
- * Action mode: {} or { "answer": "" }
+ * Action mode: {} or { "answer": "" } OR response template with action result fields (success, message, etc.)
  * @param {Object} responseTemplate - Response template to check
+ * @param {string|null} action - Action from payload (optional, for detecting write operations)
  * @returns {boolean} - True if action mode
  */
-function isActionMode(responseTemplate) {
+function isActionMode(responseTemplate, action = null) {
   if (!responseTemplate || typeof responseTemplate !== 'object') {
     return true; // Empty/null is action mode
   }
@@ -113,6 +139,18 @@ function isActionMode(responseTemplate) {
     // Empty string, null, or undefined means action mode
     if (answerValue === '' || answerValue === null || answerValue === undefined) {
       return true;
+    }
+  }
+  
+  // If action is a write operation (enroll, register, etc.) and response has action result fields,
+  // treat as Action mode even if it has structured fields
+  if (action && isWriteAction(action)) {
+    // Check if response template has action result fields (success, message, etc.)
+    const actionResultFields = ['success', 'message', 'error', 'status', 'result'];
+    const hasActionResultFields = keys.some(key => actionResultFields.includes(key.toLowerCase()));
+    
+    if (hasActionResultFields) {
+      return true; // This is an action that returns a result, not a data query
     }
   }
   
@@ -169,9 +207,12 @@ function determineTargetService(payloadObject, responseTemplate) {
     return inferSpecializedServiceFromPayload(payloadObject);
   }
   
+  // Extract action for mode detection
+  const action = payloadObject.action || null;
+  
   // Response template exists - check if it's Action mode or Data mode
-  if (isActionMode(responseTemplate)) {
-    // Action mode: {} or {answer: ""}
+  if (isActionMode(responseTemplate, action)) {
+    // Action mode: {} or {answer: ""} OR write operations with result fields
     // First, check if payload matches a specialized handler pattern
     // If yes, use that handler (specialized handlers can handle empty response)
     const specializedService = inferSpecializedServiceFromPayload(payloadObject);
@@ -184,7 +225,7 @@ function determineTargetService(payloadObject, responseTemplate) {
     if (Object.keys(responseTemplate).length === 0) {
       return null;
     }
-    // If response is {answer: ""}, try Course Builder Action mode
+    // If response is {answer: ""} or write operation with result fields, try Course Builder Action mode
     return 'CourseBuilder';
   } else if (isDataFillingMode(responseTemplate)) {
     // Data mode: structured fields
@@ -295,9 +336,9 @@ export async function handleFillContentMetrics(req, res) {
     // - If response template is missing → Specialized handler based on payload structure
     console.log('[Integration Controller] 🔍 Determining target service...');
     console.log('[Integration Controller] Action (from payload.action):', action);
-    console.log('[Integration Controller] Response template mode:', 
-      isActionMode(responseObject) ? 'Action/Command' : 
-      isDataFillingMode(responseObject) ? 'Data-Filling' : 'Empty/Missing');
+    const responseMode = isActionMode(responseObject, action) ? 'Action/Command' : 
+                        isDataFillingMode(responseObject) ? 'Data-Filling' : 'Empty/Missing';
+    console.log('[Integration Controller] Response template mode:', responseMode);
     const targetService = determineTargetService(payloadObject, responseObject);
     console.log('[Integration Controller] ✅ Target service determined:', targetService);
     
@@ -313,7 +354,7 @@ export async function handleFillContentMetrics(req, res) {
     // Call dispatcher with target service, payload, and response template
     console.log(`[Integration Controller] 📤 Routing to ${targetService} handler...`);
     if (targetService === 'CourseBuilder') {
-      const mode = isActionMode(responseObject) ? 'Action/Command' : 'Data-Filling';
+      const mode = isActionMode(responseObject, action) ? 'Action/Command' : 'Data-Filling';
       console.log(`[Integration Controller] 🤖 Using AI-powered Course Builder Handler (${mode} mode)`);
     }
     const filledResponse = await dispatchIntegrationRequest(targetService, payloadObject, responseObject, action, requesterService);

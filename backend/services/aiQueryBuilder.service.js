@@ -200,6 +200,10 @@ function buildQueryGenerationPrompt(payloadObject, responseTemplate, action = nu
 - Perform the operation requested by the action
 - If response_template contains "answer", your SQL MUST return one row with a column named "answer"
 - For empty response_template {}, perform the operation and return no data (or return "OK" as answer if needed)
+- For enrollment/registration operations:
+  * INSERT INTO registrations (learner_id, learner_name, course_id, company_id, company_name, status) VALUES ($1, $2, $3, $4, $5, 'in_progress') RETURNING id AS enrollment_batch_id, 'Success' AS message, true AS success
+  * For batch enrollments, use a transaction or multiple INSERTs with RETURNING
+  * Return success=true, message, enrollment_batch_id, and failed_employee_ids array
 - Examples:
   * INSERT INTO registrations (learner_id, course_id) VALUES ($1, $2) RETURNING 'OK' AS answer
   * UPDATE assessments SET passed = true WHERE learner_id = $1 AND course_id = $2 RETURNING CASE WHEN passed THEN 'OK' ELSE 'FAILED' END AS answer
@@ -261,9 +265,14 @@ ${templateStr}
 
 FIELD NORMALIZATION EXAMPLES:
 - payload.user_id → WHERE learner_id = $1 (NOT user_id)
+- payload.learner_id → WHERE learner_id = $1 (use as-is)
+- payload.learners[].learner_id → Use in INSERT VALUES for batch operations
 - response.enrolled → SELECT COUNT(registrations.learner_id) AS enrolled ...
 - response.instructor → SELECT created_by_user_id AS instructor ...
 - response.lessons_count → SELECT COUNT(lessons.id) AS lessons_count ... (join properly)
+- response.success → Return true/false based on operation result (for INSERT/UPDATE operations)
+- response.enrollment_batch_id → RETURNING id AS enrollment_batch_id (for INSERT operations)
+- response.failed_employee_ids → Return ARRAY[]::UUID[] for failed enrollments
 - payload.course_id → WHERE course_id = $1 (real column name - use as-is)
 
 JOIN REQUIREMENTS:
