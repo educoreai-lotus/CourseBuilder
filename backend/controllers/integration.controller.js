@@ -212,18 +212,6 @@ function determineTargetService(payloadObject, responseTemplate) {
  * 8) On parse/validation error: respond 400 with JSON error
  */
 export async function handleFillContentMetrics(req, res) {
-  const requestId = `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-  const startTime = Date.now();
-  
-  console.log('\n' + '='.repeat(80));
-  console.log(`[Integration Controller] 📥 INCOMING REQUEST [${requestId}]`);
-  console.log(`[Integration Controller] Time: ${new Date().toISOString()}`);
-  console.log(`[Integration Controller] Method: ${req.method}`);
-  console.log(`[Integration Controller] Path: ${req.path}`);
-  console.log(`[Integration Controller] Content-Type: ${req.headers['content-type'] || 'N/A'}`);
-  console.log(`[Integration Controller] Body Type: ${typeof req.body}`);
-  console.log(`[Integration Controller] Raw Body Length: ${typeof req.body === 'string' ? req.body.length : 'N/A'} chars`);
-  
   try {
     // Request body comes as a string from Coordinator - we need to parse it manually
     let envelope;
@@ -231,12 +219,9 @@ export async function handleFillContentMetrics(req, res) {
     // Check if body is already parsed (object) or still a string
     if (typeof req.body === 'string') {
       // Body is a string - parse it to JSON
-      console.log(`[Integration Controller] [${requestId}] Parsing JSON string body...`);
       try {
         envelope = JSON.parse(req.body);
-        console.log(`[Integration Controller] [${requestId}] ✅ Successfully parsed JSON string`);
       } catch (parseError) {
-        console.error(`[Integration Controller] [${requestId}] ❌ JSON parse error:`, parseError.message);
         const errorPayload = {
           error: 'Bad Request',
           message: 'Request body must be a valid JSON string'
@@ -246,26 +231,21 @@ export async function handleFillContentMetrics(req, res) {
       }
     } else if (typeof req.body === 'object' && req.body !== null) {
       // Body is already parsed (fallback if Express.json() parsed it)
-      console.log(`[Integration Controller] [${requestId}] Body already parsed as object`);
       envelope = req.body;
     } else {
       // Try to get raw body as string
       const rawBody = req.body?.toString() || '';
       if (!rawBody) {
-        console.error(`[Integration Controller] [${requestId}] ❌ Empty or invalid body`);
-        const errorPayload = {
-          error: 'Bad Request',
-          message: 'Request body is empty or invalid'
-        };
-        res.setHeader('Content-Type', 'application/json');
-        return res.status(400).send(JSON.stringify(errorPayload));
+      const errorPayload = {
+        error: 'Bad Request',
+        message: 'Request body is empty or invalid'
+      };
+      res.setHeader('Content-Type', 'application/json');
+      return res.status(400).send(JSON.stringify(errorPayload));
       }
       try {
-        console.log(`[Integration Controller] [${requestId}] Parsing raw body string...`);
         envelope = JSON.parse(rawBody);
-        console.log(`[Integration Controller] [${requestId}] ✅ Successfully parsed raw body`);
       } catch (parseError) {
-        console.error(`[Integration Controller] [${requestId}] ❌ JSON parse error:`, parseError.message);
         const errorPayload = {
           error: 'Bad Request',
           message: 'Request body must be a valid JSON string'
@@ -277,7 +257,6 @@ export async function handleFillContentMetrics(req, res) {
 
     // Validate envelope is an object after parsing
     if (!envelope || typeof envelope !== 'object') {
-      console.error(`[Integration Controller] [${requestId}] ❌ Invalid envelope: not an object`);
       const errorPayload = {
         error: 'Bad Request',
         message: 'Request body must be a valid JSON object'
@@ -285,11 +264,6 @@ export async function handleFillContentMetrics(req, res) {
       res.setHeader('Content-Type', 'application/json');
       return res.status(400).send(JSON.stringify(errorPayload));
     }
-
-    console.log(`[Integration Controller] [${requestId}] 📋 Parsed Envelope Structure:`);
-    console.log(`[Integration Controller] [${requestId}]   - requester_service: ${envelope.requester_service || 'MISSING'}`);
-    console.log(`[Integration Controller] [${requestId}]   - payload: ${envelope.payload ? 'PRESENT' : 'MISSING'} (${typeof envelope.payload})`);
-    console.log(`[Integration Controller] [${requestId}]   - response: ${envelope.response !== undefined ? 'PRESENT' : 'MISSING'} (${typeof envelope.response})`);
 
     // Validate required fields and structure
     // requester_service and payload are required
@@ -299,13 +273,7 @@ export async function handleFillContentMetrics(req, res) {
     const hasPayload = envelope.payload && typeof envelope.payload === 'object';
     const hasResponse = envelope.response !== undefined;  // Response is optional (can be {} or missing)
 
-    console.log(`[Integration Controller] [${requestId}] 🔍 Validation:`);
-    console.log(`[Integration Controller] [${requestId}]   - requester_service valid: ${hasRequesterService}`);
-    console.log(`[Integration Controller] [${requestId}]   - payload valid: ${hasPayload}`);
-    console.log(`[Integration Controller] [${requestId}]   - response present: ${hasResponse}`);
-
     if (!hasRequesterService || !hasPayload) {
-      console.error(`[Integration Controller] [${requestId}] ❌ Validation failed`);
       const errorPayload = {
         error: 'Bad Request',
         message: 'Envelope must include "requester_service" (string, lowercase with underscores) and "payload" (JSON object). "response" is optional (can be {} or omitted for one-way communications).'
@@ -322,27 +290,18 @@ export async function handleFillContentMetrics(req, res) {
     // Extract action from payload.action (action is inside payload, not top-level)
     const action = payloadObject.action || null;
     
-    console.log(`[Integration Controller] [${requestId}] 📦 Request Data:`);
-    console.log(`[Integration Controller] [${requestId}]   - Requester Service: ${requesterService}`);
-    console.log(`[Integration Controller] [${requestId}]   - Action: ${action || 'N/A'}`);
-    console.log(`[Integration Controller] [${requestId}]   - Payload Keys: ${Object.keys(payloadObject).join(', ')}`);
-    console.log(`[Integration Controller] [${requestId}]   - Response Template Keys: ${Object.keys(responseObject).join(', ') || 'EMPTY'}`);
-    console.log(`[Integration Controller] [${requestId}]   - Response Template:`, JSON.stringify(responseObject, null, 2));
-    
     // Determine target service based on NEW routing logic:
     // - If response template exists → Course Builder Handler (AI) - handles both Data and Action modes
     // - If response template is missing → Specialized handler based on payload structure
-    console.log(`[Integration Controller] [${requestId}] 🔍 Determining target service...`);
-    const responseMode = isActionMode(responseObject) ? 'Action/Command' : 
-                        isDataFillingMode(responseObject) ? 'Data-Filling' : 'Empty/Missing';
-    console.log(`[Integration Controller] [${requestId}]   - Response Template Mode: ${responseMode}`);
-    console.log(`[Integration Controller] [${requestId}]   - Action (from payload.action): ${action || 'N/A'}`);
-    
+    console.log('[Integration Controller] 🔍 Determining target service...');
+    console.log('[Integration Controller] Action (from payload.action):', action);
+    console.log('[Integration Controller] Response template mode:', 
+      isActionMode(responseObject) ? 'Action/Command' : 
+      isDataFillingMode(responseObject) ? 'Data-Filling' : 'Empty/Missing');
     const targetService = determineTargetService(payloadObject, responseObject);
-    console.log(`[Integration Controller] [${requestId}] ✅ Target service determined: ${targetService || 'NONE'}`);
+    console.log('[Integration Controller] ✅ Target service determined:', targetService);
     
     if (!targetService) {
-      console.error(`[Integration Controller] [${requestId}] ❌ No target service determined`);
       const errorPayload = {
         error: 'Bad Request',
         message: 'Could not determine target service. Please ensure payload matches a known service pattern, or provide a response template with fields to fill.'
@@ -352,17 +311,13 @@ export async function handleFillContentMetrics(req, res) {
     }
 
     // Call dispatcher with target service, payload, and response template
-    console.log(`[Integration Controller] [${requestId}] 📤 Routing to ${targetService} handler...`);
+    console.log(`[Integration Controller] 📤 Routing to ${targetService} handler...`);
     if (targetService === 'CourseBuilder') {
       const mode = isActionMode(responseObject) ? 'Action/Command' : 'Data-Filling';
-      console.log(`[Integration Controller] [${requestId}] 🤖 Using AI-powered Course Builder Handler (${mode} mode)`);
+      console.log(`[Integration Controller] 🤖 Using AI-powered Course Builder Handler (${mode} mode)`);
     }
-    
-    console.log(`[Integration Controller] [${requestId}] ⏳ Dispatching to handler...`);
-    const dispatchStartTime = Date.now();
-    const filledResponse = await dispatchIntegrationRequest(targetService, payloadObject, responseObject, action, requesterService, requestId);
-    const dispatchDuration = Date.now() - dispatchStartTime;
-    console.log(`[Integration Controller] [${requestId}] ✅ ${targetService} handler completed in ${dispatchDuration}ms`);
+    const filledResponse = await dispatchIntegrationRequest(targetService, payloadObject, responseObject, action, requesterService);
+    console.log(`[Integration Controller] ✅ ${targetService} handler completed successfully`);
 
     // For Course Builder AI handler: it returns the full request object with filled response
     // For other handlers: they return just the filled response object
@@ -370,7 +325,6 @@ export async function handleFillContentMetrics(req, res) {
     if (targetService === 'CourseBuilder' && filledResponse && filledResponse.requester_service) {
       // AI handler returned full object: { requester_service, payload, response }
       // Use it as-is (exact same structure - only response is filled)
-      console.log(`[Integration Controller] [${requestId}] 📦 Course Builder returned full envelope`);
       responseEnvelope = filledResponse;
     } else {
       // Handler returns the filled response object
@@ -379,7 +333,6 @@ export async function handleFillContentMetrics(req, res) {
       
       // Return only the three fields: requester_service, payload, response
       // Routing information (target_service) is internal and not exposed
-      console.log(`[Integration Controller] [${requestId}] 📦 Building response envelope from handler result`);
       responseEnvelope = {
         requester_service: envelope.requester_service, // Keep original requester_service
         payload: payloadObject, // Keep original payload
@@ -387,25 +340,11 @@ export async function handleFillContentMetrics(req, res) {
       };
     }
 
-    console.log(`[Integration Controller] [${requestId}] 📤 Response Envelope:`);
-    console.log(`[Integration Controller] [${requestId}]   - requester_service: ${responseEnvelope.requester_service}`);
-    console.log(`[Integration Controller] [${requestId}]   - payload.action: ${responseEnvelope.payload?.action || 'N/A'}`);
-    console.log(`[Integration Controller] [${requestId}]   - response keys: ${Object.keys(responseEnvelope.response || {}).join(', ') || 'EMPTY'}`);
-    console.log(`[Integration Controller] [${requestId}]   - response:`, JSON.stringify(responseEnvelope.response, null, 2));
-
     // Return the full envelope as JSON string (Coordinator expects string)
-    const totalDuration = Date.now() - startTime;
-    console.log(`[Integration Controller] [${requestId}] ✅ Sending response (${totalDuration}ms total)`);
-    console.log('='.repeat(80) + '\n');
-    
     res.setHeader('Content-Type', 'application/json');
     return res.status(200).send(JSON.stringify(responseEnvelope));
   } catch (error) {
-    const totalDuration = Date.now() - startTime;
-    console.error(`[Integration Controller] [${requestId}] ❌ ERROR after ${totalDuration}ms:`, error);
-    console.error(`[Integration Controller] [${requestId}] Error stack:`, error.stack);
-    console.log('='.repeat(80) + '\n');
-    
+    console.error('[Integration Controller] Error processing request:', error);
     const status = error.status || 500;
     const errorPayload = {
       error: status === 500 ? 'Internal Server Error' : 'Error',

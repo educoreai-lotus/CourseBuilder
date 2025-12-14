@@ -28,33 +28,16 @@ export function normalizeLessonData(lessonData) {
     content_data = [lessonData.content_data];
   }
 
-  // Normalize devlab_exercises - exercises is now AJAX (HTML string), not an array
-  // Store as array with single HTML string element for database compatibility
+  // Normalize devlab_exercises - must ALWAYS be an array
+  // Normalize empty string "" to []
   let devlab_exercises = [];
   if (Array.isArray(lessonData.devlab_exercises)) {
-    // Legacy: if still an array, use it as-is
     devlab_exercises = lessonData.devlab_exercises;
   } else if (lessonData.devlab_exercises === "" || lessonData.devlab_exercises === null || lessonData.devlab_exercises === undefined) {
-    // Empty/null/undefined → empty array
     devlab_exercises = [];
-  } else if (typeof lessonData.devlab_exercises === 'string') {
-    // NEW: exercises is AJAX (HTML string) - wrap in array for database storage
-    devlab_exercises = [lessonData.devlab_exercises];
   } else if (lessonData.devlab_exercises) {
     // If single object, wrap in array
     devlab_exercises = [lessonData.devlab_exercises];
-  }
-  
-  // Also check for 'exercises' field (alternative name)
-  if (devlab_exercises.length === 0 && lessonData.exercises) {
-    if (typeof lessonData.exercises === 'string') {
-      // exercises is AJAX (HTML string) - wrap in array
-      devlab_exercises = [lessonData.exercises];
-    } else if (Array.isArray(lessonData.exercises)) {
-      devlab_exercises = lessonData.exercises;
-    } else {
-      devlab_exercises = [lessonData.exercises];
-    }
   }
 
   // Normalize skills - must ALWAYS be an array

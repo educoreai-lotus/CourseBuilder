@@ -15,43 +15,31 @@ import db from '../config/database.js';
  * @param {string} sqlQuery - SQL query (may contain parameter placeholders $1, $2, etc.)
  * @param {Array} params - Parameters for the query (values for $1, $2, etc.)
  * @param {boolean} isActionMode - True if Action mode (allows writes)
- * @param {string|null} requestId - Request ID for logging (optional)
  * @returns {Promise<Object|Array>} - Query results
  */
-export async function executeQuery(sqlQuery, params = [], isActionMode = false, requestId = null) {
-  const logPrefix = requestId ? `[Query Executor] [${requestId}]` : '[Query Executor]';
-  const startTime = Date.now();
-  
+export async function executeQuery(sqlQuery, params = [], isActionMode = false) {
   if (!sqlQuery || typeof sqlQuery !== 'string') {
-    console.error(`${logPrefix} ❌ Invalid query: SQL query must be a non-empty string`);
     throw new Error('Invalid query: SQL query must be a non-empty string');
   }
 
   // Final security check (in addition to AI builder validation)
-  console.log(`${logPrefix} 🔒 Validating query security...`);
   validateQuerySecurity(sqlQuery, isActionMode);
-  console.log(`${logPrefix} ✅ Security validation passed`);
 
   try {
-    console.log(`${logPrefix} 🚀 Executing SQL query`);
-    console.log(`${logPrefix}   - Mode: ${isActionMode ? 'Action/Command' : 'Data-Filling'}`);
-    console.log(`${logPrefix}   - Query type: ${sqlQuery.toUpperCase().trim().split(' ')[0]}`);
-    console.log(`${logPrefix}   - Params count: ${params.length}`);
-    console.log(`${logPrefix}   - Params:`, params);
-    console.log(`${logPrefix}   - SQL:`, sqlQuery);
+    console.log('[Query Executor] 🔍 Executing SQL query with params:', params);
+    console.log('[Query Executor] SQL Query:', sqlQuery);
+    console.log('[Query Executor] Mode:', isActionMode ? 'Action/Command' : 'Data-Filling');
     
     const upperQuery = sqlQuery.toUpperCase().trim();
+    const startTime = Date.now();
     let result;
     
     // Determine execution method based on query type
     if (upperQuery.startsWith('SELECT')) {
-      console.log(`${logPrefix} 📖 Executing SELECT query...`);
       // SELECT query: use oneOrNone to handle both single and no results gracefully
       result = await db.oneOrNone(sqlQuery, params);
       result = result || {}; // Return empty object if no results
-      console.log(`${logPrefix} ✅ SELECT query completed`);
     } else if (upperQuery.startsWith('INSERT')) {
-      console.log(`${logPrefix} ➕ Executing INSERT query...`);
       // INSERT query: use oneOrNone to get RETURNING clause results, or return success
       if (upperQuery.includes('RETURNING')) {
         result = await db.oneOrNone(sqlQuery, params);
@@ -60,9 +48,7 @@ export async function executeQuery(sqlQuery, params = [], isActionMode = false, 
         await db.none(sqlQuery, params);
         result = { answer: 'OK' };
       }
-      console.log(`${logPrefix} ✅ INSERT query completed`);
     } else if (upperQuery.startsWith('UPDATE')) {
-      console.log(`${logPrefix} 🔄 Executing UPDATE query...`);
       // UPDATE query: use oneOrNone to get RETURNING clause results, or return success
       if (upperQuery.includes('RETURNING')) {
         result = await db.oneOrNone(sqlQuery, params);
@@ -71,9 +57,7 @@ export async function executeQuery(sqlQuery, params = [], isActionMode = false, 
         await db.none(sqlQuery, params);
         result = { answer: 'OK' };
       }
-      console.log(`${logPrefix} ✅ UPDATE query completed`);
     } else if (upperQuery.startsWith('DELETE')) {
-      console.log(`${logPrefix} 🗑️ Executing DELETE query...`);
       // DELETE query: use oneOrNone to get RETURNING clause results, or return success
       if (upperQuery.includes('RETURNING')) {
         result = await db.oneOrNone(sqlQuery, params);
@@ -82,32 +66,25 @@ export async function executeQuery(sqlQuery, params = [], isActionMode = false, 
         await db.none(sqlQuery, params);
         result = { answer: 'OK' };
       }
-      console.log(`${logPrefix} ✅ DELETE query completed`);
     } else {
-      console.error(`${logPrefix} ❌ Unsupported query type: ${sqlQuery.substring(0, 20)}...`);
       throw new Error(`Unsupported query type: ${sqlQuery.substring(0, 20)}...`);
     }
     
     const duration = Date.now() - startTime;
-    console.log(`${logPrefix} ✅ Query executed successfully in ${duration}ms`);
-    console.log(`${logPrefix} 📊 Query results:`, JSON.stringify(result, null, 2));
+    console.log(`[Query Executor] ✅ Query executed successfully in ${duration}ms`);
+    console.log('[Query Executor] Query results:', result ? JSON.stringify(result).substring(0, 200) + '...' : 'No results');
     
     return result;
   } catch (error) {
-    const duration = Date.now() - startTime;
-    
     // Handle specific PostgreSQL errors
     if (error.code === 'PGRST116') {
-      console.log(`${logPrefix} ⚠️ No rows returned (PGRST116) after ${duration}ms`);
       // No rows returned - return empty object for SELECT, OK for writes
       return isActionMode ? { answer: 'OK' } : {};
     }
     
-    console.error(`${logPrefix} ❌ ERROR after ${duration}ms:`, error.message);
-    console.error(`${logPrefix} Error code: ${error.code || 'N/A'}`);
-    console.error(`${logPrefix} Query:`, sqlQuery);
-    console.error(`${logPrefix} Params:`, params);
-    console.error(`${logPrefix} Error stack:`, error.stack);
+    console.error('[Query Executor] Error executing query:', error);
+    console.error('[Query Executor] Query:', sqlQuery);
+    console.error('[Query Executor] Params:', params);
     
     throw new Error(`Query execution failed: ${error.message}`);
   }

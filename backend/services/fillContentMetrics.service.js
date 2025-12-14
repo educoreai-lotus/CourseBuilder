@@ -17,60 +17,37 @@ import { fillTemplate } from '../utils/responseTemplateFiller.js';
  * @param {Object} responseTemplate - Parsed response template to fill
  * @param {string|null} action - Action from payload (optional)
  * @param {boolean} isActionMode - True if Action/Command mode, false if Data-Filling mode
- * @param {string|null} requestId - Request ID for logging (optional)
  * @returns {Promise<Object>} - Filled response template
  */
-export async function fillContentMetrics(payloadObject, responseTemplate, action = null, isActionMode = false, requestId = null) {
-  const logPrefix = requestId ? `[Fill Content Metrics] [${requestId}]` : '[Fill Content Metrics]';
-  const startTime = Date.now();
-  
+export async function fillContentMetrics(payloadObject, responseTemplate, action = null, isActionMode = false) {
   try {
-    console.log(`${logPrefix} 🚀 Starting fillContentMetrics`);
-    console.log(`${logPrefix}   - Mode: ${isActionMode ? 'Action/Command' : 'Data-Filling'}`);
-    console.log(`${logPrefix}   - Action: ${action || 'N/A'}`);
-    
     // Step 1: Generate SQL query using AI
-    console.log(`${logPrefix} 🤖 Step 1: Generating SQL query using AI...`);
-    const aiStartTime = Date.now();
-    const sqlQuery = await generateSQLQuery(payloadObject, responseTemplate, action, isActionMode, requestId);
-    const aiDuration = Date.now() - aiStartTime;
-    console.log(`${logPrefix} ✅ SQL query generated in ${aiDuration}ms`);
-    console.log(`${logPrefix} 📝 Generated SQL:`, sqlQuery);
+    console.log('[Fill Content Metrics] Generating SQL query...');
+    console.log('[Fill Content Metrics] Mode:', isActionMode ? 'Action/Command' : 'Data-Filling');
+    const sqlQuery = await generateSQLQuery(payloadObject, responseTemplate, action, isActionMode);
+    console.log('[Fill Content Metrics] Generated SQL:', sqlQuery);
 
     // Step 2: Extract parameters from payload for the query
-    console.log(`${logPrefix} 🔍 Step 2: Extracting query parameters from payload...`);
     const params = extractQueryParams(payloadObject, sqlQuery);
-    console.log(`${logPrefix} 📋 Extracted params:`, params);
+    console.log('[Fill Content Metrics] Query params:', params);
     
     // Filter out undefined/null params that might not be needed
     // Keep nulls if they're expected by the query (use original params)
     const queryParams = params.filter(p => p !== undefined);
-    console.log(`${logPrefix} 📋 Filtered params (${queryParams.length}):`, queryParams);
 
     // Step 3: Execute the query (supports both SELECT and INSERT/UPDATE/DELETE)
-    console.log(`${logPrefix} ⚡ Step 3: Executing query...`);
-    const execStartTime = Date.now();
-    const queryResults = await executeQuery(sqlQuery, queryParams, isActionMode, requestId);
-    const execDuration = Date.now() - execStartTime;
-    console.log(`${logPrefix} ✅ Query executed in ${execDuration}ms`);
-    console.log(`${logPrefix} 📊 Query results:`, JSON.stringify(queryResults, null, 2));
+    console.log('[Fill Content Metrics] Executing query...');
+    const queryResults = await executeQuery(sqlQuery, queryParams, isActionMode);
+    console.log('[Fill Content Metrics] Query results:', queryResults);
 
     // Step 4: Fill the response template with query results
-    console.log(`${logPrefix} 🎯 Step 4: Filling response template with query results...`);
-    const fillStartTime = Date.now();
+    console.log('[Fill Content Metrics] Filling template...');
     const filledTemplate = fillTemplate(responseTemplate, queryResults);
-    const fillDuration = Date.now() - fillStartTime;
-    console.log(`${logPrefix} ✅ Template filled in ${fillDuration}ms`);
-    console.log(`${logPrefix} 📦 Filled template:`, JSON.stringify(filledTemplate, null, 2));
+    console.log('[Fill Content Metrics] Filled template:', filledTemplate);
 
-    const totalDuration = Date.now() - startTime;
-    console.log(`${logPrefix} ✅ fillContentMetrics completed in ${totalDuration}ms`);
-    
     return filledTemplate;
   } catch (error) {
-    const totalDuration = Date.now() - startTime;
-    console.error(`${logPrefix} ❌ ERROR after ${totalDuration}ms:`, error);
-    console.error(`${logPrefix} Error stack:`, error.stack);
+    console.error('[Fill Content Metrics] Error:', error);
     
     // Return a clean error without exposing internal details
     throw new Error(`Failed to fill content metrics: ${error.message}`);

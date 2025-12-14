@@ -107,35 +107,30 @@ function responseTemplateHasFields(responseTemplate) {
  * @param {Object} responseTemplate - Parsed response template showing what fields need to be filled
  * @param {string|null} action - Action from payload (optional)
  * @param {boolean} isActionMode - True if Action/Command mode, false if Data-Filling mode
- * @param {string|null} requestId - Request ID for logging (optional)
  * @returns {Promise<string>} - Generated SQL query
  * @throws {Error} - If response template is invalid
  */
-export async function generateSQLQuery(payloadObject, responseTemplate, action = null, isActionMode = false, requestId = null) {
-  const logPrefix = requestId ? `[AI Query Builder] [${requestId}]` : '[AI Query Builder]';
-  const startTime = Date.now();
-  
-  console.log(`${logPrefix} 🚀 Starting SQL query generation`);
-  console.log(`${logPrefix}   - Mode: ${isActionMode ? 'Action/Command' : 'Data-Filling'}`);
-  console.log(`${logPrefix}   - Action: ${action || 'N/A'}`);
+export async function generateSQLQuery(payloadObject, responseTemplate, action = null, isActionMode = false) {
+  console.log('[AI Query Builder] Starting SQL query generation...');
+  console.log('[AI Query Builder] Mode:', isActionMode ? 'Action/Command' : 'Data-Filling');
   
   if (!OPENAI_API_KEY) {
-    console.error(`${logPrefix} ❌ ERROR: OPENAI_API_KEY not configured in environment variables`);
-    console.error(`${logPrefix} Please set OPENAI_API_KEY in Railway environment variables`);
+    console.error('[AI Query Builder] ❌ ERROR: OPENAI_API_KEY not configured in environment variables');
+    console.error('[AI Query Builder] Please set OPENAI_API_KEY in Railway environment variables');
     throw new Error('OPENAI_API_KEY not configured. Cannot generate SQL queries.');
   }
-  console.log(`${logPrefix} ✅ OPENAI_API_KEY found in environment`);
+  console.log('[AI Query Builder] ✅ OPENAI_API_KEY found in environment');
 
   try {
-    console.log(`${logPrefix} 🤖 Initializing OpenAI client...`);
+    console.log('[AI Query Builder] Initializing OpenAI...');
     const client = new OpenAI({ apiKey: OPENAI_API_KEY });
     const modelName = process.env.OPENAI_MODEL || 'gpt-4o-mini';
-    console.log(`${logPrefix} ✅ OpenAI initialized with model: ${modelName}`);
+    console.log(`[AI Query Builder] ✅ OpenAI initialized with model: ${modelName}`);
 
     // Build the prompt
-    console.log(`${logPrefix} 📝 Building prompt with field normalization rules...`);
+    console.log('[AI Query Builder] Building prompt with field normalization rules...');
     const prompt = buildQueryGenerationPrompt(payloadObject, responseTemplate, action, isActionMode);
-    console.log(`${logPrefix} ✅ Prompt built (${prompt.length} characters)`);
+    console.log('[AI Query Builder] ✅ Prompt built successfully');
 
     // System message depends on mode
     const systemMessage = isActionMode
@@ -143,8 +138,8 @@ export async function generateSQLQuery(payloadObject, responseTemplate, action =
       : 'You are an expert SQL query generator for PostgreSQL. Generate only valid SELECT queries for reading data. Never use INSERT, UPDATE, DELETE, or any other non-SELECT statements.';
 
     // Generate SQL query using OpenAI
-    console.log(`${logPrefix} 🚀 Calling OpenAI API to generate SQL query...`);
-    const aiStartTime = Date.now();
+    console.log('[AI Query Builder] 🚀 Calling OpenAI to generate SQL query...');
+    const startTime = Date.now();
     const completion = await client.chat.completions.create({
       model: modelName,
       messages: [
@@ -162,35 +157,30 @@ export async function generateSQLQuery(payloadObject, responseTemplate, action =
     });
     
     const text = completion.choices[0]?.message?.content || '';
-    const aiDuration = Date.now() - aiStartTime;
-    console.log(`${logPrefix} ✅ OpenAI responded in ${aiDuration}ms`);
-    console.log(`${logPrefix} 📊 Raw AI response length: ${text.length} characters`);
+    const duration = Date.now() - startTime;
+    console.log(`[AI Query Builder] ✅ OpenAI responded in ${duration}ms`);
+    console.log('[AI Query Builder] Raw AI response length:', text.length, 'characters');
 
     if (!text) {
       throw new Error('OpenAI returned empty response');
     }
 
     // Extract SQL from response (may contain markdown code fences)
-    console.log(`${logPrefix} 🔍 Extracting SQL from AI response...`);
+    console.log('[AI Query Builder] Extracting SQL from AI response...');
     const sqlQuery = extractSQLFromResponse(text, isActionMode);
-    console.log(`${logPrefix} ✅ SQL extracted (${sqlQuery.length} characters)`);
-    console.log(`${logPrefix} 📝 SQL preview: ${sqlQuery.substring(0, 150)}${sqlQuery.length > 150 ? '...' : ''}`);
+    console.log('[AI Query Builder] ✅ SQL extracted:', sqlQuery.substring(0, 100) + '...');
 
     // Validate the query based on mode
-    console.log(`${logPrefix} ✔️ Validating SQL query...`);
+    console.log('[AI Query Builder] Validating SQL query...');
     validateQuery(sqlQuery, isActionMode);
-    console.log(`${logPrefix} ✅ SQL query validated successfully`);
+    console.log('[AI Query Builder] ✅ SQL query validated successfully');
 
     const finalQuery = sqlQuery.trim();
-    const totalDuration = Date.now() - startTime;
-    console.log(`${logPrefix} ✅ Final SQL query generated in ${totalDuration}ms`);
-    console.log(`${logPrefix} 📝 Final SQL:`, finalQuery);
-    
+    console.log('[AI Query Builder] ✅ Final SQL query generated:', finalQuery);
     return finalQuery;
   } catch (error) {
-    const totalDuration = Date.now() - startTime;
-    console.error(`${logPrefix} ❌ ERROR after ${totalDuration}ms:`, error.message);
-    console.error(`${logPrefix} Error stack:`, error.stack);
+    console.error('[AI Query Builder] ❌ Error generating SQL query:', error.message);
+    console.error('[AI Query Builder] Error stack:', error.stack);
     throw new Error(`Failed to generate SQL query: ${error.message}`);
   }
 }
@@ -354,23 +344,16 @@ function validateQuery(sqlQuery, isActionMode = false) {
   const upperQuery = sqlQuery.toUpperCase().trim();
 
   // Always forbidden keywords (regardless of mode)
-  // Use word boundaries to avoid matching keywords that are part of column names
-  // e.g., "created_at" should not trigger "CREATE" violation
   const alwaysForbidden = ['DROP', 'ALTER', 'CREATE', 'TRUNCATE', 'EXEC', 'EXECUTE', 'GRANT', 'REVOKE'];
   
   for (const keyword of alwaysForbidden) {
-    // Use word boundary regex to match only standalone keywords, not parts of words
-    // \b matches word boundaries (between word and non-word characters)
-    const regex = new RegExp(`\\b${keyword}\\b`, 'i');
-    if (regex.test(sqlQuery)) {
+    if (upperQuery.includes(keyword)) {
       throw new Error(`Security violation: Query contains forbidden keyword: ${keyword}`);
     }
   }
 
   // Check for semicolons that might allow multiple statements
-  // Remove string literals first to avoid false positives
-  const queryWithoutStrings = sqlQuery.replace(/'(?:[^'\\]|\\.)*'/g, ''); // Remove string literals
-  const semicolonCount = (queryWithoutStrings.match(/;/g) || []).length;
+  const semicolonCount = (sqlQuery.match(/;/g) || []).length;
   if (semicolonCount > 1) {
     throw new Error('Security violation: Query appears to contain multiple statements');
   }
@@ -391,11 +374,9 @@ function validateQuery(sqlQuery, isActionMode = false) {
     }
     
     // Check for write operations in data mode
-    // Use word boundaries to avoid false positives
     const writeKeywords = ['INSERT', 'UPDATE', 'DELETE'];
     for (const keyword of writeKeywords) {
-      const regex = new RegExp(`\\b${keyword}\\b`, 'i');
-      if (regex.test(sqlQuery)) {
+      if (upperQuery.includes(keyword)) {
         throw new Error(`Security violation: Data-Filling mode cannot use ${keyword} statements`);
       }
     }
