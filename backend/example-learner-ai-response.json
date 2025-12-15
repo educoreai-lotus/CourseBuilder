@@ -1,0 +1,175 @@
+{
+  "requester_service": "course-builder-service",
+  "payload": {
+    "action": "get_learning_path",
+    "description": "Get personalized learning path and skills for a learner based on competency tag",
+    "user_id": "b2c3d4e5-f6a7-8901-2345-678901234567",
+    "tag": "Node.js Backend Development"
+  },
+  "response": {
+    "user_id": "b2c3d4e5-f6a7-8901-2345-678901234567",
+    "user_name": "John Doe",
+    "company_id": "ba3dff4a-9177-4b74-b77e-6bdd6488de86",
+    "company_name": "Lotus techhub",
+    "learning_flow": "career_path_driven",
+    "career_learning_paths": [
+      {
+        "competency_target_name": "Node.js Backend Development",
+        "skills_raw_data": {
+          "competency_id": "comp-123",
+          "skills_assessment": {
+            "current_level": "beginner",
+            "target_level": "intermediate",
+            "skill_gaps": ["async/await", "database integration", "API design"]
+          },
+          "learning_preferences": {
+            "pace": "moderate",
+            "format": "hands-on"
+          }
+        },
+        "learning_path": {
+          "learner_id": "b2c3d4e5-f6a7-8901-2345-678901234567",
+          "path_title": "Node.js Backend Development Path",
+          "learning_modules": [
+            {
+              "module_order": 1,
+              "module_title": "Introduction to Node.js",
+              "estimated_duration_hours": 8,
+              "skills_in_module": ["JavaScript basics", "Node.js fundamentals", "npm basics"],
+              "steps": [
+                {
+                  "step": 1,
+                  "title": "Understanding Node.js Runtime",
+                  "description": "Learn about Node.js event loop, V8 engine, and how Node.js differs from browser JavaScript",
+                  "estimatedTime": 2,
+                  "skills_covered": ["Node.js fundamentals", "JavaScript basics"]
+                },
+                {
+                  "step": 2,
+                  "title": "Working with npm and Modules",
+                  "description": "Master package management, require vs import, and module system",
+                  "estimatedTime": 2,
+                  "skills_covered": ["npm basics", "module system"]
+                },
+                {
+                  "step": 3,
+                  "title": "File System Operations",
+                  "description": "Read and write files using fs module, handle async operations",
+                  "estimatedTime": 4,
+                  "skills_covered": ["Node.js fundamentals", "async/await"]
+                }
+              ]
+            },
+            {
+              "module_order": 2,
+              "module_title": "Building REST APIs",
+              "estimated_duration_hours": 12,
+              "skills_in_module": ["Express.js", "REST principles", "API design", "HTTP methods"],
+              "steps": [
+                {
+                  "step": 1,
+                  "title": "Introduction to Express.js",
+                  "description": "Set up Express server, understand middleware, and routing basics",
+                  "estimatedTime": 3,
+                  "skills_covered": ["Express.js", "REST principles"]
+                },
+                {
+                  "step": 2,
+                  "title": "Designing RESTful Endpoints",
+                  "description": "Learn REST conventions, HTTP methods, status codes, and endpoint design patterns",
+                  "estimatedTime": 4,
+                  "skills_covered": ["API design", "HTTP methods", "REST principles"]
+                },
+                {
+                  "step": 3,
+                  "title": "Request and Response Handling",
+                  "description": "Handle request bodies, query parameters, headers, and send JSON responses",
+                  "estimatedTime": 5,
+                  "skills_covered": ["Express.js", "API design"]
+                }
+              ]
+            },
+            {
+              "module_order": 3,
+              "module_title": "Database Integration",
+              "estimated_duration_hours": 10,
+              "skills_in_module": ["database integration", "SQL basics", "ORM concepts"],
+              "steps": [
+                {
+                  "step": 1,
+                  "title": "Connecting to Databases",
+                  "description": "Set up database connections, connection pooling, and error handling",
+                  "estimatedTime": 3,
+                  "skills_covered": ["database integration"]
+                },
+                {
+                  "step": 2,
+                  "title": "Writing Database Queries",
+                  "description": "Learn SQL basics, parameterized queries, and query optimization",
+                  "estimatedTime": 4,
+                  "skills_covered": ["database integration", "SQL basics"]
+                },
+                {
+                  "step": 3,
+                  "title": "Using ORMs",
+                  "description": "Introduction to Sequelize or TypeORM, models, migrations, and relationships",
+                  "estimatedTime": 3,
+                  "skills_covered": ["database integration", "ORM concepts"]
+                }
+              ]
+            }
+          ],
+          "total_estimated_duration_hours": 30
+        }
+      },
+      {
+        "competency_target_name": "Advanced Node.js Patterns",
+        "skills_raw_data": {
+          "competency_id": "comp-456",
+          "skills_assessment": {
+            "current_level": "intermediate",
+            "target_level": "advanced",
+            "skill_gaps": ["microservices", "caching", "performance optimization"]
+          }
+        },
+        "learning_path": {
+          "learner_id": "b2c3d4e5-f6a7-8901-2345-678901234567",
+          "path_title": "Advanced Node.js Patterns",
+          "learning_modules": [
+            {
+              "module_order": 1,
+              "module_title": "Microservices Architecture",
+              "estimated_duration_hours": 15,
+              "skills_in_module": ["microservices", "service communication", "API gateway"],
+              "steps": [
+                {
+                  "step": 1,
+                  "title": "Microservices Fundamentals",
+                  "description": "Understand microservices architecture, benefits, and challenges",
+                  "estimatedTime": 4,
+                  "skills_covered": ["microservices"]
+                },
+                {
+                  "step": 2,
+                  "title": "Service Communication Patterns",
+                  "description": "Learn synchronous and asynchronous communication, message queues, and event-driven architecture",
+                  "estimatedTime": 6,
+                  "skills_covered": ["microservices", "service communication"]
+                },
+                {
+                  "step": 3,
+                  "title": "API Gateway and Service Discovery",
+                  "description": "Implement API gateway, service discovery, and load balancing",
+                  "estimatedTime": 5,
+                  "skills_covered": ["microservices", "API gateway"]
+                }
+              ]
+            }
+          ],
+          "total_estimated_duration_hours": 15
+        }
+      }
+    ]
+  }
+}
+

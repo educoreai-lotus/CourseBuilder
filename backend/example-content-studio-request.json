@@ -1,0 +1,69 @@
+{
+  "requester_service": "course-builder-service",
+  "payload": {
+    "action": "generate_course_content",
+    "description": "Generate course content including topics, modules, and lessons based on learning path and skills",
+    "user_id": "b2c3d4e5-f6a7-8901-2345-678901234567",
+    "user_name": "John Doe",
+    "company_id": "ba3dff4a-9177-4b74-b77e-6bdd6488de86",
+    "company_name": "Lotus techhub",
+    "learning_flow": "career_path_driven",
+    "career_learning_paths": [
+      {
+        "competency_target_name": "Node.js Backend Development",
+        "skills_raw_data": {
+          "competency_id": "comp-123",
+          "skills_assessment": {
+            "current_level": "beginner",
+            "target_level": "intermediate",
+            "skill_gaps": ["async/await", "database integration", "API design"]
+          },
+          "learning_preferences": {
+            "pace": "moderate",
+            "format": "hands-on"
+          }
+        },
+        "learning_path": {
+          "learner_id": "b2c3d4e5-f6a7-8901-2345-678901234567",
+          "path_title": "Node.js Backend Development Path",
+          "learning_modules": [
+            {
+              "module_order": 1,
+              "module_title": "Introduction to Node.js",
+              "estimated_duration_hours": 8,
+              "skills_in_module": ["JavaScript basics", "Node.js fundamentals", "npm basics"],
+              "steps": [
+                {
+                  "step": 1,
+                  "title": "Understanding Node.js Runtime",
+                  "description": "Learn about Node.js event loop, V8 engine, and how Node.js differs from browser JavaScript",
+                  "estimatedTime": 2,
+                  "skills_covered": ["Node.js fundamentals", "JavaScript basics"]
+                },
+                {
+                  "step": 2,
+                  "title": "Working with npm and Modules",
+                  "description": "Master package management, require vs import, and module system",
+                  "estimatedTime": 2,
+                  "skills_covered": ["npm basics", "module system"]
+                },
+                {
+                  "step": 3,
+                  "title": "File System Operations",
+                  "description": "Read and write files using fs module, handle async operations",
+                  "estimatedTime": 4,
+                  "skills_covered": ["Node.js fundamentals", "async/await"]
+                }
+              ]
+            }
+          ],
+          "total_estimated_duration_hours": 8
+        }
+      }
+    ],
+    "language": "en"
+  },
+  "response": {
+    "course": []
+  }
+}
