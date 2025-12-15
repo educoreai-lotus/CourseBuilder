@@ -3822,3 +3822,11 @@ body {
   z-index: 2147483647 !important;
   pointer-events: auto !important;
 }
+
+#edu-bot-container iframe,
+#edu-bot-container .edu-bot-window {
+  max-width: 90vw !important;
+  max-height: 85vh !important;
+  right: 0 !important;
+  bottom: 0 !important;
+}

@@ -20,8 +20,6 @@ export function useRAGChatbot() {
   const initializedRef = useRef(false)
   // Use a global flag to prevent multiple initializations across route changes
   const globalInitializedRef = useRef(false)
-  // Track if we've auto-opened the chatbot (only once per session)
-  const autoOpenedRef = useRef(false)
 
   useEffect(() => {
     // Hard guard: prevent React re-initialization issues
@@ -136,53 +134,15 @@ export function useRAGChatbot() {
           microservice: serviceIdentifier,
           userId: userProfile.id,
           token: token,
-          tenantId: userProfile.company || 'default'
+          tenantId: userProfile.company || 'default',
+          defaultOpen: false,        // Force closed by default
+          startCollapsed: true       // Enforce launcher-only mode
         })
         initializedRef.current = true
         globalInitializedRef.current = true
         window.EDUCORE_BOT_INITIALIZED = true // Global flag for persistence
         window.__EDUCORE_BOT_INITIALIZED__ = true // Hard guard for React re-renders
-        console.log('[RAG Chatbot] ✅ Initialized successfully')
-        
-        // UX FIX: Auto-open chatbot on first load for better discoverability
-        // Only do this once per session (not on every route change)
-        if (!autoOpenedRef.current && !window.EDUCORE_BOT_AUTO_OPENED) {
-          autoOpenedRef.current = true
-          window.EDUCORE_BOT_AUTO_OPENED = true // Global flag to prevent multiple auto-opens
-          
-          // Wait for DOM to be ready, then find and click the chatbot button
-          setTimeout(() => {
-            try {
-              // Find the chatbot button (it has aria-label="Open chat")
-              const botButton = container.querySelector('button[aria-label="Open chat"]')
-              if (botButton) {
-                console.log('[RAG Chatbot] Auto-opening chatbot for better UX')
-                // Trigger a click event to open the chatbot
-                botButton.click()
-              } else {
-                // Fallback: try to find any button in the bot container
-                const fallbackButton = container.querySelector('button')
-                if (fallbackButton) {
-                  console.log('[RAG Chatbot] Auto-opening chatbot (fallback method)')
-                  fallbackButton.click()
-                } else {
-                  console.log('[RAG Chatbot] Chatbot button not found yet, will retry')
-                  // Retry once more after a longer delay
-                  setTimeout(() => {
-                    const retryButton = container.querySelector('button[aria-label="Open chat"]') || container.querySelector('button')
-                    if (retryButton) {
-                      console.log('[RAG Chatbot] Auto-opening chatbot (retry)')
-                      retryButton.click()
-                    }
-                  }, 500)
-                }
-              }
-            } catch (error) {
-              console.warn('[RAG Chatbot] Could not auto-open chatbot:', error)
-              // Non-critical error - chatbot still works, just won't auto-open
-            }
-          }, 800) // Wait 800ms for bot widget to fully render
-        }
+        console.log('[RAG Chatbot] ✅ Initialized successfully (collapsed mode)')
       } catch (error) {
         console.error('[RAG Chatbot] ❌ Error initializing:', error)
         console.error('[RAG Chatbot] Error details:', {
