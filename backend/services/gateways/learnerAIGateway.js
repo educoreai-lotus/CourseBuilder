@@ -41,7 +41,7 @@ export async function sendToLearnerAI(payloadObject = {}) {
       career_learning_paths: [
         {
           competency_target_name: '',
-          skills_raw_data: {}, // Course Builder IGNORES this - only Content Studio uses it
+          skills_raw_data: {}, // Course Builder IGNORES this - only Content Studio uses it,;;;;;
           learning_path: {
             learner_id: null,
             path_title: '',
