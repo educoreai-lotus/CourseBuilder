@@ -16,46 +16,92 @@ import { PendingCourseCreationError } from '../utils/PendingCourseCreationError.
 
 /**
  * Trigger course creation pipeline for CAREER_PATH_DRIVEN enrollment
- * Flow: Learner AI (returns structured JSON) → Course Builder builds course directly
+ * Flow: Learner AI (returns wrapped JSON with career_learning_paths[]) → Course Builder builds courses directly
  * @param {Object} learner - Learner object with learner_id, learner_name, etc.
  * @param {string} competencyTag - Competency tag (e.g., "Node.js Backend Development")
  * @param {string} companyId - Company ID
  * @param {string} companyName - Company name
- * @returns {Promise<string>} - Course ID of created course
+ * @returns {Promise<string>} - Course ID of created course (uses first career_learning_path)
  */
 async function triggerCourseCreationPipeline(learner, competencyTag, companyId, companyName) {
   try {
     console.log(`[Fill Content Metrics] Triggering course creation pipeline for learner: ${learner.learner_id}`);
     console.log(`[Fill Content Metrics] Competency tag: ${competencyTag}`);
     
-    // Step 1: Call Learner AI to get structured Learning Path JSON
+    // Step 1: Call Learner AI to get wrapped JSON with career_learning_paths[]
     console.log('[Fill Content Metrics] Step 1: Calling Learner AI...');
     const learnerAIResponse = await sendToLearnerAI({
       user_id: learner.learner_id,
       tag: competencyTag || 'General Learning Path'
     });
     
-    console.log('[Fill Content Metrics] Learner AI response:', {
-      has_learner_id: !!learnerAIResponse.learner_id,
-      has_path_title: !!learnerAIResponse.path_title,
-      has_learning_modules: !!learnerAIResponse.learning_modules,
-      learning_modules_count: learnerAIResponse.learning_modules?.length || 0
+    console.log('[Fill Content Metrics] Learner AI response structure:', {
+      has_user_id: !!learnerAIResponse.user_id,
+      has_career_learning_paths: !!learnerAIResponse.career_learning_paths,
+      career_learning_paths_count: learnerAIResponse.career_learning_paths?.length || 0
     });
     
-    // Validate that Learner AI returned structured Learning Path JSON
-    if (!learnerAIResponse.learner_id) {
-      learnerAIResponse.learner_id = learner.learner_id; // Use learner_id from request if not in response
+    // Validate career_learning_paths array exists and is not empty (400 error per spec)
+    if (!learnerAIResponse.career_learning_paths || !Array.isArray(learnerAIResponse.career_learning_paths)) {
+      const error = new Error('Learner AI response missing career_learning_paths array');
+      error.status = 400;
+      throw error;
     }
     
-    // Step 2: Build course directly from structured Learning Path JSON
-    // NO Content Studio call - Learner AI provides complete blueprint
-    console.log('[Fill Content Metrics] Step 2: Building course from structured Learning Path JSON...');
+    if (learnerAIResponse.career_learning_paths.length === 0) {
+      const error = new Error('Learner AI returned empty career_learning_paths array');
+      error.status = 400;
+      throw error;
+    }
     
-    const courseId = await buildCourseFromLearningPath(learnerAIResponse);
+    // Normalize user_id → learner_id for each learning_path
+    // Extract learning_path from each career_learning_path
+    // IGNORE skills_raw_data completely (only Content Studio uses it)
+    const learningPaths = learnerAIResponse.career_learning_paths.map((careerPath, index) => {
+      const learningPath = careerPath.learning_path;
+      
+      if (!learningPath) {
+        throw new Error(`Career learning path at index ${index} missing learning_path object`);
+      }
+      
+      // Normalize user_id → learner_id
+      if (!learningPath.learner_id && learnerAIResponse.user_id) {
+        learningPath.learner_id = learnerAIResponse.user_id;
+      }
+      if (!learningPath.learner_id && learner.learner_id) {
+        learningPath.learner_id = learner.learner_id;
+      }
+      
+      return {
+        learningPath,
+        competencyTargetName: careerPath.competency_target_name || `Career Path ${index + 1}`
+        // skills_raw_data is IGNORED - not stored, not logged, not used
+      };
+    });
     
-    console.log(`[Fill Content Metrics] ✅ Course created successfully: ${courseId}`);
+    console.log(`[Fill Content Metrics] Processing ${learningPaths.length} career learning path(s)...`);
     
-    return courseId;
+    // Step 2: Build courses from learning paths
+    // Create ONE course per career_learning_path
+    // For enrollment, use the FIRST course_id (one enrollment per learner)
+    console.log('[Fill Content Metrics] Step 2: Building courses from learning paths...');
+    
+    const courseIds = [];
+    for (let i = 0; i < learningPaths.length; i++) {
+      const { learningPath, competencyTargetName } = learningPaths[i];
+      console.log(`[Fill Content Metrics] Building course ${i + 1}/${learningPaths.length} for competency: ${competencyTargetName}`);
+      
+      const courseId = await buildCourseFromLearningPath(learningPath);
+      courseIds.push(courseId);
+      console.log(`[Fill Content Metrics] ✅ Course ${i + 1} created: ${courseId}`);
+    }
+    
+    // Return the FIRST course_id for enrollment (one enrollment per learner)
+    // Multiple courses may be created, but enrollment uses the first one
+    const primaryCourseId = courseIds[0];
+    console.log(`[Fill Content Metrics] ✅ Course creation completed. Primary course ID: ${primaryCourseId} (${courseIds.length} total courses created)`);
+    
+    return primaryCourseId;
   } catch (error) {
     // If it's already a PendingCourseCreationError, re-throw it as-is
     if (error instanceof PendingCourseCreationError) {
@@ -73,11 +119,28 @@ async function triggerCourseCreationPipeline(learner, competencyTag, companyId, 
  * Triggers course creation pipeline if course_id is missing for CAREER_PATH_DRIVEN
  * @param {Object} payloadObject - Original payload
  * @param {string|null} action - Action from payload
+ * @param {string|null} requesterService - Requester service name (for flow gate validation)
  * @returns {Promise<Object>} - Payload with course_id added for each learner
  */
-async function preprocessEnrollmentPayload(payloadObject, action) {
-  // Check if this is a CAREER_PATH_DRIVEN enrollment
-  if (action && action.includes('enroll') && payloadObject.learning_flow === 'CAREER_PATH_DRIVEN') {
+async function preprocessEnrollmentPayload(payloadObject, action, requesterService = null) {
+  // FLOW GATE (CRITICAL): Only execute CAREER_PATH_DRIVEN logic when ALL conditions are met
+  // This is the SINGLE SOURCE OF TRUTH for CAREER_PATH_DRIVEN flow
+  const isCareerPathDriven = 
+    requesterService === 'directory-service' &&
+    action === 'enroll_employees_career_path' &&
+    payloadObject.learning_flow === 'CAREER_PATH_DRIVEN';
+  
+  // If learning_flow exists but is NOT CAREER_PATH_DRIVEN, return explicit error
+  // DO NOT fallback, DO NOT guess, DO NOT attempt partial handling
+  if (payloadObject.learning_flow && payloadObject.learning_flow !== 'CAREER_PATH_DRIVEN') {
+    const error = new Error(`Learning flow "${payloadObject.learning_flow}" is not implemented. Only CAREER_PATH_DRIVEN is supported.`);
+    error.status = 400; // Bad Request - unsupported flow
+    throw error;
+  }
+  
+  // Check if this is a CAREER_PATH_DRIVEN enrollment (all gates passed)
+  // If not, return payload as-is (no course creation pipeline)
+  if (isCareerPathDriven) {
     // If learners array exists, ensure course_id for each learner
     if (Array.isArray(payloadObject.learners) && payloadObject.learners.length > 0) {
       const enrichedLearners = await Promise.all(
@@ -127,15 +190,15 @@ async function preprocessEnrollmentPayload(payloadObject, action) {
   return payloadObject;
 }
 
-export async function fillContentMetrics(payloadObject, responseTemplate, action = null, isActionMode = false) {
+export async function fillContentMetrics(payloadObject, responseTemplate, action = null, isActionMode = false, requesterService = null) {
   try {
     // Step 0: Pre-process payload for enrollment operations (trigger course creation if needed)
     // For CAREER_PATH_DRIVEN enrollment, if course_id is missing, trigger course creation pipeline
-    // Flow: Learner AI → Content Studio → Course Builder creates course → then enrollment
+    // Flow: Learner AI (returns wrapped JSON) → Course Builder builds courses → then enrollment
     let processedPayload = payloadObject;
     if (isActionMode && action && action.includes('enroll')) {
       console.log('[Fill Content Metrics] Pre-processing enrollment payload...');
-      processedPayload = await preprocessEnrollmentPayload(payloadObject, action);
+      processedPayload = await preprocessEnrollmentPayload(payloadObject, action, requesterService);
       console.log('[Fill Content Metrics] Processed payload:', JSON.stringify(processedPayload, null, 2));
       
       // Validate that all learners now have course_id

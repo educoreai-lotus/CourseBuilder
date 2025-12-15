@@ -31,12 +31,25 @@ export async function sendToLearnerAI(payloadObject = {}) {
     }
 
     // Build response template (empty, Learner AI will fill it)
-    // NEW: Learner AI returns structured Learning Path JSON
+    // NEW: Learner AI returns wrapped JSON with career_learning_paths[]
     const responseTemplate = {
-      learner_id: null,
-      path_title: '',
-      learning_modules: [],
-      total_estimated_duration_hours: 0
+      user_id: null,
+      user_name: '',
+      company_id: null,
+      company_name: '',
+      learning_flow: '',
+      career_learning_paths: [
+        {
+          competency_target_name: '',
+          skills_raw_data: {}, // Course Builder IGNORES this - only Content Studio uses it
+          learning_path: {
+            learner_id: null,
+            path_title: '',
+            learning_modules: [],
+            total_estimated_duration_hours: 0
+          }
+        }
+      ]
     };
 
     // Build envelope for Coordinator

@@ -134,7 +134,8 @@ export async function handleCourseBuilderIntegration(payloadObject, responseTemp
 
     // Use AI-powered service to fill the template
     // AI will determine SQL type based on mode
-    const filledTemplate = await fillContentMetrics(payloadObject, responseTemplate, actionToUse, isAction);
+    // Pass requesterService for flow gate validation
+    const filledTemplate = await fillContentMetrics(payloadObject, responseTemplate, actionToUse, isAction, requesterService);
 
     console.log('[Course Builder Handler] Filled template:', JSON.stringify(filledTemplate, null, 2));
 
