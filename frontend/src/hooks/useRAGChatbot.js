@@ -24,6 +24,12 @@ export function useRAGChatbot() {
   const autoOpenedRef = useRef(false)
 
   useEffect(() => {
+    // Hard guard: prevent React re-initialization issues
+    if (window.__EDUCORE_BOT_INITIALIZED__) {
+      console.log('[RAG Chatbot] Already initialized — skipping')
+      return
+    }
+
     // Debug logging
     console.log('[RAG Chatbot] Hook triggered', { userProfile })
 
@@ -135,6 +141,7 @@ export function useRAGChatbot() {
         initializedRef.current = true
         globalInitializedRef.current = true
         window.EDUCORE_BOT_INITIALIZED = true // Global flag for persistence
+        window.__EDUCORE_BOT_INITIALIZED__ = true // Hard guard for React re-renders
         console.log('[RAG Chatbot] ✅ Initialized successfully')
         
         // UX FIX: Auto-open chatbot on first load for better discoverability

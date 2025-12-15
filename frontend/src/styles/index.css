@@ -3811,3 +3811,14 @@ body {
   justify-content: flex-end;
   gap: var(--spacing-sm);
 }
+
+#edu-bot-container {
+  all: initial;
+  position: fixed !important;
+  bottom: 24px !important;
+  right: 24px !important;
+  width: 64px !important;
+  height: 64px !important;
+  z-index: 2147483647 !important;
+  pointer-events: auto !important;
+}
