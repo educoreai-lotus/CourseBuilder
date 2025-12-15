@@ -1,58 +1,47 @@
 /**
- * Hook for initializing RAG Chatbot Widget
- * Follows the integration guide for RAG chatbot embedding
+ * Hook for initializing Educore RAG Chatbot widget in CHAT MODE.
+ * Follows the official microservice integration guides.
  */
 
 import { useEffect, useRef } from 'react'
 import { useApp } from '../context/AppContext'
 
-// Get RAG service URL from environment variable
-const getRAGServiceURL = () => {
-  // Check for environment variable (Vite uses import.meta.env)
-  if (import.meta.env.VITE_RAG_SERVICE_URL) {
-    return import.meta.env.VITE_RAG_SERVICE_URL
-  }
-  // Fallback to default
-  return 'https://rag-service.educore.com'
-}
+// Fixed RAG backend script URL (per docs - Railway backend URL)
+const RAG_SCRIPT_URL = 'https://rag-production-3a4c.up.railway.app/embed/bot.js'
 
 /**
- * Hook to initialize RAG chatbot widget
- * @param {string} microservice - Microservice identifier ("ASSESSMENT" or "DEVLAB")
- *                                Note: Course Builder may need a different identifier
- *                                Check with RAG service team for Course Builder support
+ * Initialize RAG chatbot widget for this microservice.
+ * - Microservice is fixed to "COURSE_BUILDER"
+ * - Initializes ONLY when user + token exist
  */
-export function useRAGChatbot(microservice = null) {
-  const { userProfile, userRole } = useApp()
+export function useRAGChatbot() {
+  const { userProfile } = useApp()
   const scriptLoadedRef = useRef(false)
   const initializedRef = useRef(false)
 
   useEffect(() => {
     // Debug logging
-    console.log('[RAG Chatbot] Hook triggered', { userProfile, userRole })
-    
-    // Only initialize if user is logged in (has profile)
+    console.log('[RAG Chatbot] Hook triggered', { userProfile })
+
+    // Only initialize if user is "authenticated" (id + token)
     if (!userProfile || !userProfile.id) {
       console.log('[RAG Chatbot] User profile not available, skipping initialization')
       return
     }
 
-    // For Course Builder, we might need a token
-    // Since the current auth system uses role-based profiles, we'll use a placeholder token
-    // In production, replace this with actual JWT token from your auth system
-    const token = localStorage.getItem('token') || `mock-token-${userProfile.id}`
+    // Get token from existing storage (do NOT modify auth logic)
+    const token = window.localStorage ? window.localStorage.getItem('token') : null
+    if (!token) {
+      console.log('[RAG Chatbot] Token not available, skipping initialization')
+      return
+    }
 
-    // Determine microservice identifier
-    // Note: The guide only mentions "ASSESSMENT" and "DEVLAB"
-    // Course Builder might need a different identifier or might not be supported yet
-    // Using a configurable approach via environment variable
-    const serviceIdentifier = microservice || 
-      import.meta.env.VITE_CHATBOT_MICROSERVICE || 
-      'ASSESSMENT' // Changed to ASSESSMENT as default since COURSE_BUILDER might not be supported
+    // Fixed microservice identifier for this app
+    const serviceIdentifier = 'COURSE_BUILDER'
 
     console.log('[RAG Chatbot] Configuration:', {
       serviceIdentifier,
-      ragServiceURL: getRAGServiceURL(),
+      scriptUrl: RAG_SCRIPT_URL,
       userId: userProfile.id,
       hasToken: !!token
     })
@@ -61,8 +50,7 @@ export function useRAGChatbot(microservice = null) {
     if (!window.EDUCORE_BOT_LOADED && !scriptLoadedRef.current) {
       console.log('[RAG Chatbot] Loading script...')
       const script = document.createElement('script')
-      const ragServiceURL = getRAGServiceURL()
-      script.src = `${ragServiceURL}/embed/bot.js`
+      script.src = RAG_SCRIPT_URL
       script.async = true
       script.onload = () => {
         console.log('[RAG Chatbot] Script loaded successfully')
@@ -71,7 +59,7 @@ export function useRAGChatbot(microservice = null) {
       }
       script.onerror = (error) => {
         console.error('[RAG Chatbot] Failed to load script:', error)
-        console.error('[RAG Chatbot] Script URL:', `${ragServiceURL}/embed/bot.js`)
+        console.error('[RAG Chatbot] Script URL:', RAG_SCRIPT_URL)
       }
       document.head.appendChild(script)
     } else if (window.EDUCORE_BOT_LOADED && !initializedRef.current) {
@@ -88,14 +76,11 @@ export function useRAGChatbot(microservice = null) {
         return // Already initialized
       }
 
-      // Check if container exists, create if not
+      // Check if container exists (must be added in global layout)
       let container = document.querySelector('#edu-bot-container')
       if (!container) {
-        console.warn('[RAG Chatbot] Container not found, creating it...')
-        container = document.createElement('div')
-        container.id = 'edu-bot-container'
-        document.body.appendChild(container)
-        console.log('[RAG Chatbot] Container created')
+        console.error('[RAG Chatbot] Container #edu-bot-container not found, skipping initialization')
+        return
       }
 
       if (!window.initializeEducoreBot) {

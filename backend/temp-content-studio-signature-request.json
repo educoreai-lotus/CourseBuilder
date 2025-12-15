@@ -1,0 +1,18 @@
+{
+  "requester_service": "course-builder-service",
+  "payload": {
+    "learner_id": "emp-123",
+    "learner_name": "Jane Doe",
+    "learner_company": "Acme Corp",
+    "skills": [
+      "Node.js Backend Development"
+    ],
+    "action": "generate_course_content",
+    "description": "Generate course content including topics, modules, and lessons based on learning path and skills"
+  },
+  "response": {
+    "course": []
+  }
+}
+
+
