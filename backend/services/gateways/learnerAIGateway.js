@@ -41,7 +41,7 @@ export async function sendToLearnerAI(payloadObject = {}) {
 
     // Build envelope for Coordinator
     const envelope = {
-      requester_service: 'course-builder-service',
+      requester_service: 'course-builder',
       payload: sendPayload,
       response: responseTemplate
     };
