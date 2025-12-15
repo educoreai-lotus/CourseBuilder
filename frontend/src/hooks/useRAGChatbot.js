@@ -136,6 +136,6 @@ export function useRAGChatbot() {
         }
       }
     }
-  }, [userProfile, userRole, microservice])
+  }, [userProfile])
 }
 
