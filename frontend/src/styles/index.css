@@ -3703,6 +3703,19 @@ body {
   }
 }
 
+/* RAG Chatbot Container - Always visible on all pages */
+#edu-bot-container {
+  position: fixed !important;
+  bottom: 0 !important;
+  right: 0 !important;
+  z-index: 9999 !important;
+  pointer-events: none; /* Allow clicks to pass through container to bot widget */
+}
+
+#edu-bot-container > * {
+  pointer-events: auto; /* Re-enable pointer events for bot widget itself */
+}
+
 .loading {
   position: fixed;
   top: 0;

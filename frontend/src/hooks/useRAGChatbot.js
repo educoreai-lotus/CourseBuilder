@@ -18,6 +18,8 @@ export function useRAGChatbot() {
   const { userProfile } = useApp()
   const scriptLoadedRef = useRef(false)
   const initializedRef = useRef(false)
+  // Use a global flag to prevent multiple initializations across route changes
+  const globalInitializedRef = useRef(false)
 
   useEffect(() => {
     // Debug logging
@@ -71,6 +73,13 @@ export function useRAGChatbot() {
     }
 
     function initializeBot() {
+      // Check global flag first - if bot is already initialized globally, don't reinitialize
+      if (globalInitializedRef.current && window.EDUCORE_BOT_INITIALIZED) {
+        console.log('[RAG Chatbot] Bot already initialized globally, skipping')
+        initializedRef.current = true
+        return
+      }
+
       if (initializedRef.current) {
         console.log('[RAG Chatbot] Already initialized, skipping')
         return // Already initialized
@@ -80,6 +89,13 @@ export function useRAGChatbot() {
       let container = document.querySelector('#edu-bot-container')
       if (!container) {
         console.error('[RAG Chatbot] Container #edu-bot-container not found, skipping initialization')
+        // Retry after a short delay in case container is being created
+        setTimeout(() => {
+          container = document.querySelector('#edu-bot-container')
+          if (container) {
+            initializeBot()
+          }
+        }, 100)
         return
       }
 
@@ -115,6 +131,8 @@ export function useRAGChatbot() {
           tenantId: userProfile.company || 'default'
         })
         initializedRef.current = true
+        globalInitializedRef.current = true
+        window.EDUCORE_BOT_INITIALIZED = true // Global flag for persistence
         console.log('[RAG Chatbot] ✅ Initialized successfully')
       } catch (error) {
         console.error('[RAG Chatbot] ❌ Error initializing:', error)
@@ -125,16 +143,12 @@ export function useRAGChatbot() {
       }
     }
 
-    // Cleanup on unmount
+    // NO cleanup on unmount - keep bot alive across route changes
+    // Only cleanup when user logs out (handled by userProfile dependency)
     return () => {
-      if (window.destroyEducoreBot) {
-        try {
-          window.destroyEducoreBot()
-          initializedRef.current = false
-        } catch (error) {
-          console.error('Error destroying RAG chatbot:', error)
-        }
-      }
+      // Don't destroy the bot on route changes
+      // The bot should persist across all pages
+      console.log('[RAG Chatbot] Component unmounting, but keeping bot alive')
     }
   }, [userProfile])
 }

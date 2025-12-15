@@ -90,7 +90,7 @@ function AppShell() {
       </main>
 
       {/* Global container for Educore RAG Chatbot (must exist on all pages) */}
-      <div id="edu-bot-container"></div>
+      <div id="edu-bot-container" style={{ position: 'fixed', bottom: 0, right: 0, zIndex: 9999 }}></div>
 
       <AccessibilityControls />
       <RAGChatbotInitializer />
