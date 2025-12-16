@@ -141,13 +141,28 @@ const renderContent = (lesson) => {
                 <p className="mb-2 text-sm font-semibold text-[var(--text-primary)]">
                   {contentType === 'presentation' ? 'Presentation' : 'Video Content'}
                 </p>
-                {item.url && (
-                  <iframe
-                    src={item.url}
-                    className="h-[400px] w-full rounded-xl"
-                    allowFullScreen
-                    title={item.title || 'Content'}
-                  />
+                {(item.presentationUrl || item.url) && (
+                  <div className="space-y-3">
+                    {item.presentationUrl && (
+                      <a
+                        href={item.presentationUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        download
+                        className="inline-block px-6 py-3 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-colors mb-3"
+                      >
+                        Download Presentation
+                      </a>
+                    )}
+                    {item.url && (
+                      <iframe
+                        src={item.url}
+                        className="h-[400px] w-full rounded-xl"
+                        allowFullScreen
+                        title={item.title || 'Content'}
+                      />
+                    )}
+                  </div>
                 )}
                 {item.content && (
                   <p className="mt-4 text-base leading-7 text-[var(--text-secondary)]">{item.content}</p>
