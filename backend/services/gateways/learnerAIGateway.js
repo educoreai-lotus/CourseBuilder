@@ -30,7 +30,7 @@ export async function sendToLearnerAI(payloadObject = {}) {
     // Add action and description fields for Coordinator routing
     // This is the canonical contract for batch career path generation
     sendPayload.action = 'get_batch_career_paths';
-    sendPayload.description = 'Get batch career learning paths for multiple learners in a company for CAREER_PATH_DRIVEN flow';
+    sendPayload.description = 'Get batch career learning paths for multiple learners in a company for CAREER_PATH_DRIVEN flow from Learner AI service';
 
     // Validate required fields
     if (!sendPayload.company_id) {
