@@ -178,10 +178,13 @@ CREATE TABLE lessons (
     -- DevLab exercises from Content Studio - array of exercise objects
     -- If Content Studio sends empty string "", normalize to empty array []
     devlab_exercises JSONB DEFAULT '[]'::jsonb NOT NULL,  -- Exercises from DevLab/Content Studio
+    -- Display order of content formats within a lesson (e.g. ["video", "hands-on", "reading"])
+    format_order JSONB DEFAULT '[]'::jsonb NOT NULL,
     -- Validation constraints
     CONSTRAINT lessons_content_data_is_array CHECK (jsonb_typeof(content_data) = 'array'),
     CONSTRAINT lessons_devlab_exercises_is_array CHECK (jsonb_typeof(devlab_exercises) = 'array'),
-    CONSTRAINT lessons_skills_is_array CHECK (jsonb_typeof(skills) = 'array')
+    CONSTRAINT lessons_skills_is_array CHECK (jsonb_typeof(skills) = 'array'),
+    CONSTRAINT lessons_format_order_is_array CHECK (jsonb_typeof(format_order) = 'array')
 );
 
 CREATE INDEX idx_lessons_module_id ON lessons(module_id);

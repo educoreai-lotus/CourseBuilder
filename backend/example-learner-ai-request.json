@@ -1,0 +1,12 @@
+{
+  "requester_service": "course-builder-service",
+  "payload": {
+    "action": "get_learning_path",
+    "description": "Get personalized learning path and skills for a learner based on competency tag",
+    "user_id": "b2b400ed-bc11-4aa9-a89e-f4a00d0f6321",
+    "company_id": "c1d2e3f4-5678-9012-3456-789012345678",
+    "learning_flow": "career_path_driven"
+  },
+  "response": {}
+}
+

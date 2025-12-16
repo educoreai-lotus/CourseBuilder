@@ -73,7 +73,16 @@ async function triggerCourseCreationPipeline(learner, competencyTag, companyId, 
       }
       
       return {
-        learningPath,
+        // Inject key metadata from the wrapper so it is available during DB inserts
+        learningPath: {
+          ...learningPath,
+          competency_target_name: careerPath.competency_target_name || `Career Path ${index + 1}`,
+          learning_flow: learnerAIResponse.learning_flow || 'CAREER_PATH_DRIVEN',
+          // Enrichment for registration step
+          learner_name: learner.learner_name || learnerAIResponse.user_name || null,
+          company_id: learner.company_id || learnerAIResponse.company_id || null,
+          company_name: learner.company_name || learnerAIResponse.company_name || null
+        },
         competencyTargetName: careerPath.competency_target_name || `Career Path ${index + 1}`
         // skills_raw_data is IGNORED - not stored, not logged, not used
       };

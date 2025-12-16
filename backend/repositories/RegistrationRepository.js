@@ -17,8 +17,8 @@ export class RegistrationRepository {
     
     const query = `
       INSERT INTO registrations (
-        id, learner_id, learner_name, course_id, company_id, company_name, status, enrolled_date
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        id, learner_id, learner_name, course_id, company_id, company_name
+      ) VALUES ($1, $2, $3, $4, $5, $6)
       RETURNING *
     `;
     const values = [
@@ -27,9 +27,7 @@ export class RegistrationRepository {
       registrationData.learner_name?.trim() || null,
       normalizedCourseId,
       normalizedCompanyId,
-      registrationData.company_name?.trim() || null,
-      registrationData.status || 'in_progress',
-      registrationData.enrolled_date || new Date()
+      registrationData.company_name?.trim() || null
     ];
     const row = await db.one(query, values);
     return Registration.fromRow(row);

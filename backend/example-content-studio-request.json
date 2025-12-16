@@ -39,20 +39,6 @@
                   "description": "Learn about Node.js event loop, V8 engine, and how Node.js differs from browser JavaScript",
                   "estimatedTime": 2,
                   "skills_covered": ["Node.js fundamentals", "JavaScript basics"]
-                },
-                {
-                  "step": 2,
-                  "title": "Working with npm and Modules",
-                  "description": "Master package management, require vs import, and module system",
-                  "estimatedTime": 2,
-                  "skills_covered": ["npm basics", "module system"]
-                },
-                {
-                  "step": 3,
-                  "title": "File System Operations",
-                  "description": "Read and write files using fs module, handle async operations",
-                  "estimatedTime": 4,
-                  "skills_covered": ["Node.js fundamentals", "async/await"]
                 }
               ]
             }

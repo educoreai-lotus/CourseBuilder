@@ -22,11 +22,14 @@ export class LessonRepository {
         ? []
         : [lessonData.devlab_exercises];
     
+    // format_order must ALWAYS be an array (from Content Studio)
+    const format_order = Array.isArray(lessonData.format_order) ? lessonData.format_order : [];
+    
     const query = `
       INSERT INTO lessons (
         id, module_id, topic_id, lesson_name, lesson_description,
-        skills, trainer_ids, content_type, content_data, devlab_exercises
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7::uuid[], $8, $9, $10)
+        skills, trainer_ids, content_type, content_data, devlab_exercises, format_order
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7::uuid[], $8, $9, $10, $11)
       RETURNING *
     `;
     const values = [
@@ -39,7 +42,8 @@ export class LessonRepository {
       trainer_ids.length > 0 ? trainer_ids : [], // Cast to UUID[] in query
       lessonData.content_type || null,
       JSON.stringify(content_data),
-      JSON.stringify(devlab_exercises)
+      JSON.stringify(devlab_exercises),
+      JSON.stringify(format_order)
     ];
     const row = await db.one(query, values);
     return Lesson.fromRow(row);
