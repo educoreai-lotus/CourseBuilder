@@ -74,24 +74,14 @@ export const startAssessment = async (req, res, next) => {
       has_assessment_session_id: !!assessmentResponse?.assessment_session_id
     });
 
-    // Assessment service should return redirect_url and assessment_session_id
-    // If it doesn't, we'll provide a fallback
-    if (assessmentResponse && assessmentResponse.redirect_url) {
-      return res.status(200).json({
-        assessment_session_id: assessmentResponse.assessment_session_id || assessmentResponse.learner_id,
-        redirect_url: assessmentResponse.redirect_url,
-        expires_in: assessmentResponse.expires_in || 900
-      });
-    }
-
-    // Fallback response if Assessment service doesn't return redirect_url
-    // This might happen if Assessment service is not fully integrated yet
-    console.warn('[Assessment Controller] Assessment service did not return redirect_url, using fallback');
+    // Always redirect to the Assessment service frontend
+    // Use the provided Assessment service URL regardless of what the service returns
+    const ASSESSMENT_SERVICE_URL = 'https://assessment-seven-liard.vercel.app/';
+    
     return res.status(200).json({
-      assessment_session_id: assessmentResponse.learner_id || learnerId,
-      redirect_url: assessmentResponse.redirect_url || `/course/${courseId}/assessment/complete`,
-      expires_in: 900,
-      message: 'Assessment session created. Redirect URL may need to be configured.'
+      assessment_session_id: assessmentResponse?.assessment_session_id || assessmentResponse?.learner_id || learnerId,
+      redirect_url: ASSESSMENT_SERVICE_URL,
+      expires_in: assessmentResponse?.expires_in || 900
     });
   } catch (error) {
     console.error('[Assessment Controller] Error:', error);
