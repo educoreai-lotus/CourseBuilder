@@ -63,6 +63,33 @@ export async function sendToContentStudio(payloadObject) {
       response: responseTemplate
     };
 
+    // ========== LOG REQUEST BODY TO CONTENT STUDIO ==========
+    console.log('[ContentStudio Gateway] ========== REQUEST BODY TO CONTENT STUDIO ==========');
+    console.log('[ContentStudio Gateway] Full envelope:', JSON.stringify(envelope, null, 2));
+    console.log('[ContentStudio Gateway] Payload type:', typeof sendPayload);
+    console.log('[ContentStudio Gateway] Payload keys:', Object.keys(sendPayload));
+    console.log('[ContentStudio Gateway] Payload structure:', {
+      has_action: !!sendPayload.action,
+      has_description: !!sendPayload.description,
+      has_learner_id: !!sendPayload.learner_id,
+      has_learner_name: !!sendPayload.learner_name,
+      has_learner_company: !!sendPayload.learner_company,
+      has_skills: !!sendPayload.skills,
+      skills_count: Array.isArray(sendPayload.skills) ? sendPayload.skills.length : 0,
+      has_learning_path: !!sendPayload.learning_path,
+      learning_path_type: typeof sendPayload.learning_path,
+      learning_path_is_array: Array.isArray(sendPayload.learning_path),
+      has_language: !!sendPayload.language,
+      has_career_learning_paths: !!sendPayload.career_learning_paths,
+      career_learning_paths_type: typeof sendPayload.career_learning_paths,
+      career_learning_paths_is_array: Array.isArray(sendPayload.career_learning_paths),
+      has_learners_data: !!sendPayload.learners_data,
+      learners_data_type: typeof sendPayload.learners_data,
+      learners_data_is_array: Array.isArray(sendPayload.learners_data)
+    });
+    console.log('[ContentStudio Gateway] Full payload:', JSON.stringify(sendPayload, null, 2));
+    console.log('[ContentStudio Gateway] ===================================================');
+
     // Send via Coordinator
     const { data: json } = await postToCoordinator(envelope).catch(() => ({ data: {} }));
     
