@@ -85,12 +85,28 @@ export async function sendToLearnerAI(payloadObject = {}) {
     // 3. Direct format: { data: { ... } }
     let result = json && json.response ? json.response : (json && json.success ? json.data : json);
     
-    // If result has nested data structure (new batch format), extract it
-    if (result && result.data && result.data.learners_data) {
+    // Learner AI currently returns the real payload as a JSON string in response.answer
+    // Example: { response: { answer: "{\"success\":true,\"action\":\"get_batch_career_paths\",...}" } }
+    if (result && typeof result.answer === 'string') {
+      try {
+        const parsed = JSON.parse(result.answer);
+        // If parsed has a data field (batch format), use parsed.data so that
+        // fillContentMetrics sees { company_id, company_name, learning_flow, learners_data: [...] }
+        if (parsed && parsed.data) {
+          result = parsed.data;
+        } else {
+          result = parsed;
+        }
+      } catch (parseError) {
+        console.error('[LearnerAI Gateway] Failed to parse response.answer JSON:', parseError);
+        // Fall back to original result (will be validated later)
+      }
+    } else if (result && result.data && result.data.learners_data) {
+      // Fallback: if Coordinator already unwrapped to { success, data }, use data directly
       result = result.data;
     }
 
-    // Return response data (should contain structured Learning Path JSON)
+    // Return response data (should contain structured Learning Path JSON or batch data.learners_data)
     return result;
   } catch (error) {
     console.error('[LearnerAI Gateway] Error:', error);
