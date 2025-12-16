@@ -3704,16 +3704,25 @@ body {
 }
 
 /* RAG Chatbot Container - Always visible on all pages */
+/* ============================================
+   PROFESSIONAL RAG CHATBOT STYLING
+   Modern, polished, enterprise-grade design
+   ============================================ */
+
 #edu-bot-container {
   position: fixed !important;
-  bottom: 0 !important;
-  right: 0 !important;
-  z-index: 9999 !important;
-  pointer-events: none; /* Allow clicks to pass through container to bot widget */
+  bottom: 24px !important;
+  right: 24px !important;
+  z-index: 2147483647 !important;
+  pointer-events: none !important;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif !important;
+  -webkit-font-smoothing: antialiased !important;
+  -moz-osx-font-smoothing: grayscale !important;
 }
 
+/* Re-enable pointer events for bot elements */
 #edu-bot-container > * {
-  pointer-events: auto; /* Re-enable pointer events for bot widget itself */
+  pointer-events: auto !important;
 }
 
 .loading {
@@ -3812,84 +3821,197 @@ body {
   gap: var(--spacing-sm);
 }
 
-/* Enhanced RAG Chatbot Container - Ensure full visibility and proper positioning */
-#edu-bot-container {
-  position: fixed !important;
-  bottom: 24px !important;
-  right: 24px !important;
-  z-index: 2147483647 !important;
-  pointer-events: none !important;
-  min-width: 64px !important;
-  min-height: 64px !important;
-  width: auto !important;
-  height: auto !important;
-  display: block !important;
-  visibility: visible !important;
-  opacity: 1 !important;
-  overflow: visible !important;
-  margin: 0 !important;
-  padding: 0 !important;
-  border: none !important;
-  background: transparent !important;
-}
+/* ============================================
+   PROFESSIONAL RAG CHATBOT - LAUNCHER BUTTON
+   Modern floating action button design
+   ============================================ */
 
-/* Ensure all child elements are visible and clickable */
-#edu-bot-container > * {
-  pointer-events: auto !important;
-  visibility: visible !important;
-  opacity: 1 !important;
-  display: block !important;
-}
-
-/* Chatbot launcher button - ensure it's fully visible and properly sized */
+/* Launcher Button - Professional FAB Design */
 #edu-bot-container button,
 #edu-bot-container [role="button"],
 #edu-bot-container .edu-bot-launcher,
 #edu-bot-container [class*="launcher"],
-#edu-bot-container [class*="toggle"] {
-  position: relative !important;
-  display: block !important;
-  visibility: visible !important;
-  opacity: 1 !important;
+#edu-bot-container [class*="toggle"],
+#edu-bot-container > div > button,
+#edu-bot-container > button {
+  position: fixed !important;
+  bottom: 24px !important;
+  right: 24px !important;
   width: 64px !important;
   height: 64px !important;
   min-width: 64px !important;
   min-height: 64px !important;
   border-radius: 50% !important;
   z-index: 2147483647 !important;
+  
+  /* Modern gradient background */
+  background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 50%, #0369a1 100%) !important;
+  border: none !important;
+  box-shadow: 
+    0 4px 14px rgba(14, 165, 233, 0.4),
+    0 8px 24px rgba(14, 165, 233, 0.3),
+    0 0 0 0 rgba(14, 165, 233, 0.5) !important;
+  
+  /* Smooth transitions */
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  cursor: pointer !important;
+  
+  /* Center content */
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  
+  /* Text and icon styling */
+  color: #ffffff !important;
+  font-size: 0 !important;
+  line-height: 1 !important;
+  
+  /* Prevent text selection */
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  -moz-user-select: none !important;
+  
+  /* Visibility */
+  visibility: visible !important;
+  opacity: 1 !important;
   margin: 0 !important;
   padding: 0 !important;
   overflow: visible !important;
 }
 
-/* Chatbot window/iframe - ensure it doesn't get cut off and is properly positioned */
+/* Hover effect - elegant lift and glow */
+#edu-bot-container button:hover,
+#edu-bot-container [role="button"]:hover,
+#edu-bot-container .edu-bot-launcher:hover,
+#edu-bot-container [class*="launcher"]:hover {
+  transform: translateY(-4px) scale(1.05) !important;
+  box-shadow: 
+    0 8px 20px rgba(14, 165, 233, 0.5),
+    0 12px 32px rgba(14, 165, 233, 0.4),
+    0 0 0 4px rgba(14, 165, 233, 0.2) !important;
+  background: linear-gradient(135deg, #38bdf8 0%, #0ea5e9 50%, #0284c7 100%) !important;
+}
+
+/* Active/pressed state */
+#edu-bot-container button:active,
+#edu-bot-container [role="button"]:active,
+#edu-bot-container .edu-bot-launcher:active {
+  transform: translateY(-2px) scale(1.02) !important;
+  box-shadow: 
+    0 4px 12px rgba(14, 165, 233, 0.4),
+    0 6px 20px rgba(14, 165, 233, 0.3) !important;
+}
+
+/* Focus state for accessibility */
+#edu-bot-container button:focus,
+#edu-bot-container [role="button"]:focus,
+#edu-bot-container .edu-bot-launcher:focus {
+  outline: 3px solid rgba(14, 165, 233, 0.5) !important;
+  outline-offset: 4px !important;
+}
+
+/* Icon inside button - ensure proper sizing */
+#edu-bot-container button svg,
+#edu-bot-container button i,
+#edu-bot-container [role="button"] svg,
+#edu-bot-container [role="button"] i {
+  width: 28px !important;
+  height: 28px !important;
+  color: #ffffff !important;
+  fill: #ffffff !important;
+  stroke: #ffffff !important;
+  display: block !important;
+}
+
+/* ============================================
+   PROFESSIONAL CHATBOT WINDOW
+   Modern chat interface design
+   ============================================ */
+
+/* Chat Window Container */
 #edu-bot-container iframe,
 #edu-bot-container .edu-bot-window,
 #edu-bot-container [class*="bot-window"],
 #edu-bot-container [class*="chat-window"],
 #edu-bot-container [class*="widget"] {
   position: fixed !important;
-  max-width: 90vw !important;
-  max-height: 85vh !important;
+  bottom: 96px !important;
+  right: 24px !important;
+  width: 420px !important;
+  height: 640px !important;
   min-width: 320px !important;
   min-height: 400px !important;
-  width: 400px !important;
-  height: 600px !important;
-  right: 24px !important;
-  bottom: 88px !important;
+  max-width: calc(100vw - 48px) !important;
+  max-height: calc(100vh - 120px) !important;
   z-index: 2147483646 !important;
+  
+  /* Modern card design */
   border: none !important;
-  border-radius: 16px !important;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2) !important;
-  display: block !important;
-  visibility: visible !important;
+  border-radius: 20px !important;
+  box-shadow: 
+    0 20px 60px rgba(0, 0, 0, 0.15),
+    0 8px 24px rgba(0, 0, 0, 0.1),
+    0 0 0 1px rgba(255, 255, 255, 0.1) inset !important;
+  
+  /* Smooth appearance */
   opacity: 1 !important;
+  visibility: visible !important;
+  display: block !important;
   overflow: hidden !important;
+  
+  /* Background */
+  background: #ffffff !important;
+  
+  /* Smooth transitions */
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  transform: translateY(0) scale(1) !important;
+  
   margin: 0 !important;
   padding: 0 !important;
 }
 
-/* Prevent any parent from hiding the chatbot */
+/* Hidden state - smooth fade out */
+#edu-bot-container iframe[style*="display: none"],
+#edu-bot-container .edu-bot-window[style*="display: none"],
+#edu-bot-container [class*="bot-window"][style*="display: none"],
+#edu-bot-container [class*="chat-window"][style*="display: none"] {
+  opacity: 0 !important;
+  visibility: hidden !important;
+  transform: translateY(20px) scale(0.95) !important;
+  pointer-events: none !important;
+}
+
+/* ============================================
+   RESPONSIVE DESIGN
+   ============================================ */
+
+@media (max-width: 768px) {
+  #edu-bot-container iframe,
+  #edu-bot-container .edu-bot-window,
+  #edu-bot-container [class*="bot-window"],
+  #edu-bot-container [class*="chat-window"] {
+    width: calc(100vw - 32px) !important;
+    height: calc(100vh - 100px) !important;
+    right: 16px !important;
+    bottom: 88px !important;
+    border-radius: 16px !important;
+  }
+  
+  #edu-bot-container button,
+  #edu-bot-container [role="button"],
+  #edu-bot-container .edu-bot-launcher {
+    bottom: 16px !important;
+    right: 16px !important;
+    width: 56px !important;
+    height: 56px !important;
+  }
+}
+
+/* ============================================
+   ACCESSIBILITY & VISIBILITY
+   ============================================ */
+
+/* Ensure container is always accessible */
 body > #edu-bot-container,
 html > #edu-bot-container,
 #root > #edu-bot-container,
@@ -3902,30 +4024,7 @@ html > #edu-bot-container,
   display: block !important;
 }
 
-/* Ensure chat window is hidden by default - only launcher button should be visible */
-#edu-bot-container iframe[style*="display: none"],
-#edu-bot-container .edu-bot-window[style*="display: none"],
-#edu-bot-container [class*="bot-window"][style*="display: none"],
-#edu-bot-container [class*="chat-window"][style*="display: none"] {
-  display: none !important;
-  visibility: hidden !important;
-  opacity: 0 !important;
-}
-
-/* Only show chat window when explicitly opened (has open/visible class or inline style) */
-#edu-bot-container iframe:not([style*="display: none"]):not([style*="display:none"]),
-#edu-bot-container .edu-bot-window:not([style*="display: none"]):not([style*="display:none"]),
-#edu-bot-container [class*="bot-window"]:not([style*="display: none"]):not([style*="display:none"]),
-#edu-bot-container [class*="chat-window"]:not([style*="display: none"]):not([style*="display:none"]) {
-  /* Only show if it has an explicit open state - otherwise hide */
-}
-
-/* Force launcher button to always be visible */
-#edu-bot-container button:first-child,
-#edu-bot-container [role="button"]:first-child,
-#edu-bot-container > div:first-child > button,
-#edu-bot-container [class*="launcher"] {
-  display: block !important;
-  visibility: visible !important;
-  opacity: 1 !important;
+/* Prevent any interference */
+#edu-bot-container * {
+  box-sizing: border-box !important;
 }
