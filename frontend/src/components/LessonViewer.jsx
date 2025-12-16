@@ -14,6 +14,7 @@ import {
 } from 'lucide-react'
 import Button from './Button.jsx'
 import { getLessonExercises } from '../services/apiService.js'
+import { MindMapViewer } from './MindMapViewer.jsx'
 
 const renderContent = (lesson) => {
   // Handle content_data - can be array, object, or JSON string
