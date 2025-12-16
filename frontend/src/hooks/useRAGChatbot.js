@@ -139,6 +139,85 @@ export function useRAGChatbot() {
           startCollapsed: true,      // MUST be true - show only launcher icon
           autoOpen: false            // Explicitly disable auto-open
         })
+        
+        // Force close the widget after initialization (external script may auto-open in CHAT mode)
+        // Use multiple timeouts to catch auto-open at different stages
+        const forceClose = () => {
+          const container = document.querySelector('#edu-bot-container')
+          if (!container) return
+          
+          // Method 1: Find and hide chat windows directly
+          const chatWindows = container.querySelectorAll('iframe, [class*="bot-window"], [class*="chat-window"], [class*="widget"]:not([class*="launcher"]):not([class*="toggle"]):not(button)')
+          chatWindows.forEach(window => {
+            if (window && window.style) {
+              const computedStyle = window.getComputedStyle ? window.getComputedStyle(window) : null
+              const isVisible = computedStyle && computedStyle.display !== 'none' && computedStyle.visibility !== 'hidden'
+              
+              if (isVisible || window.style.display === 'block' || window.style.display === 'flex') {
+                window.style.setProperty('display', 'none', 'important')
+                window.style.setProperty('visibility', 'hidden', 'important')
+                window.style.setProperty('opacity', '0', 'important')
+                console.log('[RAG Chatbot] 🔒 Closed chat window via CSS')
+              }
+            }
+          })
+          
+          // Method 2: Try to find and click close/toggle button
+          const closeButtons = container.querySelectorAll(
+            'button[class*="close"], button[class*="toggle"], [role="button"][class*="close"], [role="button"][class*="toggle"], [aria-label*="close" i], [aria-label*="toggle" i]'
+          )
+          closeButtons.forEach(btn => {
+            const isOpen = btn.getAttribute('aria-expanded') === 'true' || 
+                          btn.classList.contains('open') || 
+                          btn.getAttribute('data-open') === 'true'
+            if (isOpen && btn !== container.querySelector('button:first-child, [role="button"]:first-child')) {
+              // Don't click the launcher button itself
+              try {
+                btn.click()
+                console.log('[RAG Chatbot] 🔒 Clicked close button')
+              } catch (e) {
+                console.warn('[RAG Chatbot] Could not click close button:', e)
+              }
+            }
+          })
+        }
+        
+        // Try to close at multiple intervals to catch auto-open
+        setTimeout(forceClose, 300)  // First attempt
+        setTimeout(forceClose, 800)  // Second attempt (after auto-open might have happened)
+        setTimeout(forceClose, 1500) // Third attempt (final check)
+        
+        // Also monitor for auto-open and close it if it happens
+        const observer = new MutationObserver(() => {
+          const container = document.querySelector('#edu-bot-container')
+          if (container) {
+            const chatWindows = container.querySelectorAll('iframe, [class*="bot-window"], [class*="chat-window"]')
+            chatWindows.forEach(window => {
+              if (window && window.style) {
+                const display = window.style.display || (window.getComputedStyle ? window.getComputedStyle(window).display : '')
+                if (display === 'block' || display === 'flex') {
+                  // Widget opened, close it
+                  forceClose()
+                }
+              }
+            })
+          }
+        })
+        
+        // Start observing after a short delay
+        setTimeout(() => {
+          const container = document.querySelector('#edu-bot-container')
+          if (container) {
+            observer.observe(container, { 
+              childList: true, 
+              subtree: true, 
+              attributes: true, 
+              attributeFilter: ['style', 'class', 'aria-expanded'] 
+            })
+            console.log('[RAG Chatbot] 👀 Started monitoring for auto-open')
+          }
+        }, 1000)
+        
         initializedRef.current = true
         globalInitializedRef.current = true
         window.EDUCORE_BOT_INITIALIZED = true // Global flag for persistence
