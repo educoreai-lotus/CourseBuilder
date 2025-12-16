@@ -96,10 +96,16 @@ function AppShell() {
           position: 'fixed',
           bottom: '24px',
           right: '24px',
-          width: '64px',
-          height: '64px',
+          minWidth: '64px',
+          minHeight: '64px',
+          width: 'auto',
+          height: 'auto',
           zIndex: 2147483647,
-          pointerEvents: 'auto'
+          pointerEvents: 'none',
+          display: 'block',
+          visibility: 'visible',
+          opacity: 1,
+          overflow: 'visible'
         }}
       ></div>
 
