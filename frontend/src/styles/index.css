@@ -3928,12 +3928,14 @@ body {
    Modern chat interface design
    ============================================ */
 
-/* Chat Window Container */
+/* Chat Window Container - HIDDEN BY DEFAULT */
 #edu-bot-container iframe,
 #edu-bot-container .edu-bot-window,
 #edu-bot-container [class*="bot-window"],
 #edu-bot-container [class*="chat-window"],
-#edu-bot-container [class*="widget"] {
+#edu-bot-container [class*="widget"],
+#edu-bot-container [id*="root"]:not(:first-child),
+#edu-bot-container > div:not(:first-child) {
   position: fixed !important;
   bottom: 96px !important;
   right: 24px !important;
@@ -3953,10 +3955,11 @@ body {
     0 8px 24px rgba(0, 0, 0, 0.1),
     0 0 0 1px rgba(255, 255, 255, 0.1) inset !important;
   
-  /* Smooth appearance */
-  opacity: 1 !important;
-  visibility: visible !important;
-  display: block !important;
+  /* HIDDEN BY DEFAULT - only show when explicitly opened */
+  opacity: 0 !important;
+  visibility: hidden !important;
+  display: none !important;
+  pointer-events: none !important;
   overflow: hidden !important;
   
   /* Background */
@@ -3964,21 +3967,43 @@ body {
   
   /* Smooth transitions */
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
-  transform: translateY(0) scale(1) !important;
+  transform: translateY(20px) scale(0.95) !important;
   
   margin: 0 !important;
   padding: 0 !important;
 }
 
-/* Hidden state - smooth fade out */
+/* OPEN STATE - Only show when explicitly opened */
+#edu-bot-container iframe[style*="display: block"]:not([style*="display: none"]),
+#edu-bot-container iframe[style*="display:flex"]:not([style*="display: none"]),
+#edu-bot-container .edu-bot-window[style*="display: block"]:not([style*="display: none"]),
+#edu-bot-container .edu-bot-window[style*="display:flex"]:not([style*="display: none"]),
+#edu-bot-container [class*="bot-window"][style*="display: block"]:not([style*="display: none"]),
+#edu-bot-container [class*="chat-window"][style*="display: block"]:not([style*="display: none"]),
+#edu-bot-container [class*="widget"][style*="display: block"]:not([style*="display: none"]),
+#edu-bot-container [class*="open"],
+#edu-bot-container [class*="visible"],
+#edu-bot-container [class*="expanded"] {
+  opacity: 1 !important;
+  visibility: visible !important;
+  display: block !important;
+  pointer-events: auto !important;
+  transform: translateY(0) scale(1) !important;
+}
+
+/* Hidden state - ensure it stays hidden */
 #edu-bot-container iframe[style*="display: none"],
 #edu-bot-container .edu-bot-window[style*="display: none"],
 #edu-bot-container [class*="bot-window"][style*="display: none"],
-#edu-bot-container [class*="chat-window"][style*="display: none"] {
+#edu-bot-container [class*="chat-window"][style*="display: none"],
+#edu-bot-container [class*="closed"],
+#edu-bot-container [class*="hidden"],
+#edu-bot-container [class*="collapsed"] {
   opacity: 0 !important;
   visibility: hidden !important;
-  transform: translateY(20px) scale(0.95) !important;
+  display: none !important;
   pointer-events: none !important;
+  transform: translateY(20px) scale(0.95) !important;
 }
 
 /* ============================================
