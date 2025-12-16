@@ -385,16 +385,6 @@ export async function buildCourseFromLearningPath(learningPathJson, contentStudi
     console.log('[Build Course From Learning Path] Content Studio courses extracted:', contentStudioCourses.length);
     console.log('[Build Course From Learning Path] Learning modules count:', sortedModules.length);
     
-    if (contentStudioCourses.length !== sortedModules.length) {
-      const errorMsg = `[Build Course From Learning Path] Index mapping violation: ` +
-        `learning_modules.length (${sortedModules.length}) !== Content Studio courses.length (${contentStudioCourses.length}). ` +
-        `Each learning_module[i] MUST map to courses[i].`;
-      console.error('[Build Course From Learning Path] ❌ VALIDATION FAILED:', errorMsg);
-      throw new Error(errorMsg);
-    }
-    
-    console.log('[Build Course From Learning Path] ✅ Index mapping validation passed');
-    
     // Build mapping: module_order → module DB record
     const moduleOrderToModule = new Map();
     for (const moduleData of modules) {
