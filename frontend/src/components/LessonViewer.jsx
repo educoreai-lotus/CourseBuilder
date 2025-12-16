@@ -16,8 +16,23 @@ import Button from './Button.jsx'
 import { getLessonExercises } from '../services/apiService.js'
 
 const renderContent = (lesson) => {
-  // ⚠️ content_data is Content Studio contents[] array - ALWAYS an array
-  const contentData = lesson?.content_data
+  // Handle content_data - can be array, object, or JSON string
+  let contentData = lesson?.content_data
+  
+  // Parse if it's a JSON string
+  if (typeof contentData === 'string') {
+    try {
+      contentData = JSON.parse(contentData)
+    } catch (e) {
+      console.warn('[LessonViewer] Failed to parse content_data as JSON:', e)
+      // If parsing fails, treat as plain text
+      return (
+        <div className="space-y-6">
+          <p className="text-base leading-7 text-[var(--text-secondary)] whitespace-pre-wrap">{contentData}</p>
+        </div>
+      )
+    }
+  }
   
   // Check if content_data exists and is not empty
   if (!contentData || (Array.isArray(contentData) && contentData.length === 0) || (typeof contentData === 'object' && Object.keys(contentData).length === 0)) {
@@ -32,11 +47,29 @@ const renderContent = (lesson) => {
   // ⚠️ content_data is ALWAYS an array (Content Studio contents[] array)
   // Each item in the array is a content block (text_audio, code, presentation, audio, mind_map, avatar_video)
   if (Array.isArray(contentData)) {
+    // Use format_order if available, otherwise use contentData order
+    const formatOrder = lesson?.format_order || []
+    const orderedContent = formatOrder.length > 0 
+      ? formatOrder.map(formatType => {
+          // Find matching content item by content_type
+          const matchingItem = contentData.find(item => {
+            const itemType = item.content_type || item.type
+            return itemType === formatType || 
+                   (formatType === 'text' && (itemType === 'text' || itemType === 'text_audio')) ||
+                   (formatType === 'text_audio' && (itemType === 'text' || itemType === 'text_audio'))
+          })
+          return matchingItem ? { ...matchingItem, _formatType: formatType } : null
+        }).filter(Boolean)
+      : contentData
+
     return (
       <div className="space-y-6">
-        {contentData.map((item, idx) => {
+        {orderedContent.map((item, idx) => {
+          // Get content type - check both 'type' and 'content_type' fields
+          const contentType = item.content_type || item.type || item._formatType
+          
           // Handle different Content Studio content types
-          if (item.type === 'text_audio' || item.type === 'text') {
+          if (contentType === 'text_audio' || contentType === 'text') {
             return (
               <div key={idx} className="space-y-4">
                 {item.text && (
@@ -61,7 +94,7 @@ const renderContent = (lesson) => {
             )
           }
           
-          if (item.type === 'code' || item.type === 'codeblock') {
+          if (contentType === 'code' || contentType === 'codeblock') {
             return (
               <pre
                 key={idx}
@@ -72,11 +105,11 @@ const renderContent = (lesson) => {
             )
           }
           
-          if (item.type === 'presentation' || item.type === 'avatar_video') {
+          if (contentType === 'presentation' || contentType === 'avatar_video') {
             return (
               <div key={idx} className="rounded-2xl border border-[rgba(148,163,184,0.14)] bg-[var(--bg-card)]/90 p-4">
                 <p className="mb-2 text-sm font-semibold text-[var(--text-primary)]">
-                  {item.type === 'presentation' ? 'Presentation' : 'Video Content'}
+                  {contentType === 'presentation' ? 'Presentation' : 'Video Content'}
                 </p>
                 {item.url && (
                   <iframe
@@ -93,7 +126,7 @@ const renderContent = (lesson) => {
             )
           }
           
-          if (item.type === 'paragraph' || item.type === 'text') {
+          if (contentType === 'paragraph') {
             return (
               <p key={idx} className="text-base leading-7 text-[var(--text-secondary)] whitespace-pre-wrap">
                 {item.content || item.text}
@@ -101,7 +134,7 @@ const renderContent = (lesson) => {
             )
           }
           
-          if (item.type === 'list' || item.type === 'ul' || item.type === 'ol') {
+          if (contentType === 'list' || contentType === 'ul' || contentType === 'ol') {
             const ListTag = item.ordered ? 'ol' : 'ul'
             return (
               <ListTag key={idx} className="ml-6 list-disc space-y-2 text-[var(--text-secondary)]">
@@ -112,13 +145,38 @@ const renderContent = (lesson) => {
             )
           }
           
-          // Fallback for unknown content types
+          // Handle mind_map type
+          if (contentType === 'mind_map') {
+            return (
+              <div key={idx} className="rounded-2xl border border-[rgba(148,163,184,0.14)] bg-[var(--bg-card)]/90 p-4">
+                <p className="mb-2 text-sm font-semibold text-[var(--text-primary)]">Mind Map</p>
+                {item.nodes && item.edges ? (
+                  <div className="text-sm text-[var(--text-secondary)]">
+                    <p>Mind map visualization (interactive view coming soon)</p>
+                    <p className="mt-2 text-xs text-[var(--text-muted)]">Nodes: {item.nodes.length}, Edges: {item.edges.length}</p>
+                  </div>
+                ) : (
+                  <p className="text-sm text-[var(--text-secondary)]">Mind map data available</p>
+                )}
+              </div>
+            )
+          }
+          
+          // Fallback for unknown content types - try to render useful content
           return (
             <div key={idx} className="rounded-2xl border border-[rgba(148,163,184,0.14)] bg-[var(--bg-card)]/90 p-4 text-sm text-[var(--text-secondary)]">
-              <p className="mb-2 font-semibold text-[var(--text-primary)]">Content ({item.type || 'unknown'})</p>
-              {item.content && <p>{item.content}</p>}
-              {item.text && <p>{item.text}</p>}
-              {!item.content && !item.text && <pre className="mt-2 overflow-auto text-xs">{JSON.stringify(item, null, 2)}</pre>}
+              <p className="mb-2 font-semibold text-[var(--text-primary)]">Content ({contentType || 'unknown'})</p>
+              {item.content && <p className="whitespace-pre-wrap">{item.content}</p>}
+              {item.text && <p className="whitespace-pre-wrap">{item.text}</p>}
+              {item.html && (
+                <div 
+                  className="prose prose-slate max-w-none text-[var(--text-secondary)]"
+                  dangerouslySetInnerHTML={{ __html: item.html }}
+                />
+              )}
+              {!item.content && !item.text && !item.html && (
+                <pre className="mt-2 overflow-auto text-xs">{JSON.stringify(item, null, 2)}</pre>
+              )}
             </div>
           )
         })}
