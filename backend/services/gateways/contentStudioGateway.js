@@ -104,9 +104,42 @@ export async function sendToContentStudio(payloadObject) {
     // Send via Coordinator
     const { data: json } = await postToCoordinator(envelope).catch(() => ({ data: {} }));
     
+    // ========== LOG RAW RESPONSE FROM COORDINATOR (CONTENT STUDIO) ==========
+    console.log('[ContentStudio Gateway] ========== RAW RESPONSE FROM COORDINATOR ==========');
+    console.log('[ContentStudio Gateway] Full response object:', JSON.stringify(json, null, 2));
+    console.log('[ContentStudio Gateway] Response type:', typeof json);
+    console.log('[ContentStudio Gateway] Response keys:', json ? Object.keys(json) : 'null/undefined');
+    console.log('[ContentStudio Gateway] Has response field:', !!json?.response);
+    console.log('[ContentStudio Gateway] Has success field:', !!json?.success);
+    console.log('[ContentStudio Gateway] Has data field:', !!json?.data);
+    if (json?.response) {
+      console.log('[ContentStudio Gateway] response keys:', Object.keys(json.response));
+      console.log('[ContentStudio Gateway] response type:', typeof json.response);
+    }
+    console.log('[ContentStudio Gateway] ===================================================');
+    
     // Coordinator returns the envelope with filled response field
     // Extract response from envelope structure
-    const result = json && json.response ? json.response : (json && json.success ? json.data : json);
+    let result = json && json.response ? json.response : (json && json.success ? json.data : json);
+
+    // ========== LOG EXTRACTED RESULT ==========
+    console.log('[ContentStudio Gateway] ========== EXTRACTED RESULT ==========');
+    console.log('[ContentStudio Gateway] Result type:', typeof result);
+    console.log('[ContentStudio Gateway] Result keys:', result ? Object.keys(result) : 'null/undefined');
+    console.log('[ContentStudio Gateway] Result structure:', {
+      has_courses: !!result?.courses,
+      has_course: !!result?.course,
+      courses_type: typeof result?.courses,
+      course_type: typeof result?.course,
+      courses_is_array: Array.isArray(result?.courses),
+      course_is_array: Array.isArray(result?.course),
+      result_is_array: Array.isArray(result),
+      courses_length: result?.courses?.length || 0,
+      course_length: result?.course?.length || 0,
+      result_length: Array.isArray(result) ? result.length : 0
+    });
+    console.log('[ContentStudio Gateway] Full result:', JSON.stringify(result, null, 2));
+    console.log('[ContentStudio Gateway] ===================================================');
 
     // Return the filled response object (Content Studio fills the 'course' array)
     return result;
