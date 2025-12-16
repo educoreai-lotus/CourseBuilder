@@ -101,7 +101,7 @@ function AppShell() {
           width: 'auto',
           height: 'auto',
           zIndex: 2147483647,
-          pointerEvents: 'none',
+          pointerEvents: 'auto',
           display: 'block',
           visibility: 'visible',
           opacity: 1,

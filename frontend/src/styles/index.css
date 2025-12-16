@@ -3714,14 +3714,14 @@ body {
   bottom: 24px !important;
   right: 24px !important;
   z-index: 2147483647 !important;
-  pointer-events: none !important;
+  pointer-events: auto !important;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif !important;
   -webkit-font-smoothing: antialiased !important;
   -moz-osx-font-smoothing: grayscale !important;
 }
 
-/* Re-enable pointer events for bot elements */
-#edu-bot-container > * {
+/* Ensure all bot elements are clickable */
+#edu-bot-container * {
   pointer-events: auto !important;
 }
 
@@ -3856,6 +3856,9 @@ body {
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
   cursor: pointer !important;
   
+  /* Ensure button is clickable */
+  pointer-events: auto !important;
+  
   /* Center content */
   display: flex !important;
   align-items: center !important;
@@ -3928,8 +3931,8 @@ body {
    Modern chat interface design
    ============================================ */
 
-/* Chat Window Container - Minimal interference, let external script control visibility */
-/* Only target the actual chat window, not the launcher button */
+/* Chat Window Container - ONLY styling, NO visibility control */
+/* Let external script handle all show/hide logic */
 #edu-bot-container iframe,
 #edu-bot-container .edu-bot-window,
 #edu-bot-container [class*="bot-window"]:not([class*="launcher"]):not([class*="toggle"]):not(button),
@@ -3957,50 +3960,16 @@ body {
   /* Background */
   background: #ffffff !important;
   
-  /* Smooth transitions */
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  /* Smooth transitions for appearance only */
+  transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
   
   margin: 0 !important;
   padding: 0 !important;
   overflow: hidden !important;
-}
-
-/* OPEN STATE - Show when external script makes it visible */
-#edu-bot-container iframe[style*="display: block"],
-#edu-bot-container iframe[style*="display:flex"],
-#edu-bot-container iframe[style*="display: flex"],
-#edu-bot-container .edu-bot-window[style*="display: block"],
-#edu-bot-container .edu-bot-window[style*="display:flex"],
-#edu-bot-container .edu-bot-window[style*="display: flex"],
-#edu-bot-container [class*="bot-window"][style*="display: block"],
-#edu-bot-container [class*="bot-window"][style*="display:flex"],
-#edu-bot-container [class*="bot-window"][style*="display: flex"],
-#edu-bot-container [class*="chat-window"][style*="display: block"],
-#edu-bot-container [class*="chat-window"][style*="display:flex"],
-#edu-bot-container [class*="chat-window"][style*="display: flex"],
-#edu-bot-container [class*="open"],
-#edu-bot-container [class*="visible"],
-#edu-bot-container [class*="expanded"],
-#edu-bot-container [data-open="true"],
-#edu-bot-container [aria-expanded="true"] {
-  opacity: 1 !important;
-  visibility: visible !important;
-  pointer-events: auto !important;
-  transform: translateY(0) scale(1) !important;
-}
-
-/* CLOSED STATE - Only hide if explicitly closed */
-#edu-bot-container iframe[style*="display: none"],
-#edu-bot-container .edu-bot-window[style*="display: none"],
-#edu-bot-container [class*="bot-window"][style*="display: none"],
-#edu-bot-container [class*="chat-window"][style*="display: none"],
-#edu-bot-container [class*="closed"],
-#edu-bot-container [class*="hidden"],
-#edu-bot-container [class*="collapsed"] {
-  opacity: 0 !important;
-  visibility: hidden !important;
-  pointer-events: none !important;
-  transform: translateY(20px) scale(0.95) !important;
+  
+  /* DO NOT control display, visibility, or opacity - let external script handle it */
 }
 
 /* ============================================
