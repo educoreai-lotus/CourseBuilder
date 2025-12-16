@@ -128,9 +128,13 @@ const renderContent = (lesson) => {
             return (
               <pre
                 key={idx}
-                className="overflow-auto rounded-2xl border border-[rgba(148,163,184,0.18)] bg-[var(--bg-secondary)] p-4 text-sm text-[var(--text-primary)]"
+                className="overflow-auto rounded-2xl border border-[rgba(148,163,184,0.18)] p-4 text-sm"
+                style={{
+                  backgroundColor: '#000000',
+                  color: '#00ff00',
+                }}
               >
-                <code>{item.content || item.code || item.text}</code>
+                <code style={{ color: '#00ff00' }}>{item.content || item.code || item.text}</code>
               </pre>
             )
           }
