@@ -27,9 +27,12 @@ import { sendToContentStudio } from './gateways/contentStudioGateway.js';
  */
 export async function buildCourseFromLearningPath(learningPathJson, contentStudioResponse = null) {
   try {
+    console.log('[Build Course From Learning Path] ========== STARTING COURSE CREATION ==========');
     console.log('[Build Course From Learning Path] Starting course creation from structured JSON');
     console.log('[Build Course From Learning Path] Path title:', learningPathJson.path_title);
     console.log('[Build Course From Learning Path] Modules count:', learningPathJson.learning_modules?.length || 0);
+    console.log('[Build Course From Learning Path] Learner ID:', learningPathJson.learner_id);
+    console.log('[Build Course From Learning Path] Content Studio response provided:', !!contentStudioResponse);
     
     // Validate required fields
     if (!learningPathJson.learner_id) {
@@ -101,7 +104,8 @@ export async function buildCourseFromLearningPath(learningPathJson, contentStudi
       }
     });
     
-    console.log('[Build Course From Learning Path] Course created:', course.id);
+    console.log('[Build Course From Learning Path] ✅ Course created successfully:', course.id);
+    console.log('[Build Course From Learning Path] Course name:', course.course_name);
     
     // Step 2: Use AI to decide Topic NAMES and module-to-topic grouping
     // ⚠️ AI sees ONLY Learner AI learning_modules (no Content Studio content).
@@ -294,8 +298,10 @@ export async function buildCourseFromLearningPath(learningPathJson, contentStudi
     
     // Step 3: Call Content Studio to get lesson content (if not already provided)
     console.log('[Build Course From Learning Path] Step 3: Fetching lesson content from Content Studio...');
+    console.log('[Build Course From Learning Path] Content Studio response provided:', !!contentStudioResponse);
     
     if (!contentStudioResponse) {
+      console.log('[Build Course From Learning Path] Content Studio response not provided, calling Content Studio...');
       // Build Content Studio request payload from learning modules
       const skillsForContentStudio = new Set();
       for (const moduleData of sortedModules) {
@@ -322,10 +328,26 @@ export async function buildCourseFromLearningPath(learningPathJson, contentStudi
           steps: m.steps
         }))
       });
+      console.log('[Build Course From Learning Path] ✅ Content Studio response received');
+      console.log('[Build Course From Learning Path] Content Studio response structure:', {
+        hasCourses: !!contentStudioResponse.courses,
+        hasCourse: !!contentStudioResponse.course,
+        isArray: Array.isArray(contentStudioResponse),
+        coursesLength: contentStudioResponse.courses?.length || contentStudioResponse.course?.length || 0
+      });
+    } else {
+      console.log('[Build Course From Learning Path] Using provided Content Studio response');
+      console.log('[Build Course From Learning Path] Content Studio response structure:', {
+        hasCourses: !!contentStudioResponse.courses,
+        hasCourse: !!contentStudioResponse.course,
+        isArray: Array.isArray(contentStudioResponse),
+        coursesLength: contentStudioResponse.courses?.length || contentStudioResponse.course?.length || 0
+      });
     }
     
     // Step 4: Create Lessons from Content Studio response using index-based mapping
     console.log('[Build Course From Learning Path] Step 4: Creating lessons from Content Studio response...');
+    console.log('[Build Course From Learning Path] Raw Content Studio response keys:', Object.keys(contentStudioResponse || {}));
     
     // CRITICAL CONTRACT: Validate index-based mapping
     // Content Studio MUST return courses[] array (one course per learning_module)
@@ -347,13 +369,18 @@ export async function buildCourseFromLearningPath(learningPathJson, contentStudi
       );
     }
     
+    console.log('[Build Course From Learning Path] Content Studio courses extracted:', contentStudioCourses.length);
+    console.log('[Build Course From Learning Path] Learning modules count:', sortedModules.length);
+    
     if (contentStudioCourses.length !== sortedModules.length) {
-      throw new Error(
-        `[Build Course From Learning Path] Index mapping violation: ` +
+      const errorMsg = `[Build Course From Learning Path] Index mapping violation: ` +
         `learning_modules.length (${sortedModules.length}) !== Content Studio courses.length (${contentStudioCourses.length}). ` +
-        `Each learning_module[i] MUST map to courses[i].`
-      );
+        `Each learning_module[i] MUST map to courses[i].`;
+      console.error('[Build Course From Learning Path] ❌ VALIDATION FAILED:', errorMsg);
+      throw new Error(errorMsg);
     }
+    
+    console.log('[Build Course From Learning Path] ✅ Index mapping validation passed');
     
     // Build mapping: module_order → module DB record
     const moduleOrderToModule = new Map();
@@ -430,10 +457,18 @@ export async function buildCourseFromLearningPath(learningPathJson, contentStudi
       }
     }
     
-    console.log('[Build Course From Learning Path] Lessons created:', totalLessons);
+    console.log('[Build Course From Learning Path] ✅ Lessons created:', totalLessons);
+    console.log('[Build Course From Learning Path] Lesson creation completed for course:', course.id);
 
     // Step 5: Create registration (AFTER lessons are fully created)
     console.log('[Build Course From Learning Path] Step 5: Creating registration for learner and course...');
+    console.log('[Build Course From Learning Path] Registration data:', {
+      learner_id: learningPathJson.learner_id,
+      learner_name: learningPathJson.learner_name,
+      course_id: course.id,
+      company_id: learningPathJson.company_id,
+      company_name: learningPathJson.company_name
+    });
     
     // Registration field mapping (deterministic, no AI / Content Studio logic):
     // - learner_id: from Learner AI payload (required)
@@ -455,16 +490,22 @@ export async function buildCourseFromLearningPath(learningPathJson, contentStudi
     });
 
     console.log('[Build Course From Learning Path] ✅ Course creation + registration completed successfully:', course.id);
+    console.log('[Build Course From Learning Path] ========== COURSE CREATION COMPLETE ==========');
     
     return course.id;
   } catch (error) {
     // If it's already a PendingCourseCreationError, re-throw it as-is
     if (error instanceof PendingCourseCreationError) {
+      console.error('[Build Course From Learning Path] ⚠️ PendingCourseCreationError:', error.message);
       throw error;
     }
     
     // For other errors, wrap in generic error (these are real failures)
-    console.error('[Build Course From Learning Path] Error building course from Learning Path:', error);
+    console.error('[Build Course From Learning Path] ❌ ERROR building course from Learning Path:');
+    console.error('[Build Course From Learning Path] Error type:', error.constructor.name);
+    console.error('[Build Course From Learning Path] Error message:', error.message);
+    console.error('[Build Course From Learning Path] Error stack:', error.stack);
+    console.error('[Build Course From Learning Path] Full error object:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
     throw new Error(`Failed to build course from Learning Path: ${error.message}`);
   }
 }

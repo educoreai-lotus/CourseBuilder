@@ -93,16 +93,29 @@ async function triggerCourseCreationPipeline(learner, competencyTag, companyId, 
     // Step 2: Build courses from learning paths
     // Create ONE course per career_learning_path
     // For enrollment, use the FIRST course_id (one enrollment per learner)
+    console.log('[Fill Content Metrics] ========== STARTING COURSE CREATION PIPELINE ==========');
     console.log('[Fill Content Metrics] Step 2: Building courses from learning paths...');
     
     const courseIds = [];
     for (let i = 0; i < learningPaths.length; i++) {
       const { learningPath, competencyTargetName } = learningPaths[i];
-      console.log(`[Fill Content Metrics] Building course ${i + 1}/${learningPaths.length} for competency: ${competencyTargetName}`);
+      console.log(`[Fill Content Metrics] ========== BUILDING COURSE ${i + 1}/${learningPaths.length} ==========`);
+      console.log(`[Fill Content Metrics] Competency: ${competencyTargetName}`);
+      console.log(`[Fill Content Metrics] Learner ID: ${learningPath.learner_id}`);
+      console.log(`[Fill Content Metrics] Path title: ${learningPath.path_title}`);
+      console.log(`[Fill Content Metrics] Modules count: ${learningPath.learning_modules?.length || 0}`);
       
-      const courseId = await buildCourseFromLearningPath(learningPath);
-      courseIds.push(courseId);
-      console.log(`[Fill Content Metrics] ✅ Course ${i + 1} created: ${courseId}`);
+      try {
+        const courseId = await buildCourseFromLearningPath(learningPath);
+        courseIds.push(courseId);
+        console.log(`[Fill Content Metrics] ✅ Course ${i + 1} created successfully: ${courseId}`);
+      } catch (courseError) {
+        console.error(`[Fill Content Metrics] ❌ FAILED to create course ${i + 1}:`);
+        console.error(`[Fill Content Metrics] Error type: ${courseError.constructor.name}`);
+        console.error(`[Fill Content Metrics] Error message: ${courseError.message}`);
+        console.error(`[Fill Content Metrics] Error stack: ${courseError.stack}`);
+        throw courseError; // Re-throw to abort pipeline
+      }
     }
     
     // Return the FIRST course_id for enrollment (one enrollment per learner)
