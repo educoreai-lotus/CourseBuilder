@@ -3812,21 +3812,92 @@ body {
   gap: var(--spacing-sm);
 }
 
+/* Enhanced RAG Chatbot Container - Ensure full visibility and proper positioning */
 #edu-bot-container {
-  all: initial;
   position: fixed !important;
   bottom: 24px !important;
   right: 24px !important;
-  width: 64px !important;
-  height: 64px !important;
   z-index: 2147483647 !important;
-  pointer-events: auto !important;
+  pointer-events: none !important;
+  min-width: 64px !important;
+  min-height: 64px !important;
+  width: auto !important;
+  height: auto !important;
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  overflow: visible !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: none !important;
+  background: transparent !important;
 }
 
+/* Ensure all child elements are visible and clickable */
+#edu-bot-container > * {
+  pointer-events: auto !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  display: block !important;
+}
+
+/* Chatbot launcher button - ensure it's fully visible and properly sized */
+#edu-bot-container button,
+#edu-bot-container [role="button"],
+#edu-bot-container .edu-bot-launcher,
+#edu-bot-container [class*="launcher"],
+#edu-bot-container [class*="toggle"] {
+  position: relative !important;
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  width: 64px !important;
+  height: 64px !important;
+  min-width: 64px !important;
+  min-height: 64px !important;
+  border-radius: 50% !important;
+  z-index: 2147483647 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: visible !important;
+}
+
+/* Chatbot window/iframe - ensure it doesn't get cut off and is properly positioned */
 #edu-bot-container iframe,
-#edu-bot-container .edu-bot-window {
+#edu-bot-container .edu-bot-window,
+#edu-bot-container [class*="bot-window"],
+#edu-bot-container [class*="chat-window"],
+#edu-bot-container [class*="widget"] {
+  position: fixed !important;
   max-width: 90vw !important;
   max-height: 85vh !important;
-  right: 0 !important;
-  bottom: 0 !important;
+  min-width: 320px !important;
+  min-height: 400px !important;
+  width: 400px !important;
+  height: 600px !important;
+  right: 24px !important;
+  bottom: 88px !important;
+  z-index: 2147483646 !important;
+  border: none !important;
+  border-radius: 16px !important;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2) !important;
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  overflow: hidden !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* Prevent any parent from hiding the chatbot */
+body > #edu-bot-container,
+html > #edu-bot-container,
+#root > #edu-bot-container,
+[data-reactroot] > #edu-bot-container,
+.app > #edu-bot-container {
+  position: fixed !important;
+  z-index: 2147483647 !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  display: block !important;
 }

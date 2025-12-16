@@ -135,8 +135,9 @@ export function useRAGChatbot() {
           userId: userProfile.id,
           token: token,
           tenantId: userProfile.company || 'default',
-          defaultOpen: false,        // Force closed by default
-          startCollapsed: true       // Enforce launcher-only mode
+          defaultOpen: false,        // MUST be false - start closed
+          startCollapsed: true,      // MUST be true - show only launcher icon
+          autoOpen: false            // Explicitly disable auto-open
         })
         initializedRef.current = true
         globalInitializedRef.current = true
