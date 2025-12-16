@@ -44,35 +44,69 @@ async function triggerCourseCreationPipeline(learners, companyId, companyName, l
     });
     
     console.log('[Fill Content Metrics] Learner AI response structure:', {
-      has_user_id: !!learnerAIResponse.user_id,
+      has_learners_data: !!learnerAIResponse.learners_data,
       has_career_learning_paths: !!learnerAIResponse.career_learning_paths,
+      learners_data_count: learnerAIResponse.learners_data?.length || 0,
       career_learning_paths_count: learnerAIResponse.career_learning_paths?.length || 0
     });
     
-    // Validate career_learning_paths array exists and is not empty (400 error per spec)
-    if (!learnerAIResponse.career_learning_paths || !Array.isArray(learnerAIResponse.career_learning_paths)) {
-      const error = new Error('Learner AI response missing career_learning_paths array');
+    // Handle new batch response format: data.learners_data[]
+    // Each learner has their own career_learning_paths[]
+    let allCareerLearningPaths = [];
+    
+    if (learnerAIResponse.learners_data && Array.isArray(learnerAIResponse.learners_data)) {
+      // New batch format: extract career_learning_paths from each learner
+      console.log(`[Fill Content Metrics] Processing batch response with ${learnerAIResponse.learners_data.length} learner(s)`);
+      
+      for (const learnerData of learnerAIResponse.learners_data) {
+        if (learnerData.career_learning_paths && Array.isArray(learnerData.career_learning_paths)) {
+          // Add learner metadata to each career path
+          for (const careerPath of learnerData.career_learning_paths) {
+            allCareerLearningPaths.push({
+              ...careerPath,
+              // Enrich with learner data
+              learner_id: learnerData.user_id || learnerData.learner_id,
+              learner_name: learnerData.user_name || learnerData.learner_name,
+              company_id: learnerData.company_id || learnerAIResponse.company_id || companyId,
+              company_name: learnerData.company_name || learnerAIResponse.company_name || companyName,
+              learning_flow: learnerData.learning_flow || learnerAIResponse.learning_flow || learningFlow,
+              preferred_language: learnerData.preferred_language
+            });
+          }
+        }
+      }
+    } else if (learnerAIResponse.career_learning_paths && Array.isArray(learnerAIResponse.career_learning_paths)) {
+      // Legacy format: career_learning_paths at top level
+      console.log('[Fill Content Metrics] Processing legacy response format');
+      allCareerLearningPaths = learnerAIResponse.career_learning_paths.map(cp => ({
+        ...cp,
+        learner_id: learnerAIResponse.user_id,
+        learner_name: learnerAIResponse.user_name,
+        company_id: learnerAIResponse.company_id || companyId,
+        company_name: learnerAIResponse.company_name || companyName,
+        learning_flow: learnerAIResponse.learning_flow || learningFlow
+      }));
+    } else {
+      const error = new Error('Learner AI response missing learners_data or career_learning_paths array');
       error.status = 400;
       throw error;
     }
     
-    if (learnerAIResponse.career_learning_paths.length === 0) {
+    // Validate we have at least one career learning path
+    if (allCareerLearningPaths.length === 0) {
       const error = new Error('Learner AI returned empty career_learning_paths array');
       error.status = 400;
       throw error;
     }
     
+    console.log(`[Fill Content Metrics] Extracted ${allCareerLearningPaths.length} total career learning path(s) from response`);
+    
     // Extract learning_path from each career_learning_path
     // IGNORE skills_raw_data completely (only Content Studio uses it)
-    // Map each career_learning_path to a learning path for course creation
-    // Note: Learner AI may return multiple career_learning_paths per learner or one per learner
-    // We'll process all of them and create courses accordingly
     const learningPaths = [];
     
-    // Group career_learning_paths by learner_id if Learner AI returns them per learner
-    // Otherwise, process them sequentially
-    for (let i = 0; i < learnerAIResponse.career_learning_paths.length; i++) {
-      const careerPath = learnerAIResponse.career_learning_paths[i];
+    for (let i = 0; i < allCareerLearningPaths.length; i++) {
+      const careerPath = allCareerLearningPaths[i];
       const learningPath = careerPath.learning_path;
       
       if (!learningPath) {
@@ -80,12 +114,14 @@ async function triggerCourseCreationPipeline(learners, companyId, companyName, l
       }
       
       // Find matching learner from original request
-      // Learner AI should return learning_paths with learner_id matching our request
-      const matchingLearner = learners.find(l => l.learner_id === learningPath.learner_id) || learners[0];
+      const matchingLearner = learners.find(l => 
+        l.learner_id === careerPath.learner_id || 
+        l.learner_id === learningPath.learner_id
+      ) || learners[0];
       
-      // Ensure learner_id is set
-      if (!learningPath.learner_id && matchingLearner) {
-        learningPath.learner_id = matchingLearner.learner_id;
+      // Ensure learner_id is set in learning_path
+      if (!learningPath.learner_id) {
+        learningPath.learner_id = careerPath.learner_id || matchingLearner?.learner_id;
       }
       
       learningPaths.push({
@@ -93,11 +129,11 @@ async function triggerCourseCreationPipeline(learners, companyId, companyName, l
         learningPath: {
           ...learningPath,
           competency_target_name: careerPath.competency_target_name || `Career Path ${i + 1}`,
-          learning_flow: learnerAIResponse.learning_flow || learningFlow,
+          learning_flow: careerPath.learning_flow || learningFlow,
           // Enrichment for registration step
-          learner_name: matchingLearner?.learner_name || null,
-          company_id: companyId || null,
-          company_name: companyName || null
+          learner_name: careerPath.learner_name || matchingLearner?.learner_name || null,
+          company_id: careerPath.company_id || companyId || null,
+          company_name: careerPath.company_name || companyName || null
         },
         competencyTargetName: careerPath.competency_target_name || `Career Path ${i + 1}`
         // skills_raw_data is IGNORED - not stored, not logged, not used

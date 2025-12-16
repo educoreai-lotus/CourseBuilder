@@ -74,7 +74,16 @@ export async function sendToLearnerAI(payloadObject = {}) {
     const { data: json } = await postToCoordinator(envelope).catch(() => ({ data: {} }));
     
     // Coordinator returns the envelope with filled response field
-    const result = json && json.response ? json.response : (json && json.success ? json.data : json);
+    // Handle different response structures:
+    // 1. Envelope format: { response: { ... } }
+    // 2. Direct format: { success: true, data: { ... } }
+    // 3. Direct format: { data: { ... } }
+    let result = json && json.response ? json.response : (json && json.success ? json.data : json);
+    
+    // If result has nested data structure (new batch format), extract it
+    if (result && result.data && result.data.learners_data) {
+      result = result.data;
+    }
 
     // Return response data (should contain structured Learning Path JSON)
     return result;
