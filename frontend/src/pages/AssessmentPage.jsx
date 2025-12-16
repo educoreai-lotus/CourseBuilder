@@ -53,21 +53,13 @@ export default function AssessmentPage() {
         learner_name: userProfile?.name
       })
 
-      // If Assessment service returns a redirect_url, redirect to it
-      if (response?.redirect_url) {
-        showToast('Redirecting to assessment...', 'success')
-        // Redirect to external Assessment service
-        window.location.href = response.redirect_url
-        return
-      }
-
-      // Fallback: If no redirect_url, show success message and navigate to feedback
-      // This happens if Assessment service is not fully integrated yet
-      showToast('Assessment session created!', 'success')
-      setTimeout(() => {
-        showToast('Great job! Share your feedback with the course team.', 'success')
-        navigate(`/course/${id}/feedback`)
-      }, 2000)
+      // Always redirect to Assessment service
+      // If Assessment service returns a redirect_url, use it; otherwise use default URL
+      const assessmentUrl = response?.redirect_url || 'https://assessment-seven-liard.vercel.app/'
+      
+      showToast('Redirecting to assessment...', 'success')
+      // Redirect to external Assessment service
+      window.location.href = assessmentUrl
     } catch (error) {
       console.error('Error starting assessment:', error)
       showToast(
