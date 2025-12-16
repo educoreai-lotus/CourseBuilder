@@ -3928,13 +3928,13 @@ body {
    Modern chat interface design
    ============================================ */
 
-/* Chat Window Container - Smart visibility based on external script state */
+/* Chat Window Container - Respect external script's visibility control */
 /* Only target the actual chat window, not the launcher button */
 #edu-bot-container iframe,
 #edu-bot-container .edu-bot-window,
-#edu-bot-container [class*="bot-window"]:not([class*="launcher"]):not([class*="toggle"]),
-#edu-bot-container [class*="chat-window"]:not([class*="launcher"]):not([class*="toggle"]),
-#edu-bot-container [class*="widget"]:not([class*="launcher"]):not([class*="toggle"]) {
+#edu-bot-container [class*="bot-window"]:not([class*="launcher"]):not([class*="toggle"]):not(button),
+#edu-bot-container [class*="chat-window"]:not([class*="launcher"]):not([class*="toggle"]):not(button),
+#edu-bot-container [class*="widget"]:not([class*="launcher"]):not([class*="toggle"]):not(button) {
   position: fixed !important;
   bottom: 96px !important;
   right: 24px !important;
@@ -3965,27 +3965,19 @@ body {
   overflow: hidden !important;
 }
 
-/* Default state - hidden, but allow external script to control visibility */
-#edu-bot-container iframe:not([style*="display: block"]):not([style*="display:flex"]),
-#edu-bot-container .edu-bot-window:not([style*="display: block"]):not([style*="display:flex"]),
-#edu-bot-container [class*="bot-window"]:not([class*="launcher"]):not([style*="display: block"]):not([style*="display:flex"]),
-#edu-bot-container [class*="chat-window"]:not([class*="launcher"]):not([style*="display: block"]):not([style*="display:flex"]) {
-  opacity: 0 !important;
-  visibility: hidden !important;
-  display: none !important;
-  pointer-events: none !important;
-  transform: translateY(20px) scale(0.95) !important;
-}
-
-/* OPEN STATE - Show when external script sets display: block or flex */
-#edu-bot-container iframe[style*="display: block"],
-#edu-bot-container iframe[style*="display:flex"],
-#edu-bot-container .edu-bot-window[style*="display: block"],
-#edu-bot-container .edu-bot-window[style*="display:flex"],
-#edu-bot-container [class*="bot-window"][style*="display: block"],
-#edu-bot-container [class*="bot-window"][style*="display:flex"],
-#edu-bot-container [class*="chat-window"][style*="display: block"],
-#edu-bot-container [class*="chat-window"][style*="display:flex"],
+/* OPEN STATE - When external script shows the window (display: block or flex) */
+#edu-bot-container iframe[style*="display: block"]:not([style*="display: none"]),
+#edu-bot-container iframe[style*="display:flex"]:not([style*="display: none"]),
+#edu-bot-container iframe[style*="display: flex"]:not([style*="display: none"]),
+#edu-bot-container .edu-bot-window[style*="display: block"]:not([style*="display: none"]),
+#edu-bot-container .edu-bot-window[style*="display:flex"]:not([style*="display: none"]),
+#edu-bot-container .edu-bot-window[style*="display: flex"]:not([style*="display: none"]),
+#edu-bot-container [class*="bot-window"][style*="display: block"]:not([style*="display: none"]),
+#edu-bot-container [class*="bot-window"][style*="display:flex"]:not([style*="display: none"]),
+#edu-bot-container [class*="bot-window"][style*="display: flex"]:not([style*="display: none"]),
+#edu-bot-container [class*="chat-window"][style*="display: block"]:not([style*="display: none"]),
+#edu-bot-container [class*="chat-window"][style*="display:flex"]:not([style*="display: none"]),
+#edu-bot-container [class*="chat-window"][style*="display: flex"]:not([style*="display: none"]),
 #edu-bot-container [class*="open"],
 #edu-bot-container [class*="visible"],
 #edu-bot-container [class*="expanded"],
@@ -3993,18 +3985,34 @@ body {
 #edu-bot-container [aria-expanded="true"] {
   opacity: 1 !important;
   visibility: visible !important;
-  display: block !important;
   pointer-events: auto !important;
   transform: translateY(0) scale(1) !important;
 }
 
-/* Ensure launcher button is always visible and clickable */
-#edu-bot-container button:first-child,
-#edu-bot-container [role="button"]:first-child,
-#edu-bot-container > div:first-child > button,
-#edu-bot-container [class*="launcher"],
-#edu-bot-container [class*="toggle"] {
-  /* Launcher button styles are defined above - keep them separate */
+/* CLOSED STATE - Only hide if external script explicitly sets display: none */
+#edu-bot-container iframe[style*="display: none"],
+#edu-bot-container .edu-bot-window[style*="display: none"],
+#edu-bot-container [class*="bot-window"][style*="display: none"],
+#edu-bot-container [class*="chat-window"][style*="display: none"],
+#edu-bot-container [class*="closed"],
+#edu-bot-container [class*="hidden"],
+#edu-bot-container [class*="collapsed"] {
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+  transform: translateY(20px) scale(0.95) !important;
+}
+
+/* Default hidden state - only apply if no explicit display style is set */
+#edu-bot-container iframe:not([style*="display"]),
+#edu-bot-container .edu-bot-window:not([style*="display"]),
+#edu-bot-container [class*="bot-window"]:not([class*="launcher"]):not([class*="toggle"]):not(button):not([style*="display"]),
+#edu-bot-container [class*="chat-window"]:not([class*="launcher"]):not([class*="toggle"]):not(button):not([style*="display"]) {
+  opacity: 0 !important;
+  visibility: hidden !important;
+  display: none !important;
+  pointer-events: none !important;
+  transform: translateY(20px) scale(0.95) !important;
 }
 
 /* ============================================
