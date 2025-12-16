@@ -1,0 +1,22 @@
+{
+  "requester_service": "course-builder-service",
+  "payload": {
+    "company_id": "ba3dff4a-9177-4b74-b77e-6bdd6488de86",
+    "company_name": "Lotus techhub",
+    "learning_flow": "career_path_driven",
+    "learners": [
+      {
+        "learner_id": "210dc7a7-9808-445c-8eb7-51c217e3919c",
+        "learner_name": "Sana Mohanna",
+        "preferred_language": "en"
+      },
+      {
+        "learner_id": "b2c3d4e5-f6a7-8901-2345-678901234567",
+        "learner_name": "John Doe",
+        "preferred_language": "en"
+      }
+    ]
+  },
+  "response": {}
+}
+
