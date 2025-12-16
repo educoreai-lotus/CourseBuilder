@@ -17,7 +17,8 @@
     "lucide-react": "^0.441.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "react-router-dom": "^7.0.0"
+    "react-router-dom": "^7.0.0",
+    "reactflow": "^11.11.4"
   },
   "devDependencies": {
     "@babel/preset-env": "^7.25.0",

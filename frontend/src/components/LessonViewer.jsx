@@ -194,14 +194,13 @@ const renderContent = (lesson) => {
           if (contentType === 'mind_map') {
             return (
               <div key={idx} className="rounded-2xl border border-[rgba(148,163,184,0.14)] bg-[var(--bg-card)]/90 p-4">
-                <p className="mb-2 text-sm font-semibold text-[var(--text-primary)]">Mind Map</p>
+                <p className="mb-4 text-sm font-semibold text-[var(--text-primary)]">Mind Map</p>
                 {item.nodes && item.edges ? (
-                  <div className="text-sm text-[var(--text-secondary)]">
-                    <p>Mind map visualization (interactive view coming soon)</p>
-                    <p className="mt-2 text-xs text-[var(--text-muted)]">Nodes: {item.nodes.length}, Edges: {item.edges.length}</p>
-                  </div>
+                  <MindMapViewer data={{ nodes: item.nodes, edges: item.edges }} />
                 ) : (
-                  <p className="text-sm text-[var(--text-secondary)]">Mind map data available</p>
+                  <div className="text-sm text-[var(--text-secondary)] p-4 text-center">
+                    <p>Mind map data available but structure is invalid</p>
+                  </div>
                 )}
               </div>
             )
