@@ -169,7 +169,9 @@ async function triggerCourseCreationPipeline(learners, companyId, companyName, l
       console.log(`[Fill Content Metrics] Modules count: ${learningPath.learning_modules?.length || 0}`);
       
       try {
-        const courseId = await buildCourseFromLearningPath(learningPath);
+        // Pass the full Learner AI data response to buildCourseFromLearningPath
+        // so it can send it AS-IS to Content Studio
+        const courseId = await buildCourseFromLearningPath(learningPath, null, learnerAIResponse);
         courseIds.push(courseId);
         console.log(`[Fill Content Metrics] ✅ Course ${i + 1} created successfully: ${courseId}`);
       } catch (courseError) {

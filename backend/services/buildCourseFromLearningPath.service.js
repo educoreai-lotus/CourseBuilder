@@ -23,9 +23,10 @@ import { sendToContentStudio } from './gateways/contentStudioGateway.js';
  * @param {Array} learningPathJson.learning_modules - Array of learning modules
  * @param {number} learningPathJson.total_estimated_duration_hours - Total duration
  * @param {Object} contentStudioResponse - Content Studio response with courses[] array (optional, will be fetched if not provided)
+ * @param {Object} learnerAIDataResponse - Full Learner AI data response (with learners_data and career_learning_paths) to send to Content Studio AS-IS (optional)
  * @returns {Promise<string>} - Course ID of created course
  */
-export async function buildCourseFromLearningPath(learningPathJson, contentStudioResponse = null) {
+export async function buildCourseFromLearningPath(learningPathJson, contentStudioResponse = null, learnerAIDataResponse = null) {
   try {
     console.log('[Build Course From Learning Path] ========== STARTING COURSE CREATION ==========');
     console.log('[Build Course From Learning Path] Starting course creation from structured JSON');
@@ -302,32 +303,44 @@ export async function buildCourseFromLearningPath(learningPathJson, contentStudi
     
     if (!contentStudioResponse) {
       console.log('[Build Course From Learning Path] Content Studio response not provided, calling Content Studio...');
-      // Build Content Studio request payload from learning modules
-      const skillsForContentStudio = new Set();
-      for (const moduleData of sortedModules) {
-        const skillsInModule = Array.isArray(moduleData.skills_in_module)
-          ? moduleData.skills_in_module
-          : moduleData.skills_in_module
-          ? [moduleData.skills_in_module]
-          : [];
-        for (const skill of skillsInModule) {
-          skillsForContentStudio.add(skill);
-        }
-      }
       
-      contentStudioResponse = await sendToContentStudio({
-        learnerData: {
-          learner_id: learningPathJson.learner_id,
-          learner_name: learningPathJson.learner_name || 'Learner',
-          learner_company: learningPathJson.company_name || null
-        },
-        skills: Array.from(skillsForContentStudio),
-        learning_path: sortedModules.map(m => ({
-          module_order: m.module_order,
-          module_title: m.module_title,
-          steps: m.steps
-        }))
-      });
+      // If we have the full Learner AI data response, send it AS-IS to Content Studio
+      if (learnerAIDataResponse) {
+        console.log('[Build Course From Learning Path] Sending full Learner AI data response to Content Studio AS-IS');
+        console.log('[Build Course From Learning Path] Learner AI data response keys:', Object.keys(learnerAIDataResponse));
+        
+        contentStudioResponse = await sendToContentStudio({
+          learner_ai_data: learnerAIDataResponse // Send the full data object AS-IS
+        });
+      } else {
+        // Fallback: Build Content Studio request payload from learning modules (legacy path)
+        console.log('[Build Course From Learning Path] No Learner AI data response provided, using legacy payload structure');
+        const skillsForContentStudio = new Set();
+        for (const moduleData of sortedModules) {
+          const skillsInModule = Array.isArray(moduleData.skills_in_module)
+            ? moduleData.skills_in_module
+            : moduleData.skills_in_module
+            ? [moduleData.skills_in_module]
+            : [];
+          for (const skill of skillsInModule) {
+            skillsForContentStudio.add(skill);
+          }
+        }
+        
+        contentStudioResponse = await sendToContentStudio({
+          learnerData: {
+            learner_id: learningPathJson.learner_id,
+            learner_name: learningPathJson.learner_name || 'Learner',
+            learner_company: learningPathJson.company_name || null
+          },
+          skills: Array.from(skillsForContentStudio),
+          learning_path: sortedModules.map(m => ({
+            module_order: m.module_order,
+            module_title: m.module_title,
+            steps: m.steps
+          }))
+        });
+      }
       console.log('[Build Course From Learning Path] ✅ Content Studio response received');
       console.log('[Build Course From Learning Path] Content Studio response structure:', {
         hasCourses: !!contentStudioResponse.courses,
