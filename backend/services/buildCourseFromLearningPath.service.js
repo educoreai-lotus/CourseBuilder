@@ -181,11 +181,16 @@ export async function buildCourseFromLearningPath(learningPathJson, contentStudi
       allLessons: allLessonsForAI
     });
 
-    // 2.3 Validate AI output strictly (no fallback allowed here)
-    if (!aiStructureResult || !aiStructureResult.isValid || aiStructureResult.source !== 'ai-generated') {
+    // 2.3 Validate AI output - allow fallback for edge cases (e.g., single module)
+    if (!aiStructureResult || !aiStructureResult.structure) {
       throw new Error(
-        '[Build Course From Learning Path] AI topic/module structure is invalid or fallback. Aborting course creation.'
+        '[Build Course From Learning Path] AI structure generation failed completely. No structure available.'
       );
+    }
+    
+    // Log if fallback was used (but don't abort)
+    if (aiStructureResult.source === 'fallback') {
+      console.warn('[Build Course From Learning Path] ⚠️ Using fallback structure (AI validation failed or edge case)');
     }
 
     const { structure } = aiStructureResult;
