@@ -147,7 +147,8 @@ async function triggerCourseCreationPipeline(learners, companyId, companyName, l
     }
     
     // For other errors, wrap in generic error (these are real failures)
-    console.error(`[Fill Content Metrics] Error in course creation pipeline for learner ${learner.learner_id}:`, error);
+    console.error(`[Fill Content Metrics] Error in course creation pipeline:`, error);
+    console.error(`[Fill Content Metrics] Learners count: ${learners?.length || 0}`);
     throw new Error(`Failed to create course for enrollment: ${error.message}`);
   }
 }
