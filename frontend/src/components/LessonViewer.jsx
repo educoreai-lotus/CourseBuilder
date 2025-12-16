@@ -45,14 +45,34 @@ const renderContent = (lesson) => {
   }
 
   // ⚠️ content_data is ALWAYS an array (Content Studio contents[] array)
-  // Each item in the array is a content block (text_audio, code, presentation, audio, mind_map, avatar_video)
+  // Each item in the array can be:
+  // 1. Direct format: { type: "...", text: "...", ... }
+  // 2. Nested format: { content_data: {...}, content_type: "..." }
   if (Array.isArray(contentData)) {
-    // Use format_order if available, otherwise use contentData order
+    // Normalize the array - handle both direct and nested formats
+    const normalizedContent = contentData.map(item => {
+      // If item has nested content_data and content_type, extract them
+      if (item.content_data && item.content_type) {
+        return {
+          ...item.content_data, // Spread the actual content
+          content_type: item.content_type, // Keep content_type at top level
+          type: item.content_type // Also set type for compatibility
+        }
+      }
+      // Otherwise, use item as-is (direct format)
+      return {
+        ...item,
+        content_type: item.content_type || item.type,
+        type: item.type || item.content_type
+      }
+    })
+
+    // Use format_order if available, otherwise use normalizedContent order
     const formatOrder = lesson?.format_order || []
     const orderedContent = formatOrder.length > 0 
       ? formatOrder.map(formatType => {
           // Find matching content item by content_type
-          const matchingItem = contentData.find(item => {
+          const matchingItem = normalizedContent.find(item => {
             const itemType = item.content_type || item.type
             return itemType === formatType || 
                    (formatType === 'text' && (itemType === 'text' || itemType === 'text_audio')) ||
@@ -60,7 +80,7 @@ const renderContent = (lesson) => {
           })
           return matchingItem ? { ...matchingItem, _formatType: formatType } : null
         }).filter(Boolean)
-      : contentData
+      : normalizedContent
 
     return (
       <div className="space-y-6">
