@@ -43,12 +43,23 @@ async function triggerCourseCreationPipeline(learners, companyId, companyName, l
       }))
     });
     
-    console.log('[Fill Content Metrics] Learner AI response structure:', {
-      has_learners_data: !!learnerAIResponse.learners_data,
-      has_career_learning_paths: !!learnerAIResponse.career_learning_paths,
-      learners_data_count: learnerAIResponse.learners_data?.length || 0,
-      career_learning_paths_count: learnerAIResponse.career_learning_paths?.length || 0
+    // ========== LOG FULL LEARNER AI RESPONSE ==========
+    console.log('[Fill Content Metrics] ========== LEARNER AI RESPONSE RECEIVED ==========');
+    console.log('[Fill Content Metrics] Response type:', typeof learnerAIResponse);
+    console.log('[Fill Content Metrics] Response is null/undefined:', learnerAIResponse == null);
+    console.log('[Fill Content Metrics] Response keys:', learnerAIResponse ? Object.keys(learnerAIResponse) : 'null/undefined');
+    console.log('[Fill Content Metrics] Full response:', JSON.stringify(learnerAIResponse, null, 2));
+    console.log('[Fill Content Metrics] Response structure check:', {
+      has_learners_data: !!learnerAIResponse?.learners_data,
+      has_career_learning_paths: !!learnerAIResponse?.career_learning_paths,
+      learners_data_type: typeof learnerAIResponse?.learners_data,
+      career_learning_paths_type: typeof learnerAIResponse?.career_learning_paths,
+      learners_data_is_array: Array.isArray(learnerAIResponse?.learners_data),
+      career_learning_paths_is_array: Array.isArray(learnerAIResponse?.career_learning_paths),
+      learners_data_count: learnerAIResponse?.learners_data?.length || 0,
+      career_learning_paths_count: learnerAIResponse?.career_learning_paths?.length || 0
     });
+    console.log('[Fill Content Metrics] ===================================================');
     
     // Handle new batch response format: data.learners_data[]
     // Each learner has their own career_learning_paths[]

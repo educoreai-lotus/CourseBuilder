@@ -78,6 +78,25 @@ export async function sendToLearnerAI(payloadObject = {}) {
     // Send via Coordinator
     const { data: json } = await postToCoordinator(envelope).catch(() => ({ data: {} }));
     
+    // ========== LOG RAW RESPONSE FROM COORDINATOR ==========
+    console.log('[LearnerAI Gateway] ========== RAW RESPONSE FROM COORDINATOR ==========');
+    console.log('[LearnerAI Gateway] Full response object:', JSON.stringify(json, null, 2));
+    console.log('[LearnerAI Gateway] Response type:', typeof json);
+    console.log('[LearnerAI Gateway] Response keys:', json ? Object.keys(json) : 'null/undefined');
+    console.log('[LearnerAI Gateway] Has response field:', !!json?.response);
+    console.log('[LearnerAI Gateway] Has success field:', !!json?.success);
+    console.log('[LearnerAI Gateway] Has data field:', !!json?.data);
+    if (json?.response) {
+      console.log('[LearnerAI Gateway] response.answer type:', typeof json.response.answer);
+      console.log('[LearnerAI Gateway] response.answer is string:', typeof json.response.answer === 'string');
+      if (json.response.answer && typeof json.response.answer === 'string') {
+        console.log('[LearnerAI Gateway] response.answer length:', json.response.answer.length);
+        console.log('[LearnerAI Gateway] response.answer preview (first 500 chars):', json.response.answer.substring(0, 500));
+      }
+      console.log('[LearnerAI Gateway] response keys:', Object.keys(json.response));
+    }
+    console.log('[LearnerAI Gateway] ===================================================');
+    
     // Coordinator returns the envelope with filled response field
     // Handle different response structures:
     // 1. Envelope format: { response: { ... } }
@@ -85,26 +104,58 @@ export async function sendToLearnerAI(payloadObject = {}) {
     // 3. Direct format: { data: { ... } }
     let result = json && json.response ? json.response : (json && json.success ? json.data : json);
     
+    console.log('[LearnerAI Gateway] ========== EXTRACTED RESULT (BEFORE PARSING) ==========');
+    console.log('[LearnerAI Gateway] Result type:', typeof result);
+    console.log('[LearnerAI Gateway] Result keys:', result ? Object.keys(result) : 'null/undefined');
+    console.log('[LearnerAI Gateway] Result preview:', JSON.stringify(result, null, 2).substring(0, 1000));
+    console.log('[LearnerAI Gateway] ===================================================');
+    
     // Learner AI currently returns the real payload as a JSON string in response.answer
     // Example: { response: { answer: "{\"success\":true,\"action\":\"get_batch_career_paths\",...}" } }
     if (result && typeof result.answer === 'string') {
+      console.log('[LearnerAI Gateway] Parsing response.answer as JSON string...');
       try {
         const parsed = JSON.parse(result.answer);
+        console.log('[LearnerAI Gateway] Parsed successfully. Parsed keys:', Object.keys(parsed));
+        console.log('[LearnerAI Gateway] Parsed preview:', JSON.stringify(parsed, null, 2).substring(0, 1000));
+        
         // If parsed has a data field (batch format), use parsed.data so that
         // fillContentMetrics sees { company_id, company_name, learning_flow, learners_data: [...] }
         if (parsed && parsed.data) {
+          console.log('[LearnerAI Gateway] Using parsed.data (batch format)');
           result = parsed.data;
         } else {
+          console.log('[LearnerAI Gateway] Using parsed directly');
           result = parsed;
         }
       } catch (parseError) {
         console.error('[LearnerAI Gateway] Failed to parse response.answer JSON:', parseError);
+        console.error('[LearnerAI Gateway] Parse error details:', {
+          message: parseError.message,
+          stack: parseError.stack
+        });
         // Fall back to original result (will be validated later)
       }
     } else if (result && result.data && result.data.learners_data) {
       // Fallback: if Coordinator already unwrapped to { success, data }, use data directly
+      console.log('[LearnerAI Gateway] Using result.data (already unwrapped)');
       result = result.data;
     }
+
+    // ========== LOG FINAL RESULT ==========
+    console.log('[LearnerAI Gateway] ========== FINAL RESULT (RETURNING TO FILL CONTENT METRICS) ==========');
+    console.log('[LearnerAI Gateway] Final result type:', typeof result);
+    console.log('[LearnerAI Gateway] Final result keys:', result ? Object.keys(result) : 'null/undefined');
+    console.log('[LearnerAI Gateway] Final result full:', JSON.stringify(result, null, 2));
+    console.log('[LearnerAI Gateway] Has learners_data:', !!result?.learners_data);
+    console.log('[LearnerAI Gateway] Has career_learning_paths:', !!result?.career_learning_paths);
+    if (result?.learners_data) {
+      console.log('[LearnerAI Gateway] learners_data length:', result.learners_data.length);
+    }
+    if (result?.career_learning_paths) {
+      console.log('[LearnerAI Gateway] career_learning_paths length:', result.career_learning_paths.length);
+    }
+    console.log('[LearnerAI Gateway] ===================================================');
 
     // Return response data (should contain structured Learning Path JSON or batch data.learners_data)
     return result;
