@@ -1,33 +1,55 @@
 /**
  * Learner AI Gateway
  * Routes requests to Learner AI through Coordinator with signatures
- * NEW FLOW: Course Builder calls Learner AI with learner_id and tag
+ * NEW FLOW: Course Builder calls Learner AI with company and learners array
  */
 
 import { postToCoordinator } from './coordinatorClient.js';
 
 /**
  * Send request to Learner AI via Coordinator
- * @param {Object} payloadObject - Payload object with learner_id and tag
- * @param {string} payloadObject.user_id - Learner ID (required)
- * @param {string} payloadObject.tag - Tag (competency, learning-path-name, etc) (required)
+ * @param {Object} payloadObject - Payload object with company and learners
+ * @param {string} payloadObject.company_id - Company ID (required)
+ * @param {string} payloadObject.company_name - Company name (required)
+ * @param {string} payloadObject.learning_flow - Learning flow (default: "career_path_driven")
+ * @param {Array} payloadObject.learners - Array of learners with learner_id, learner_name, preferred_language (required)
  * @returns {Promise<Object>} Response payload object with learning_path and skills
  */
 export async function sendToLearnerAI(payloadObject = {}) {
   try {
     // Build payload object for NEW flow
     // Directory → Course Builder → Learner AI
-    // Course Builder sends: { learner_id, tag }
+    // Course Builder sends: { company_id, company_name, learning_flow, learners[] }
     const sendPayload = {
-      action: 'get_learning_path',
-      description: 'Get personalized learning path and skills for a learner based on competency tag',
-      user_id: payloadObject.user_id || payloadObject.learner_id || null,
-      tag: payloadObject.tag || null
+      company_id: payloadObject.company_id || null,
+      company_name: payloadObject.company_name || null,
+      learning_flow: payloadObject.learning_flow || 'career_path_driven',
+      learners: Array.isArray(payloadObject.learners) ? payloadObject.learners : []
     };
 
     // Validate required fields
-    if (!sendPayload.user_id || !sendPayload.tag) {
-      throw new Error('user_id (or learner_id) and tag are required for Learner AI request');
+    if (!sendPayload.company_id) {
+      throw new Error('company_id is required for Learner AI request');
+    }
+    if (!sendPayload.company_name) {
+      throw new Error('company_name is required for Learner AI request');
+    }
+    if (!Array.isArray(sendPayload.learners) || sendPayload.learners.length === 0) {
+      throw new Error('learners array is required and must not be empty for Learner AI request');
+    }
+    
+    // Validate each learner has required fields
+    for (let i = 0; i < sendPayload.learners.length; i++) {
+      const learner = sendPayload.learners[i];
+      if (!learner.learner_id) {
+        throw new Error(`Learner at index ${i} is missing learner_id`);
+      }
+      if (!learner.learner_name) {
+        throw new Error(`Learner at index ${i} is missing learner_name`);
+      }
+      if (!learner.preferred_language) {
+        throw new Error(`Learner at index ${i} is missing preferred_language`);
+      }
     }
 
     // Build response template (empty, Learner AI will fill it)
@@ -58,6 +80,13 @@ export async function sendToLearnerAI(payloadObject = {}) {
       payload: sendPayload,
       response: responseTemplate
     };
+    
+    console.log('[LearnerAI Gateway] Sending request to Learner AI:', {
+      company_id: sendPayload.company_id,
+      company_name: sendPayload.company_name,
+      learning_flow: sendPayload.learning_flow,
+      learners_count: sendPayload.learners.length
+    });
 
     // Send via Coordinator
     const { data: json } = await postToCoordinator(envelope).catch(() => ({ data: {} }));

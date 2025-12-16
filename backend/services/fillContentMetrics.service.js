@@ -17,22 +17,30 @@ import { PendingCourseCreationError } from '../utils/PendingCourseCreationError.
 /**
  * Trigger course creation pipeline for CAREER_PATH_DRIVEN enrollment
  * Flow: Learner AI (returns wrapped JSON with career_learning_paths[]) → Course Builder builds courses directly
- * @param {Object} learner - Learner object with learner_id, learner_name, etc.
- * @param {string} competencyTag - Competency tag (e.g., "Node.js Backend Development")
+ * @param {Array} learners - Array of learner objects with learner_id, learner_name, preferred_language
  * @param {string} companyId - Company ID
  * @param {string} companyName - Company name
- * @returns {Promise<string>} - Course ID of created course (uses first career_learning_path)
+ * @param {string} learningFlow - Learning flow (default: "CAREER_PATH_DRIVEN")
+ * @returns {Promise<string>} - Course ID of created course (uses first career_learning_path for first learner)
  */
-async function triggerCourseCreationPipeline(learner, competencyTag, companyId, companyName) {
+async function triggerCourseCreationPipeline(learners, companyId, companyName, learningFlow = 'CAREER_PATH_DRIVEN') {
   try {
-    console.log(`[Fill Content Metrics] Triggering course creation pipeline for learner: ${learner.learner_id}`);
-    console.log(`[Fill Content Metrics] Competency tag: ${competencyTag}`);
+    console.log(`[Fill Content Metrics] Triggering course creation pipeline for ${learners.length} learner(s)`);
+    console.log(`[Fill Content Metrics] Company: ${companyName} (${companyId})`);
+    console.log(`[Fill Content Metrics] Learning flow: ${learningFlow}`);
     
     // Step 1: Call Learner AI to get wrapped JSON with career_learning_paths[]
-    console.log('[Fill Content Metrics] Step 1: Calling Learner AI...');
+    // Send all learners in one request
+    console.log('[Fill Content Metrics] Step 1: Calling Learner AI with all learners...');
     const learnerAIResponse = await sendToLearnerAI({
-      user_id: learner.learner_id,
-      tag: competencyTag || 'General Learning Path'
+      company_id: companyId,
+      company_name: companyName,
+      learning_flow: learningFlow.toLowerCase(), // Send as "career_path_driven"
+      learners: learners.map(learner => ({
+        learner_id: learner.learner_id,
+        learner_name: learner.learner_name,
+        preferred_language: learner.preferred_language || 'en'
+      }))
     });
     
     console.log('[Fill Content Metrics] Learner AI response structure:', {
@@ -54,39 +62,47 @@ async function triggerCourseCreationPipeline(learner, competencyTag, companyId, 
       throw error;
     }
     
-    // Normalize user_id → learner_id for each learning_path
     // Extract learning_path from each career_learning_path
     // IGNORE skills_raw_data completely (only Content Studio uses it)
-    const learningPaths = learnerAIResponse.career_learning_paths.map((careerPath, index) => {
+    // Map each career_learning_path to a learning path for course creation
+    // Note: Learner AI may return multiple career_learning_paths per learner or one per learner
+    // We'll process all of them and create courses accordingly
+    const learningPaths = [];
+    
+    // Group career_learning_paths by learner_id if Learner AI returns them per learner
+    // Otherwise, process them sequentially
+    for (let i = 0; i < learnerAIResponse.career_learning_paths.length; i++) {
+      const careerPath = learnerAIResponse.career_learning_paths[i];
       const learningPath = careerPath.learning_path;
       
       if (!learningPath) {
-        throw new Error(`Career learning path at index ${index} missing learning_path object`);
+        throw new Error(`Career learning path at index ${i} missing learning_path object`);
       }
       
-      // Normalize user_id → learner_id
-      if (!learningPath.learner_id && learnerAIResponse.user_id) {
-        learningPath.learner_id = learnerAIResponse.user_id;
-      }
-      if (!learningPath.learner_id && learner.learner_id) {
-        learningPath.learner_id = learner.learner_id;
+      // Find matching learner from original request
+      // Learner AI should return learning_paths with learner_id matching our request
+      const matchingLearner = learners.find(l => l.learner_id === learningPath.learner_id) || learners[0];
+      
+      // Ensure learner_id is set
+      if (!learningPath.learner_id && matchingLearner) {
+        learningPath.learner_id = matchingLearner.learner_id;
       }
       
-      return {
+      learningPaths.push({
         // Inject key metadata from the wrapper so it is available during DB inserts
         learningPath: {
           ...learningPath,
-          competency_target_name: careerPath.competency_target_name || `Career Path ${index + 1}`,
-          learning_flow: learnerAIResponse.learning_flow || 'CAREER_PATH_DRIVEN',
+          competency_target_name: careerPath.competency_target_name || `Career Path ${i + 1}`,
+          learning_flow: learnerAIResponse.learning_flow || learningFlow,
           // Enrichment for registration step
-          learner_name: learner.learner_name || learnerAIResponse.user_name || null,
-          company_id: learner.company_id || learnerAIResponse.company_id || null,
-          company_name: learner.company_name || learnerAIResponse.company_name || null
+          learner_name: matchingLearner?.learner_name || null,
+          company_id: companyId || null,
+          company_name: companyName || null
         },
-        competencyTargetName: careerPath.competency_target_name || `Career Path ${index + 1}`
+        competencyTargetName: careerPath.competency_target_name || `Career Path ${i + 1}`
         // skills_raw_data is IGNORED - not stored, not logged, not used
-      };
-    });
+      });
+    }
     
     console.log(`[Fill Content Metrics] Processing ${learningPaths.length} career learning path(s)...`);
     
@@ -165,42 +181,47 @@ async function preprocessEnrollmentPayload(payloadObject, action, requesterServi
   if (isCareerPathDriven) {
     // If learners array exists, ensure course_id for each learner
     if (Array.isArray(payloadObject.learners) && payloadObject.learners.length > 0) {
-      const enrichedLearners = await Promise.all(
-        payloadObject.learners.map(async (learner) => {
-          // If course_id is already provided, use it
-          if (learner.course_id) {
-            console.log(`[Fill Content Metrics] Learner ${learner.learner_id} already has course_id: ${learner.course_id}`);
-            return learner;
-          }
-          
-          // Course_id is missing - trigger course creation pipeline
-          console.log(`[Fill Content Metrics] Learner ${learner.learner_id} missing course_id - triggering course creation...`);
-          
-          // Extract competency tag from learner or use default
-          // The competency tag might be in learner.learning_flow_tag or payloadObject.competency_name
-          const competencyTag = learner.learning_flow_tag || 
-                              learner.competency_name || 
-                              payloadObject.competency_name || 
-                              'General Learning Path';
-          
-          // Trigger course creation pipeline
-          const courseId = await triggerCourseCreationPipeline(
-            learner,
-            competencyTag,
-            payloadObject.company_id,
-            payloadObject.company_name
-          );
-          
-          if (!courseId) {
-            throw new Error(`Course creation failed for learner: ${learner.learner_id}`);
-          }
-          
-          return {
-            ...learner,
-            course_id: courseId
-          };
-        })
+      // Check if all learners already have course_id
+      const learnersWithoutCourseId = payloadObject.learners.filter(l => !l.course_id);
+      
+      if (learnersWithoutCourseId.length === 0) {
+        // All learners already have course_id, return as-is
+        console.log('[Fill Content Metrics] All learners already have course_id, skipping course creation');
+        return payloadObject;
+      }
+      
+      // Some or all learners missing course_id - trigger course creation pipeline
+      // Send ALL learners to Learner AI in one request (even those with course_id, for consistency)
+      console.log(`[Fill Content Metrics] ${learnersWithoutCourseId.length} learner(s) missing course_id - triggering course creation pipeline...`);
+      console.log(`[Fill Content Metrics] Sending ${payloadObject.learners.length} learner(s) to Learner AI`);
+      
+      // Trigger course creation pipeline with all learners
+      // This will create courses for all learners and return course_id for the first learner
+      // Note: Learner AI may return multiple career_learning_paths, we'll process all of them
+      const primaryCourseId = await triggerCourseCreationPipeline(
+        payloadObject.learners, // Send all learners
+        payloadObject.company_id,
+        payloadObject.company_name,
+        payloadObject.learning_flow
       );
+      
+      if (!primaryCourseId) {
+        throw new Error('Course creation pipeline failed - no course_id returned');
+      }
+      
+      // For now, assign the primary course_id to all learners without course_id
+      // In the future, Learner AI may return course_id per learner, and we can map them accordingly
+      const enrichedLearners = payloadObject.learners.map((learner) => {
+        if (learner.course_id) {
+          // Keep existing course_id
+          return learner;
+        }
+        // Assign primary course_id (first course created)
+        return {
+          ...learner,
+          course_id: primaryCourseId
+        };
+      });
       
       return {
         ...payloadObject,
