@@ -104,10 +104,38 @@ export const MindMapViewer = ({ data }) => {
   // Normalize data structure to handle different backend formats
   const normalizedData = {
     nodes: (data.nodes || []).map((node) => {
+      // Handle nested data structure from backend (node.data.data.label)
+      if (node.data && node.data.data) {
+        // Backend format: { id, data: { data: { label, description, ... } }, type, position, style }
+        return {
+          id: node.id,
+          type: node.type || 'concept',
+          data: {
+            label: node.data.data.label || node.data.data.group || node.id,
+            description: node.data.data.description || '',
+            category: node.data.data.group || 'default',
+            ...node.data.data,
+          },
+          position: node.position || { x: 0, y: 0 },
+          style: node.style || {},
+        };
+      }
+      
       // Handle different node formats from backend
-      if (node.data) {
-        // Already in expected format
-        return node;
+      if (node.data && typeof node.data === 'object' && node.data.label) {
+        // Already in expected format with data.label
+        return {
+          id: node.id,
+          type: node.type || 'concept',
+          data: {
+            label: node.data.label,
+            description: node.data.description || '',
+            category: node.data.category || node.data.group || 'default',
+            ...node.data,
+          },
+          position: node.position || { x: 0, y: 0 },
+          style: node.style || {},
+        };
       }
       
       // Handle legacy format: node has label, description, etc. directly
@@ -130,44 +158,14 @@ export const MindMapViewer = ({ data }) => {
       target: edge.target,
       type: edge.type || 'smoothstep',
       label: edge.label || '',
-      animated: edge.animated || false,
+      animated: edge.animated !== false,
       style: edge.style || {},
     })),
   };
 
-  // If MindMap component doesn't exist, render a simple placeholder
-  // This allows the component to work even without React Flow dependency
-  try {
-    return (
-      <div className="w-full">
-        <MindMap data={normalizedData} className="rounded-lg" />
-      </div>
-    );
-  } catch (error) {
-    console.warn('[MindMapViewer] MindMap component not available, rendering placeholder:', error);
-    return (
-      <div
-        className="w-full rounded-lg border-2 p-8 text-center"
-        style={{
-          backgroundColor: theme === 'night-mode' ? '#1e293b' : '#f8fafc',
-          borderColor: theme === 'night-mode' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
-          minHeight: '400px',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: '1rem',
-        }}
-      >
-        <i className="fas fa-project-diagram text-4xl" style={{ color: theme === 'night-mode' ? '#94a3b8' : '#64748b' }}></i>
-        <p style={{ color: theme === 'night-mode' ? '#94a3b8' : '#64748b' }}>
-          Mind Map Visualization ({normalizedData.nodes.length} nodes, {normalizedData.edges.length} edges)
-        </p>
-        <p className="text-xs" style={{ color: theme === 'night-mode' ? '#64748b' : '#94a3b8' }}>
-          MindMap component not available. Install React Flow to enable visualization.
-        </p>
-      </div>
-    );
-  }
+  return (
+    <div className="w-full">
+      <MindMap data={normalizedData} className="rounded-lg" />
+    </div>
+  );
 };
-
