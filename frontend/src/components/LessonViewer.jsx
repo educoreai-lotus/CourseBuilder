@@ -101,13 +101,23 @@ const renderContent = (lesson) => {
                     dangerouslySetInnerHTML={{ __html: item.html }}
                   />
                 )}
-                {item.audio && (
+                {(item.audio || item.audioUrl) && (
                   <div className="rounded-2xl border border-[rgba(148,163,184,0.14)] bg-[var(--bg-card)]/90 p-4">
                     <p className="mb-2 text-sm font-semibold text-[var(--text-primary)]">Audio Content</p>
                     <audio controls className="w-full">
-                      <source src={item.audio} type="audio/mpeg" />
+                      <source src={item.audioUrl || item.audio} type={`audio/${item.audioFormat || 'mp3'}`} />
                       Your browser does not support audio.
                     </audio>
+                    {item.audioDuration && (
+                      <p className="mt-2 text-xs text-[var(--text-muted)]">
+                        Duration: {Math.round(item.audioDuration)}s
+                      </p>
+                    )}
+                    {item.audioVoice && (
+                      <p className="text-xs text-[var(--text-muted)]">
+                        Voice: {item.audioVoice}
+                      </p>
+                    )}
                   </div>
                 )}
               </div>
