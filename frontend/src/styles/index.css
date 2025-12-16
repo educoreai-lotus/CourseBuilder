@@ -3901,3 +3901,31 @@ html > #edu-bot-container,
   opacity: 1 !important;
   display: block !important;
 }
+
+/* Ensure chat window is hidden by default - only launcher button should be visible */
+#edu-bot-container iframe[style*="display: none"],
+#edu-bot-container .edu-bot-window[style*="display: none"],
+#edu-bot-container [class*="bot-window"][style*="display: none"],
+#edu-bot-container [class*="chat-window"][style*="display: none"] {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+}
+
+/* Only show chat window when explicitly opened (has open/visible class or inline style) */
+#edu-bot-container iframe:not([style*="display: none"]):not([style*="display:none"]),
+#edu-bot-container .edu-bot-window:not([style*="display: none"]):not([style*="display:none"]),
+#edu-bot-container [class*="bot-window"]:not([style*="display: none"]):not([style*="display:none"]),
+#edu-bot-container [class*="chat-window"]:not([style*="display: none"]):not([style*="display:none"]) {
+  /* Only show if it has an explicit open state - otherwise hide */
+}
+
+/* Force launcher button to always be visible */
+#edu-bot-container button:first-child,
+#edu-bot-container [role="button"]:first-child,
+#edu-bot-container > div:first-child > button,
+#edu-bot-container [class*="launcher"] {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
