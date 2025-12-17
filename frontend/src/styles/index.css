@@ -3801,11 +3801,107 @@ body {
   gap: var(--spacing-sm);
 }
 
-/* Minimal RAG Chatbot container positioning – let external script handle internals */
+/* ============================================
+   RAG Chatbot - Custom layout & styling
+   Requirements:
+   1) Show as a clear round icon.
+   2) On click, open a fully visible chat window.
+   ============================================ */
+
+/* Root container */
 #edu-bot-container {
-  position: fixed;
-  bottom: 24px;
-  right: 24px;
-  z-index: 2147483647;
-  pointer-events: none; /* children remain clickable */
+  position: fixed !important;
+  bottom: 32px !important; /* a bit higher for OS taskbars */
+  right: 32px !important;
+  z-index: 2147483647 !important;
+  pointer-events: none !important; /* children remain clickable */
+}
+
+#edu-bot-container * {
+  box-sizing: border-box !important;
+}
+
+/* Launcher icon (button). We strongly normalize it to a round FAB. */
+#edu-bot-container button,
+#edu-bot-container [role="button"],
+#edu-bot-container [class*="launcher"],
+#edu-bot-container [class*="toggle"] {
+  position: fixed !important;
+  bottom: 32px !important;
+  right: 32px !important;
+  width: 64px !important;
+  height: 64px !important;
+  border-radius: 9999px !important;
+  border: none !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  background: linear-gradient(135deg, #0ea5e9, #22c55e) !important;
+  box-shadow:
+    0 8px 20px rgba(15, 23, 42, 0.38),
+    0 0 0 1px rgba(15, 23, 42, 0.4) !important;
+  color: #ffffff !important;
+  pointer-events: auto !important;
+}
+
+/* Icon inside the launcher */
+#edu-bot-container button svg,
+#edu-bot-container button i,
+#edu-bot-container [role="button"] svg,
+#edu-bot-container [role="button"] i {
+  width: 26px !important;
+  height: 26px !important;
+  color: #ffffff !important;
+  fill: #ffffff !important;
+}
+
+/* Chat window (iframe or div) – full, clear panel above the icon */
+#edu-bot-container iframe,
+#edu-bot-container .edu-bot-window,
+#edu-bot-container [class*="bot-window"]:not([class*="launcher"]):not([class*="toggle"]):not(button),
+#edu-bot-container [class*="chat-window"]:not([class*="launcher"]):not([class*="toggle"]):not(button),
+#edu-bot-container [class*="widget"]:not([class*="launcher"]):not([class*="toggle"]):not(button) {
+  position: fixed !important;
+  bottom: 112px !important; /* clearly above launcher */
+  right: 32px !important;
+  width: 420px !important;
+  height: 640px !important;
+  max-width: calc(100vw - 48px) !important;
+  max-height: calc(100vh - 160px) !important;
+  border-radius: 18px !important;
+  box-shadow:
+    0 20px 60px rgba(15, 23, 42, 0.55),
+    0 0 0 1px rgba(148, 163, 184, 0.4) !important;
+  overflow: hidden !important;
+  background: #ffffff !important;
+  z-index: 2147483646 !important;
+  /* IMPORTANT: do NOT touch display/visibility so open/close still works */
+}
+
+/* Responsive adjustment for smaller screens */
+@media (max-width: 768px) {
+  #edu-bot-container button,
+  #edu-bot-container [role="button"],
+  #edu-bot-container [class*="launcher"],
+  #edu-bot-container [class*="toggle"] {
+    bottom: 20px !important;
+    right: 20px !important;
+    width: 56px !important;
+    height: 56px !important;
+  }
+
+  #edu-bot-container iframe,
+  #edu-bot-container .edu-bot-window,
+  #edu-bot-container [class*="bot-window"]:not([class*="launcher"]):not([class*="toggle"]):not(button),
+  #edu-bot-container [class*="chat-window"]:not([class*="launcher"]):not([class*="toggle"]):not(button),
+  #edu-bot-container [class*="widget"]:not([class*="launcher"]):not([class*="toggle"]):not(button) {
+    bottom: 92px !important;
+    right: 20px !important;
+    width: calc(100vw - 32px) !important;
+    height: calc(100vh - 140px) !important;
+    border-radius: 16px !important;
+  }
 }
