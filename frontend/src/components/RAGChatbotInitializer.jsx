@@ -12,28 +12,33 @@ const RAG_SCRIPT_URL = 'https://rag-production-3a4c.up.railway.app/embed/bot.js'
 const MICROSERVICE_NAME = 'COURSE_BUILDER'
 
 /**
- * Force chatbot container to viewport by moving it under document.body
- * Fixes position:fixed being broken by layout ancestors (transform/overflow)
- * This is a DOM-level fix, not CSS or React
+ * Force chatbot UI element to bottom-right viewport position
+ * The RAG embed injects its own UI element (iframe or root div) with its OWN position: fixed
+ * That inner element is what controls the visual position, not the container
+ * This is a DOM-level override of the injected UI
  */
-function forceBotToViewport() {
+function forceBotUIToBottomRight() {
   const container = document.getElementById('edu-bot-container')
   if (!container) return false
 
-  // Move container directly under <body> to escape layout constraints
-  if (container.parentElement !== document.body) {
-    document.body.appendChild(container)
-  }
+  // The real UI is injected inside the container (iframe or div)
+  const botUI =
+    container.querySelector('iframe') ||
+    container.querySelector('[data-bot-id]') ||
+    container.firstElementChild
 
-  // Force true viewport anchoring
-  Object.assign(container.style, {
+  if (!botUI) return false
+
+  // Override the injected UI element's positioning styles
+  Object.assign(botUI.style, {
     position: 'fixed',
     bottom: '16px',
     right: '16px',
     top: 'auto',
     left: 'auto',
     zIndex: '2147483647',
-    pointerEvents: 'auto'
+    maxHeight: '90vh',
+    maxWidth: '420px'
   })
 
   return true
@@ -86,18 +91,18 @@ export default function RAGChatbotInitializer() {
         try {
           window.initializeEducoreBot(config)
           
-          // After initialization succeeds, force container to viewport
+          // After initialization succeeds, force injected UI element to bottom-right
           // Retry until the embed finishes injecting DOM
-          console.log('[RAG Chatbot] Initialization called, forcing container to viewport...')
+          console.log('[RAG Chatbot] Initialization called, forcing UI element to bottom-right...')
           let attempts = 0
           const interval = setInterval(() => {
             attempts++
-            if (forceBotToViewport() || attempts > 20) {
+            if (forceBotUIToBottomRight() || attempts > 25) {
               clearInterval(interval)
-              if (attempts > 20) {
-                console.warn('[RAG Chatbot] Viewport fix timeout - container may not exist')
+              if (attempts > 25) {
+                console.warn('[RAG Chatbot] UI element fix timeout - injected UI may not exist')
               } else {
-                console.log('[RAG Chatbot] Container moved to viewport successfully')
+                console.log('[RAG Chatbot] UI element positioned to bottom-right successfully')
               }
             }
           }, 300)
