@@ -4,6 +4,7 @@ import Header from './components/Header.jsx'
 import AccessibilityControls from './components/AccessibilityControls.jsx'
 import Toast from './components/Toast.jsx'
 import ErrorBoundary from './components/ErrorBoundary.jsx'
+import RAGChatbotInitializer from './components/RAGChatbotInitializer.jsx'
 import CoursesPage from './pages/CoursesPage.jsx'
 import CourseDetailsPage from './pages/CourseDetailsPage.jsx'
 import LessonPage from './pages/LessonPage.jsx'
@@ -88,8 +89,13 @@ function AppShell() {
         </Routes>
       </main>
 
+      {/* Chatbot container as per docs/WHAT_MICROSERVICES_NEED_TO_DO.md */}
+      <div id="edu-bot-container"></div>
+
       <AccessibilityControls />
       <Toast />
+      {/* Initialize RAG chatbot following docs/FOR_MICROSERVICE_DEVELOPERS.md */}
+      <RAGChatbotInitializer />
     </div>
   )
 }
