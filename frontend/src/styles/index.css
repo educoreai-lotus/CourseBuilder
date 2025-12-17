@@ -3801,6 +3801,45 @@ body {
   gap: var(--spacing-sm);
 }
 
+/* ============================================
+   RAG Chatbot container & launcher positioning
+   Minimal, non-intrusive styles to keep the widget visible
+   ============================================ */
+
+#edu-bot-container {
+  position: fixed !important;
+  bottom: 24px !important;
+  right: 24px !important;
+  z-index: 2147483647 !important;
+  pointer-events: none; /* let children handle clicks */
+}
+
+#edu-bot-container * {
+  box-sizing: border-box;
+}
+
+/* Ensure launcher button is fully visible above the bottom edge */
+#edu-bot-container button,
+#edu-bot-container [role="button"],
+#edu-bot-container [class*="launcher"] {
+  position: fixed !important;
+  bottom: 24px !important;
+  right: 24px !important;
+  pointer-events: auto !important;
+}
+
+/* Ensure the chat window appears above the launcher and isn’t clipped */
+#edu-bot-container iframe,
+#edu-bot-container [class*="bot-window"],
+#edu-bot-container [class*="chat-window"] {
+  position: fixed !important;
+  bottom: 96px !important; /* a bit above the launcher */
+  right: 24px !important;
+  max-width: calc(100vw - 32px) !important;
+  max-height: calc(100vh - 120px) !important;
+  z-index: 2147483646 !important;
+}
+
 
 
 /* ============================================
