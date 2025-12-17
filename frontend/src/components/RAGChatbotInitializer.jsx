@@ -15,17 +15,37 @@ export default function RAGChatbotInitializer() {
   const { userProfile } = useApp()
 
   useEffect(() => {
+    console.log('[RAG Chatbot] Effect start', { userProfile })
+
     // Must run in the browser and have a user profile
-    if (typeof window === 'undefined') return
-    if (!userProfile || !userProfile.id) return
+    if (typeof window === 'undefined') {
+      console.log('[RAG Chatbot] Skipping (not in browser)')
+      return
+    }
+    if (!userProfile || !userProfile.id) {
+      console.log('[RAG Chatbot] Skipping (no userProfile.id)')
+      return
+    }
 
     // Token: similar to getCurrentUser() pattern in the docs
-    const token = window.localStorage ? window.localStorage.getItem('token') : null
-    if (!token) return
+    let token = window.localStorage ? window.localStorage.getItem('token') : null
+
+    // For local/dev usage, fallback to a demo token so the widget is visible
+    if (!token) {
+      console.log('[RAG Chatbot] No token found in localStorage, using demo token for dev')
+      token = 'dev-demo-token'
+      if (window.localStorage) {
+        window.localStorage.setItem('token', token)
+      }
+    }
 
     function initChatbot() {
       // Follows the docs: check initializeEducoreBot, retry if needed
       if (window.initializeEducoreBot) {
+        console.log('[RAG Chatbot] Calling initializeEducoreBot', {
+          microservice: MICROSERVICE_NAME,
+          userId: userProfile.id
+        })
         window.initializeEducoreBot({
           microservice: MICROSERVICE_NAME,
           userId: userProfile.id,
@@ -33,22 +53,29 @@ export default function RAGChatbotInitializer() {
           tenantId: userProfile.company || 'default'
         })
       } else {
+        console.log('[RAG Chatbot] initializeEducoreBot not ready yet, retrying in 100ms')
         setTimeout(initChatbot, 100)
       }
     }
 
     // Load script exactly as shown in the React examples in the docs
     if (!window.EDUCORE_BOT_LOADED) {
+      console.log('[RAG Chatbot] Loading bot script:', RAG_SCRIPT_URL)
       const script = document.createElement('script')
       script.src = RAG_SCRIPT_URL
       script.async = true
       script.onload = () => {
+        console.log('[RAG Chatbot] Script loaded, initializing bot')
         window.EDUCORE_BOT_LOADED = true
         initChatbot()
+      }
+      script.onerror = (err) => {
+        console.error('[RAG Chatbot] Failed to load bot script', err)
       }
       document.head.appendChild(script)
     } else {
       // Script already loaded → just initialize
+      console.log('[RAG Chatbot] Script already loaded, initializing bot')
       initChatbot()
     }
   }, [userProfile])
