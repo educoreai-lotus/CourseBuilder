@@ -4,7 +4,7 @@
 
 ```json
 {
-  "requester_service": "course-builder-service",
+  "requester_service": "course_builder",
   "payload": {
     "course_id": "550e8400-e29b-41d4-a716-446655440000",
     "learner_id": "210dc7a7-9808-445c-8eb7-51c217e3919c",
@@ -23,8 +23,8 @@
 
 ```
 Content-Type: application/json
-X-Service-Name: course-builder-service
-X-Signature: MEYCIQDQBx82r950DTBl3T5lZ6J0/ncU3uZdLpooQa144UwiWwIhANTYghHKsBk3V67wqXF1+L3aea5Out0CaoyZknE423gH
+X-Service-Name: course_builder
+X-Signature: MEUCIQD0S4hn1MxmJ2dEyF6Na9XaxV4lk2skUmPXIsoV95JKgAIgO+bDd0tPc00aMF7uBwss/t4G/HnFbJjLkkRaXhlKQZ4=
 ```
 
 ## Complete cURL Example
@@ -32,10 +32,10 @@ X-Signature: MEYCIQDQBx82r950DTBl3T5lZ6J0/ncU3uZdLpooQa144UwiWwIhANTYghHKsBk3V67
 ```bash
 curl -X POST https://coordinator-production-e0a0.up.railway.app/api/fill-content-metrics/ \
   -H "Content-Type: application/json" \
-  -H "X-Service-Name: course-builder-service" \
-  -H "X-Signature: MEYCIQDQBx82r950DTBl3T5lZ6J0/ncU3uZdLpooQa144UwiWwIhANTYghHKsBk3V67wqXF1+L3aea5Out0CaoyZknE423gH" \
+  -H "X-Service-Name: course_builder" \
+  -H "X-Signature: MEUCIQD0S4hn1MxmJ2dEyF6Na9XaxV4lk2skUmPXIsoV95JKgAIgO+bDd0tPc00aMF7uBwss/t4G/HnFbJjLkkRaXhlKQZ4=" \
   -d '{
-    "requester_service": "course-builder-service",
+    "requester_service": "course_builder",
     "payload": {
       "course_id": "550e8400-e29b-41d4-a716-446655440000",
       "learner_id": "210dc7a7-9808-445c-8eb7-51c217e3919c",
@@ -69,7 +69,7 @@ curl -X POST https://coordinator-production-e0a0.up.railway.app/api/fill-content
 ### Signature
 - **Algorithm**: ECDSA P-256
 - **Format**: Base64-encoded
-- **Message**: `educoreai-course-builder-service-{payloadHash}`
+- **Message**: `educoreai-course_builder-{payloadHash}`
 - **Note**: Signature is generated from the entire envelope payload
 
 ## Notes

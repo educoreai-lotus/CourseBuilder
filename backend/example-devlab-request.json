@@ -1,5 +1,5 @@
 {
-  "requester_service": "course-builder-service",
+  "requester_service": "course_builder",
   "payload": {
     "course_id": "550e8400-e29b-41d4-a716-446655440000",
     "learner_id": "210dc7a7-9808-445c-8eb7-51c217e3919c",

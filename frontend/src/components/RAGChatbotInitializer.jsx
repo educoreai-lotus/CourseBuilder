@@ -46,12 +46,42 @@ export default function RAGChatbotInitializer() {
           microservice: MICROSERVICE_NAME,
           userId: userProfile.id
         })
-        window.initializeEducoreBot({
+        
+        // Inspect available options in the function
+        const initFn = window.initializeEducoreBot
+        console.log('[RAG Chatbot] Function signature:', initFn.toString().substring(0, 200))
+        
+        // Attempt to use UI configuration options if they exist
+        // NOTE: These options are NOT documented, testing if they exist
+        const config = {
           microservice: MICROSERVICE_NAME,
           userId: userProfile.id,
           token,
           tenantId: userProfile.company || 'default'
-        })
+        }
+        
+        // Try undocumented options (will be ignored if not supported)
+        // These are guesses based on common embed widget patterns
+        const possibleOptions = {
+          defaultOpen: false,
+          autoOpen: false,
+          collapsed: true,
+          startCollapsed: true,
+          launcherOnly: true,
+          position: 'bottom-right'
+        }
+        
+        // Log what we're attempting
+        console.log('[RAG Chatbot] Attempting config:', { ...config, ...possibleOptions })
+        
+        // Call with attempted options (will fail silently if not supported)
+        try {
+          initFn({ ...config, ...possibleOptions })
+        } catch (error) {
+          // If options cause error, fall back to basic config
+          console.warn('[RAG Chatbot] Options not supported, using basic config:', error)
+          initFn(config)
+        }
       } else {
         console.log('[RAG Chatbot] initializeEducoreBot not ready yet, retrying in 100ms')
         setTimeout(initChatbot, 100)

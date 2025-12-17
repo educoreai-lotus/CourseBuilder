@@ -24,7 +24,7 @@ export async function sendToDevlab(course, learnerId, learnerName = null) {
 
     // Build envelope for Coordinator (empty response - fire-and-forget)
     const envelope = {
-      requester_service: 'course-builder-service',
+      requester_service: 'course_builder',
       payload: sendPayload,
       response: {
         answer: ''
