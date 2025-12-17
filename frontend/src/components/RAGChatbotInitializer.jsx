@@ -12,136 +12,31 @@ const RAG_SCRIPT_URL = 'https://rag-production-3a4c.up.railway.app/embed/bot.js'
 const MICROSERVICE_NAME = 'COURSE_BUILDER'
 
 /**
- * Force-correct chatbot widget position after injection
- * Fixes position:fixed being affected by app layout (overflow/transform)
+ * Force chatbot container to viewport by moving it under document.body
+ * Fixes position:fixed being broken by layout ancestors (transform/overflow)
+ * This is a DOM-level fix, not CSS or React
  */
-function forceCorrectWidgetPosition() {
+function forceBotToViewport() {
   const container = document.getElementById('edu-bot-container')
-  if (!container) {
-    return false
+  if (!container) return false
+
+  // Move container directly under <body> to escape layout constraints
+  if (container.parentElement !== document.body) {
+    document.body.appendChild(container)
   }
 
-  // Find the actual widget element (iframe or root div)
-  // The widget could be injected as:
-  // 1. An iframe directly in container
-  // 2. A div with specific classes
-  // 3. A shadow DOM root
-  
-  let widgetElement = null
-  
-  // Try to find iframe first (most common)
-  const iframe = container.querySelector('iframe')
-  if (iframe) {
-    widgetElement = iframe
-  } else {
-    // Try to find the root widget div (check for common patterns)
-    const widgetDiv = container.querySelector('div[style*="position"]') || 
-                      container.querySelector('div:first-child') ||
-                      container.firstElementChild
-    
-    if (widgetDiv && widgetDiv !== container) {
-      widgetElement = widgetDiv
-    }
-  }
+  // Force true viewport anchoring
+  Object.assign(container.style, {
+    position: 'fixed',
+    bottom: '16px',
+    right: '16px',
+    top: 'auto',
+    left: 'auto',
+    zIndex: '2147483647',
+    pointerEvents: 'auto'
+  })
 
-  if (!widgetElement) {
-    return false
-  }
-
-  // Force-correct position via inline styles (NOT CSS file)
-  widgetElement.style.position = 'fixed'
-  widgetElement.style.bottom = '16px'
-  widgetElement.style.right = '16px'
-  widgetElement.style.left = 'auto'
-  widgetElement.style.top = 'auto'
-  widgetElement.style.zIndex = '99999'
-  widgetElement.style.maxHeight = '90vh'
-  widgetElement.style.maxWidth = '420px'
-  
-  // Also ensure container doesn't interfere
-  container.style.position = 'fixed'
-  container.style.bottom = '16px'
-  container.style.right = '16px'
-  container.style.left = 'auto'
-  container.style.top = 'auto'
-  container.style.zIndex = '99999'
-  container.style.pointerEvents = 'none' // Let children handle clicks
-  
-  console.log('[RAG Chatbot] Widget position corrected', { widgetElement: widgetElement.tagName })
   return true
-}
-
-/**
- * Wait for widget to appear and force-correct position
- * Uses MutationObserver + polling fallback
- */
-function waitAndCorrectPosition() {
-  let attempts = 0
-  const maxAttempts = 50 // 5 seconds max (50 * 100ms)
-  
-  const checkAndFix = () => {
-    attempts++
-    
-    if (forceCorrectWidgetPosition()) {
-      console.log('[RAG Chatbot] Position corrected successfully')
-      return true
-    }
-    
-    if (attempts >= maxAttempts) {
-      console.warn('[RAG Chatbot] Position correction timeout - widget may not have appeared')
-      return false
-    }
-    
-    return false
-  }
-
-  // Try immediately
-  if (checkAndFix()) {
-    return
-  }
-
-  // Use MutationObserver to watch for DOM changes
-  const container = document.getElementById('edu-bot-container')
-  if (container) {
-    const observer = new MutationObserver(() => {
-      if (checkAndFix()) {
-        observer.disconnect()
-      }
-    })
-
-    observer.observe(container, {
-      childList: true,
-      subtree: true,
-      attributes: true
-    })
-
-    // Fallback: polling in case MutationObserver misses it
-    const intervalId = setInterval(() => {
-      if (checkAndFix()) {
-        clearInterval(intervalId)
-        observer.disconnect()
-      } else if (attempts >= maxAttempts) {
-        clearInterval(intervalId)
-        observer.disconnect()
-      }
-    }, 100)
-
-    // Cleanup after max attempts
-    setTimeout(() => {
-      observer.disconnect()
-      clearInterval(intervalId)
-    }, maxAttempts * 100)
-  } else {
-    // Container doesn't exist yet, poll for it
-    const containerCheck = setInterval(() => {
-      if (document.getElementById('edu-bot-container')) {
-        clearInterval(containerCheck)
-        waitAndCorrectPosition()
-      }
-    }, 100)
-    
-    setTimeout(() => clearInterval(containerCheck), 5000)
-  }
 }
 
 export default function RAGChatbotInitializer() {
@@ -191,11 +86,21 @@ export default function RAGChatbotInitializer() {
         try {
           window.initializeEducoreBot(config)
           
-          // After initialization succeeds, wait for widget and force-correct position
-          console.log('[RAG Chatbot] Initialization called, waiting for widget to appear...')
-          setTimeout(() => {
-            waitAndCorrectPosition()
-          }, 500) // Give widget time to start injecting
+          // After initialization succeeds, force container to viewport
+          // Retry until the embed finishes injecting DOM
+          console.log('[RAG Chatbot] Initialization called, forcing container to viewport...')
+          let attempts = 0
+          const interval = setInterval(() => {
+            attempts++
+            if (forceBotToViewport() || attempts > 20) {
+              clearInterval(interval)
+              if (attempts > 20) {
+                console.warn('[RAG Chatbot] Viewport fix timeout - container may not exist')
+              } else {
+                console.log('[RAG Chatbot] Container moved to viewport successfully')
+              }
+            }
+          }, 300)
           
         } catch (error) {
           console.error('[RAG Chatbot] Initialization failed:', error)
