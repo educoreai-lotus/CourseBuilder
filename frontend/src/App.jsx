@@ -92,8 +92,7 @@ function AppShell() {
       <AccessibilityControls />
       <Toast />
       
-      {/* RAG Chatbot container and initializer */}
-      <div id="edu-bot-container"></div>
+      {/* RAG Chatbot initializer (needs AppProvider context) */}
       <RAGChatbotInitializer />
     </div>
   )
@@ -101,10 +100,15 @@ function AppShell() {
 
 export default function App() {
   return (
-    <ErrorBoundary>
-      <AppProvider>
-        <AppShell />
-      </AppProvider>
-    </ErrorBoundary>
+    <>
+      {/* Chatbot container MUST be at root level, always mounted, never conditional */}
+      <div id="edu-bot-container"></div>
+      
+      <ErrorBoundary>
+        <AppProvider>
+          <AppShell />
+        </AppProvider>
+      </ErrorBoundary>
+    </>
   )
 }
