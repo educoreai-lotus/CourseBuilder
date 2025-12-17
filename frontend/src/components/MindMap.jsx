@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState, useEffect } from 'react';
 import ReactFlow, {
   Background,
   Controls,
@@ -213,10 +213,16 @@ const nodeTypes = {
 
 /**
  * MindMap Component - Exact match to Content Studio spec
+ * Uses React Flow v11.11.4
  */
 export const MindMap = ({ data, className = '' }) => {
   const { theme } = useApp();
   const isDark = theme === 'night-mode' || theme === 'dark';
+
+  // Theme-dependent colors
+  const bgColor = isDark ? '#0f172a' : '#f8fafc';
+  const borderColor = isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
+  const nodeColor = isDark ? '#1e293b' : '#ffffff'; // Same as control buttons
 
   // Normalize nodes
   const normalizedNodes = useMemo(() => {
@@ -226,7 +232,7 @@ export const MindMap = ({ data, className = '' }) => {
       // Handle nested data structure
       if (node.data && typeof node.data === 'object' && !node.data.label && node.data.data) {
         return {
-          id: node.id,
+          id: String(node.id),
           type: node.type || 'concept',
           data: {
             label: node.data.data.label || node.data.data.group || node.id,
@@ -243,7 +249,7 @@ export const MindMap = ({ data, className = '' }) => {
       // If node has data.label directly
       if (node.data?.label) {
         return {
-          id: node.id,
+          id: String(node.id),
           type: node.type || 'concept',
           data: {
             label: node.data.label,
@@ -259,7 +265,7 @@ export const MindMap = ({ data, className = '' }) => {
 
       // Legacy format
       return {
-        id: node.id,
+        id: String(node.id),
         type: node.type || 'concept',
         data: {
           label: node.label || node.data?.group || node.id,
@@ -278,12 +284,12 @@ export const MindMap = ({ data, className = '' }) => {
     if (!data?.edges || !Array.isArray(data.edges)) return [];
 
     return data.edges.map((edge) => ({
-      id: edge.id || `edge-${edge.source}-${edge.target}`,
-      source: edge.source,
-      target: edge.target,
+      id: String(edge.id || `edge-${edge.source}-${edge.target}`),
+      source: String(edge.source),
+      target: String(edge.target),
       type: 'smoothstep',
       label: edge.label || '',
-      animated: false, // Spec says false by default
+      animated: false,
       style: {
         stroke: isDark ? '#64748b' : '#94a3b8',
         strokeWidth: 2,
@@ -309,13 +315,13 @@ export const MindMap = ({ data, className = '' }) => {
   );
 
   // Update nodes/edges when data changes
-  useMemo(() => {
+  useEffect(() => {
     if (normalizedNodes.length > 0) {
       setNodes(normalizedNodes);
     }
   }, [normalizedNodes, setNodes]);
 
-  useMemo(() => {
+  useEffect(() => {
     if (normalizedEdges.length > 0) {
       setEdges(normalizedEdges);
     }
@@ -329,8 +335,8 @@ export const MindMap = ({ data, className = '' }) => {
           height: '600px',
           borderRadius: '12px',
           borderWidth: '1px',
-          borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
-          background: isDark ? '#0f172a' : '#f8fafc',
+          borderColor: borderColor,
+          background: bgColor,
         }}
       >
         <p style={{ color: isDark ? '#94a3b8' : '#64748b' }}>No mind map data available</p>
@@ -344,8 +350,8 @@ export const MindMap = ({ data, className = '' }) => {
       style={{
         height: '600px',
         borderRadius: '12px',
-        border: `1px solid ${isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'}`,
-        background: isDark ? '#0f172a' : '#f8fafc',
+        border: `1px solid ${borderColor}`,
+        background: bgColor,
         overflow: 'hidden',
       }}
     >
@@ -357,11 +363,18 @@ export const MindMap = ({ data, className = '' }) => {
         onConnect={onConnect}
         nodeTypes={nodeTypes}
         fitView
-        fitViewOptions={{ padding: 0.3 }}
-        minZoom={0.3}
-        maxZoom={1.2}
+        fitViewOptions={{
+          padding: 0.3,
+          maxZoom: 1.2,
+          minZoom: 0.3,
+        }}
+        proOptions={{ hideAttribution: true }}
+        defaultEdgeOptions={{
+          type: 'smoothstep',
+          animated: false,
+        }}
         style={{
-          background: isDark ? '#0f172a' : '#f8fafc',
+          backgroundColor: bgColor,
         }}
       >
         {/* Background Pattern - Dots */}
@@ -376,26 +389,22 @@ export const MindMap = ({ data, className = '' }) => {
         <Controls
           style={{
             button: {
-              backgroundColor: isDark ? '#1e293b' : '#ffffff',
+              backgroundColor: nodeColor,
               color: isDark ? '#f8fafc' : '#1e293b',
-              border: `1px solid ${isDark ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.1)'}`,
+              border: `1px solid ${borderColor}`,
             },
           }}
         />
 
         {/* MiniMap */}
         <MiniMap
-          style={{
-            backgroundColor: isDark ? '#0f172a' : '#f8fafc',
-            border: `1px solid ${isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'}`,
-          }}
-          nodeColor={(node) => {
-            return isDark ? '#1e293b' : '#ffffff';
-          }}
-          nodeStrokeColor={(node) => {
-            return isDark ? '#0d9488' : '#059669';
-          }}
+          nodeColor={nodeColor}
+          nodeStrokeColor={isDark ? '#0d9488' : '#059669'}
           maskColor={isDark ? 'rgba(15, 23, 42, 0.6)' : 'rgba(248, 250, 252, 0.6)'}
+          style={{
+            backgroundColor: bgColor,
+            border: `1px solid ${borderColor}`,
+          }}
         />
       </ReactFlow>
     </div>
