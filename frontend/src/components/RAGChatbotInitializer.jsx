@@ -11,6 +11,139 @@ const RAG_SCRIPT_URL = 'https://rag-production-3a4c.up.railway.app/embed/bot.js'
 // Microservice name for Course Builder from docs
 const MICROSERVICE_NAME = 'COURSE_BUILDER'
 
+/**
+ * Force-correct chatbot widget position after injection
+ * Fixes position:fixed being affected by app layout (overflow/transform)
+ */
+function forceCorrectWidgetPosition() {
+  const container = document.getElementById('edu-bot-container')
+  if (!container) {
+    return false
+  }
+
+  // Find the actual widget element (iframe or root div)
+  // The widget could be injected as:
+  // 1. An iframe directly in container
+  // 2. A div with specific classes
+  // 3. A shadow DOM root
+  
+  let widgetElement = null
+  
+  // Try to find iframe first (most common)
+  const iframe = container.querySelector('iframe')
+  if (iframe) {
+    widgetElement = iframe
+  } else {
+    // Try to find the root widget div (check for common patterns)
+    const widgetDiv = container.querySelector('div[style*="position"]') || 
+                      container.querySelector('div:first-child') ||
+                      container.firstElementChild
+    
+    if (widgetDiv && widgetDiv !== container) {
+      widgetElement = widgetDiv
+    }
+  }
+
+  if (!widgetElement) {
+    return false
+  }
+
+  // Force-correct position via inline styles (NOT CSS file)
+  widgetElement.style.position = 'fixed'
+  widgetElement.style.bottom = '16px'
+  widgetElement.style.right = '16px'
+  widgetElement.style.left = 'auto'
+  widgetElement.style.top = 'auto'
+  widgetElement.style.zIndex = '99999'
+  widgetElement.style.maxHeight = '90vh'
+  widgetElement.style.maxWidth = '420px'
+  
+  // Also ensure container doesn't interfere
+  container.style.position = 'fixed'
+  container.style.bottom = '16px'
+  container.style.right = '16px'
+  container.style.left = 'auto'
+  container.style.top = 'auto'
+  container.style.zIndex = '99999'
+  container.style.pointerEvents = 'none' // Let children handle clicks
+  
+  console.log('[RAG Chatbot] Widget position corrected', { widgetElement: widgetElement.tagName })
+  return true
+}
+
+/**
+ * Wait for widget to appear and force-correct position
+ * Uses MutationObserver + polling fallback
+ */
+function waitAndCorrectPosition() {
+  let attempts = 0
+  const maxAttempts = 50 // 5 seconds max (50 * 100ms)
+  
+  const checkAndFix = () => {
+    attempts++
+    
+    if (forceCorrectWidgetPosition()) {
+      console.log('[RAG Chatbot] Position corrected successfully')
+      return true
+    }
+    
+    if (attempts >= maxAttempts) {
+      console.warn('[RAG Chatbot] Position correction timeout - widget may not have appeared')
+      return false
+    }
+    
+    return false
+  }
+
+  // Try immediately
+  if (checkAndFix()) {
+    return
+  }
+
+  // Use MutationObserver to watch for DOM changes
+  const container = document.getElementById('edu-bot-container')
+  if (container) {
+    const observer = new MutationObserver(() => {
+      if (checkAndFix()) {
+        observer.disconnect()
+      }
+    })
+
+    observer.observe(container, {
+      childList: true,
+      subtree: true,
+      attributes: true
+    })
+
+    // Fallback: polling in case MutationObserver misses it
+    const intervalId = setInterval(() => {
+      if (checkAndFix()) {
+        clearInterval(intervalId)
+        observer.disconnect()
+      } else if (attempts >= maxAttempts) {
+        clearInterval(intervalId)
+        observer.disconnect()
+      }
+    }, 100)
+
+    // Cleanup after max attempts
+    setTimeout(() => {
+      observer.disconnect()
+      clearInterval(intervalId)
+    }, maxAttempts * 100)
+  } else {
+    // Container doesn't exist yet, poll for it
+    const containerCheck = setInterval(() => {
+      if (document.getElementById('edu-bot-container')) {
+        clearInterval(containerCheck)
+        waitAndCorrectPosition()
+      }
+    }, 100)
+    
+    setTimeout(() => clearInterval(containerCheck), 5000)
+  }
+}
+
 export default function RAGChatbotInitializer() {
   const { userProfile } = useApp()
 
@@ -47,12 +180,6 @@ export default function RAGChatbotInitializer() {
           userId: userProfile.id
         })
         
-        // Inspect available options in the function
-        const initFn = window.initializeEducoreBot
-        console.log('[RAG Chatbot] Function signature:', initFn.toString().substring(0, 200))
-        
-        // Attempt to use UI configuration options if they exist
-        // NOTE: These options are NOT documented, testing if they exist
         const config = {
           microservice: MICROSERVICE_NAME,
           userId: userProfile.id,
@@ -60,27 +187,18 @@ export default function RAGChatbotInitializer() {
           tenantId: userProfile.company || 'default'
         }
         
-        // Try undocumented options (will be ignored if not supported)
-        // These are guesses based on common embed widget patterns
-        const possibleOptions = {
-          defaultOpen: false,
-          autoOpen: false,
-          collapsed: true,
-          startCollapsed: true,
-          launcherOnly: true,
-          position: 'bottom-right'
-        }
-        
-        // Log what we're attempting
-        console.log('[RAG Chatbot] Attempting config:', { ...config, ...possibleOptions })
-        
-        // Call with attempted options (will fail silently if not supported)
+        // Call initialization
         try {
-          initFn({ ...config, ...possibleOptions })
+          window.initializeEducoreBot(config)
+          
+          // After initialization succeeds, wait for widget and force-correct position
+          console.log('[RAG Chatbot] Initialization called, waiting for widget to appear...')
+          setTimeout(() => {
+            waitAndCorrectPosition()
+          }, 500) // Give widget time to start injecting
+          
         } catch (error) {
-          // If options cause error, fall back to basic config
-          console.warn('[RAG Chatbot] Options not supported, using basic config:', error)
-          initFn(config)
+          console.error('[RAG Chatbot] Initialization failed:', error)
         }
       } else {
         console.log('[RAG Chatbot] initializeEducoreBot not ready yet, retrying in 100ms')
