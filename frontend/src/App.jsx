@@ -4,6 +4,7 @@ import Header from './components/Header.jsx'
 import AccessibilityControls from './components/AccessibilityControls.jsx'
 import Toast from './components/Toast.jsx'
 import ErrorBoundary from './components/ErrorBoundary.jsx'
+import RAGChatbotInitializer from './components/RAGChatbotInitializer.jsx'
 import CoursesPage from './pages/CoursesPage.jsx'
 import CourseDetailsPage from './pages/CourseDetailsPage.jsx'
 import LessonPage from './pages/LessonPage.jsx'
@@ -90,6 +91,12 @@ function AppShell() {
 
       <AccessibilityControls />
       <Toast />
+      
+      {/* RAG Chatbot container - must exist before initialization */}
+      <div id="edu-bot-container"></div>
+      
+      {/* RAG Chatbot initializer - side-effect only component */}
+      <RAGChatbotInitializer />
     </div>
   )
 }
