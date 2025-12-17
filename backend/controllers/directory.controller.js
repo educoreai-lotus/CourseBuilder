@@ -1,7 +1,15 @@
 /**
  * Directory Controller
- * Handles Directory trigger for personalized course generation
- * Flow: Directory → Course Builder → Learner AI → Content Studio → Course Builder
+ * @deprecated LEGACY_FLOW - Directory-triggered flow is currently inactive
+ * 
+ * PREVIOUS FLOW (DISABLED):
+ * Directory → Course Builder → Learner AI → Content Studio → Course Builder
+ * 
+ * CURRENT ACTIVE FLOW:
+ * Directory → Skills Engine → Learner AI → Course Builder → Content Studio → Build Course
+ * 
+ * Course Builder now accepts triggers ONLY from Learner AI, not from Directory.
+ * This handler is preserved for potential future reactivation but is currently disabled.
  */
 
 import { sendToLearnerAI } from '../services/gateways/learnerAIGateway.js';
@@ -13,10 +21,14 @@ import registrationRepository from '../repositories/RegistrationRepository.js';
 import { v4 as uuidv4 } from 'uuid';
 
 /**
+ * @deprecated LEGACY_FLOW
  * Handle Directory trigger for learning path creation
  * POST /api/v1/directory/trigger-learning-path
  * 
- * Request body:
+ * ⚠️ THIS FLOW IS CURRENTLY INACTIVE
+ * Directory-triggered flow is disabled. Course Builder now accepts triggers ONLY from Learner AI.
+ * 
+ * Request body (LEGACY - not currently processed):
  * {
  *   "learner_id": "uuid",
  *   "learner_name": "string",
@@ -28,6 +40,16 @@ import { v4 as uuidv4 } from 'uuid';
  * }
  */
 export const handleDirectoryTrigger = async (req, res, next) => {
+  // ⚠️ LEGACY_FLOW: Directory-triggered flow is currently inactive
+  // Course Builder now accepts triggers ONLY from Learner AI
+  return res.status(410).json({
+    error: 'Directory-triggered flow is currently inactive',
+    message: 'Course Builder now accepts triggers only from Learner AI. The active flow is: Directory → Skills Engine → Learner AI → Course Builder → Content Studio → Build Course',
+    legacy_endpoint: '/api/v1/directory/trigger-learning-path',
+    active_flow: 'Learner AI → Course Builder (via Coordinator POST /api/fill-content-metrics)'
+  });
+
+  /* LEGACY CODE - PRESERVED FOR POTENTIAL FUTURE REACTIVATION
   try {
     const {
       learner_id,
@@ -252,6 +274,7 @@ export const handleDirectoryTrigger = async (req, res, next) => {
       message: error.message || 'Failed to create learning path course'
     });
   }
+  */
 };
 
 export default {

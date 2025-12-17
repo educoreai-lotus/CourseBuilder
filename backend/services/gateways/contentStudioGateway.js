@@ -1,6 +1,12 @@
 /**
  * Content Studio Gateway
  * Routes requests to Content Studio through Coordinator with signatures
+ * 
+ * ACTIVE FLOW:
+ * Learner AI → Course Builder → Content Studio → Build Course
+ * 
+ * Language field (if present) is forwarded from Learner AI payload to Content Studio.
+ * Content Studio integration remains EXACTLY as implemented - no logic changes.
  */
 
 import { postToCoordinator } from './coordinatorClient.js';
@@ -11,8 +17,8 @@ import contentStudioDTO from '../../dtoBuilders/contentStudioDTO.js';
  * @param {Object} payloadObject - Payload object (will be converted to envelope)
  * @param {Object} payloadObject.learnerData - Learner data (learner_id, learner_name, learner_company)
  * @param {Array} payloadObject.skills - Skills array
- * @param {Array} payloadObject.learning_path - Learning path array (NEW: from Learner AI)
- * @param {string} payloadObject.language - Language code (NEW: from Directory)
+ * @param {Array} payloadObject.learning_path - Learning path array (from Learner AI)
+ * @param {string} payloadObject.language - Language code (optional, from Learner AI payload if present)
  * @param {Object} payloadObject.trainerData - Trainer data (optional: trainer_id, trainer_name)
  * @returns {Promise<Object>} Response payload object
  */

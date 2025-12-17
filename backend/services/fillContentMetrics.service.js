@@ -203,14 +203,37 @@ async function triggerCourseCreationPipeline(learners, companyId, companyName, l
 }
 
 /**
+ * @deprecated LEGACY_FLOW
  * Pre-process payload for enrollment operations
  * Triggers course creation pipeline if course_id is missing for CAREER_PATH_DRIVEN
+ * 
+ * ⚠️ THIS FLOW IS CURRENTLY INACTIVE
+ * Course Builder NO LONGER initiates calls to Learner AI.
+ * Directory-triggered enrollment flow is disabled.
+ * 
  * @param {Object} payloadObject - Original payload
  * @param {string|null} action - Action from payload
  * @param {string|null} requesterService - Requester service name (for flow gate validation)
  * @returns {Promise<Object>} - Payload with course_id added for each learner
  */
 async function preprocessEnrollmentPayload(payloadObject, action, requesterService = null) {
+  // ⚠️ LEGACY_FLOW: Directory-triggered enrollment flow is currently inactive
+  // Course Builder now accepts triggers ONLY from Learner AI, not from Directory
+  // If Directory tries to trigger enrollment with course creation, return error
+  const isDirectoryEnrollment = 
+    requesterService === 'directory-service' &&
+    action === 'enroll_employees_career_path' &&
+    payloadObject.learning_flow === 'CAREER_PATH_DRIVEN';
+  
+  if (isDirectoryEnrollment) {
+    // Directory-triggered enrollment flow is disabled
+    // Course Builder no longer initiates calls to Learner AI
+    const error = new Error('Directory-triggered enrollment flow is currently inactive. Course Builder now accepts triggers only from Learner AI.');
+    error.status = 410; // Gone - resource no longer available
+    throw error;
+  }
+  
+  /* LEGACY CODE - PRESERVED FOR POTENTIAL FUTURE REACTIVATION
   // FLOW GATE (CRITICAL): Only execute CAREER_PATH_DRIVEN logic when ALL conditions are met
   // This is the SINGLE SOURCE OF TRUTH for CAREER_PATH_DRIVEN flow
   const isCareerPathDriven = 
@@ -280,6 +303,10 @@ async function preprocessEnrollmentPayload(payloadObject, action, requesterServi
     }
   }
   
+  return payloadObject;
+  */
+  
+  // For non-Directory flows, return payload as-is (no preprocessing)
   return payloadObject;
 }
 

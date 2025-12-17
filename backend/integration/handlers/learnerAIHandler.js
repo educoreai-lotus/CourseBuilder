@@ -1,9 +1,15 @@
 /**
  * Learner AI Integration Handler
  * Handles incoming data from Learner AI microservice (via Coordinator)
- * NOTE: This handler is for when Learner AI sends data TO Course Builder
- * The NEW trigger flow is: Directory → Course Builder → Learner AI → Content Studio → Course Builder
- * This handler is kept for backward compatibility if Learner AI sends responses directly
+ * 
+ * ACTIVE FLOW (CURRENT):
+ * Directory → Skills Engine → Learner AI → Course Builder → Content Studio → Build Course
+ * 
+ * This is the PRIMARY entry point for Course Builder.
+ * Learner AI sends requests TO Course Builder via Coordinator (POST /api/fill-content-metrics).
+ * Course Builder then calls Content Studio and builds the course.
+ * 
+ * NOTE: Course Builder NO LONGER calls Learner AI. Learner AI is the trigger source.
  */
 
 import learnerAIDTO from '../../dtoBuilders/learnerAIDTO.js';
