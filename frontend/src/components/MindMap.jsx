@@ -212,6 +212,119 @@ const nodeTypes = {
 };
 
 /**
+ * Hierarchical Layout Algorithm
+ * Calculates node positions using BFS traversal with exact spacing constants
+ * 
+ * Layout Constants (from spec):
+ * - levelHeight: 320px (vertical spacing between levels)
+ * - nodeSpacing: 420px (horizontal spacing between nodes in same level)
+ * - startY: 180px (initial Y position for root level)
+ */
+function calculateHierarchicalLayout(nodes, edges) {
+  if (!nodes || nodes.length === 0) return nodes;
+
+  // Check if nodes already have positions (skip layout if all have positions)
+  const hasPositions = nodes.every(node => 
+    node.position && 
+    typeof node.position.x === 'number' && 
+    typeof node.position.y === 'number' &&
+    node.position.x !== 0 && 
+    node.position.y !== 0
+  );
+  
+  // If all nodes have valid positions, use them
+  if (hasPositions) return nodes;
+
+  // Layout constants (exact values from spec)
+  const levelHeight = 320; // Vertical spacing between levels
+  const nodeSpacing = 420; // Horizontal spacing between nodes
+  const startY = 180; // Initial Y position for root level
+
+  // Step 1: Build adjacency list (children map)
+  const children = {};
+  const nodeIds = new Set(nodes.map(n => n.id));
+  
+  edges.forEach((edge) => {
+    if (!children[edge.source]) {
+      children[edge.source] = [];
+    }
+    children[edge.source].push(edge.target);
+  });
+
+  // Step 2: Find root node (no incoming edges)
+  const targets = new Set(edges.map(e => e.target));
+  const rootNodes = nodes.filter(n => !targets.has(n.id));
+  const rootId = rootNodes.length > 0 ? rootNodes[0].id : nodes[0]?.id;
+
+  if (!rootId) return nodes;
+
+  // Step 3: BFS to assign levels
+  const levels = {};
+  const queue = [{ id: rootId, level: 0 }];
+  const visited = new Set();
+
+  while (queue.length > 0) {
+    const { id, level } = queue.shift();
+    if (visited.has(id)) continue;
+    visited.add(id);
+    levels[id] = level;
+
+    // Add children to queue
+    if (children[id]) {
+      children[id].forEach((childId) => {
+        if (!visited.has(childId)) {
+          queue.push({ id: childId, level: level + 1 });
+        }
+      });
+    }
+  }
+
+  // Assign level 0 to any unvisited nodes (orphaned nodes)
+  nodes.forEach((node) => {
+    if (!levels[node.id]) {
+      levels[node.id] = 0;
+    }
+  });
+
+  // Step 4: Group nodes by level
+  const nodesByLevel = {};
+  nodes.forEach((node) => {
+    const level = levels[node.id] || 0;
+    if (!nodesByLevel[level]) {
+      nodesByLevel[level] = [];
+    }
+    nodesByLevel[level].push(node.id);
+  });
+
+  // Step 5: Calculate positions
+  const positions = {};
+  
+  Object.keys(nodesByLevel).forEach((levelStr) => {
+    const level = parseInt(levelStr);
+    const levelNodes = nodesByLevel[level];
+    const y = startY + level * levelHeight;
+    
+    // Calculate horizontal centering
+    const nodeCount = levelNodes.length;
+    const totalWidth = (nodeCount - 1) * nodeSpacing;
+    const startX = -totalWidth / 2;
+
+    levelNodes.forEach((nodeId, index) => {
+      positions[nodeId] = {
+        x: startX + index * nodeSpacing,
+        y,
+      };
+    });
+  });
+
+  // Step 6: Apply positions to nodes
+  return nodes.map((node) => ({
+    ...node,
+    position: positions[node.id] || node.position || { x: 0, y: 0 },
+  }));
+}
+
+/**
  * MindMap Component - Exact match to Content Studio spec
  * Uses React Flow v11.11.4
  */
@@ -306,7 +419,13 @@ export const MindMap = ({ data, className = '' }) => {
     }));
   }, [data?.edges, isDark]);
 
-  const [nodes, setNodes, onNodesChange] = useNodesState(normalizedNodes);
+  // Apply hierarchical layout algorithm
+  const layoutedNodes = useMemo(() => {
+    if (normalizedNodes.length === 0) return [];
+    return calculateHierarchicalLayout(normalizedNodes, normalizedEdges);
+  }, [normalizedNodes, normalizedEdges]);
+
+  const [nodes, setNodes, onNodesChange] = useNodesState(layoutedNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(normalizedEdges);
 
   const onConnect = useCallback(
@@ -316,10 +435,10 @@ export const MindMap = ({ data, className = '' }) => {
 
   // Update nodes/edges when data changes
   useEffect(() => {
-    if (normalizedNodes.length > 0) {
-      setNodes(normalizedNodes);
+    if (layoutedNodes.length > 0) {
+      setNodes(layoutedNodes);
     }
-  }, [normalizedNodes, setNodes]);
+  }, [layoutedNodes, setNodes]);
 
   useEffect(() => {
     if (normalizedEdges.length > 0) {

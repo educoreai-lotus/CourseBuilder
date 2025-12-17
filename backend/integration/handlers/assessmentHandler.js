@@ -8,6 +8,7 @@ import assessmentDTO from '../../dtoBuilders/assessmentDTO.js';
 import { getFallbackData, shouldUseFallback } from '../fallbackData.js';
 import { sendToDevlab } from '../../services/gateways/devlabGateway.js';
 import courseRepository from '../../repositories/CourseRepository.js';
+import registrationRepository from '../../repositories/RegistrationRepository.js';
 
 /**
  * Handle Assessment integration request
@@ -117,8 +118,20 @@ export async function handleAssessmentIntegration(payloadObject, responseTemplat
  */
 async function triggerDevLabRequest(courseId, learnerId, courseName = '') {
   try {
+    // Fetch learner name from registration
+    let learnerName = null;
+    try {
+      const registration = await registrationRepository.findByLearnerAndCourse(learnerId, courseId);
+      if (registration && registration.learner_name) {
+        learnerName = registration.learner_name;
+      }
+    } catch (regError) {
+      console.warn('[Assessment Handler] Could not fetch learner name from registration:', regError.message);
+    }
+
     console.log('[Assessment Handler] Learner passed exam - sending request to DevLab via Coordinator:', {
       learner_id: learnerId,
+      learner_name: learnerName,
       course_id: courseId,
       course_name: courseName
     });
@@ -127,7 +140,7 @@ async function triggerDevLabRequest(courseId, learnerId, courseName = '') {
     const course = await courseRepository.findById(courseId);
     if (course) {
       // Send request to DevLab via Coordinator (fire-and-forget, don't wait for response)
-      sendToDevlab(course, learnerId).catch((error) => {
+      sendToDevlab(course, learnerId, learnerName).catch((error) => {
         console.error('[Assessment Handler] DevLab request failed (non-blocking):', error.message);
       });
     } else {

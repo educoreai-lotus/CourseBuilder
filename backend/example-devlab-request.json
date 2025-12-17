@@ -1,0 +1,15 @@
+{
+  "requester_service": "course-builder-service",
+  "payload": {
+    "course_id": "550e8400-e29b-41d4-a716-446655440000",
+    "learner_id": "210dc7a7-9808-445c-8eb7-51c217e3919c",
+    "learner_name": "John Doe",
+    "course_name": "Node.js Backend Development",
+    "action": "notify_learner_course_completion",
+    "description": "Notify that a learner has successfully completed a course and passed the final assessment, enabling access to development environment for hands-on coding practice and project work"
+  },
+  "response": {
+    "answer": ""
+  }
+}
+
