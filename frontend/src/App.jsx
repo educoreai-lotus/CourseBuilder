@@ -89,9 +89,6 @@ function AppShell() {
         </Routes>
       </main>
 
-      {/* Chatbot container as per docs/WHAT_MICROSERVICES_NEED_TO_DO.md */}
-      <div id="edu-bot-container"></div>
-
       <AccessibilityControls />
       <Toast />
       {/* Initialize RAG chatbot following docs/FOR_MICROSERVICE_DEVELOPERS.md */}
