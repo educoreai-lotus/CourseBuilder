@@ -1,6 +1,8 @@
 {
   "requester_service": "course-builder-service",
   "payload": {
+    "action": "get_batch_career_paths",
+    "description": "Get batch career learning paths for multiple learners in a company for CAREER_PATH_DRIVEN flow",
     "company_id": "ba3dff4a-9177-4b74-b77e-6bdd6488de86",
     "company_name": "Lotus techhub",
     "learning_flow": "career_path_driven",

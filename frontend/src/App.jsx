@@ -2,7 +2,6 @@ import { Routes, Route, Navigate, useParams } from 'react-router-dom'
 import { AppProvider } from './context/AppContext.jsx'
 import Header from './components/Header.jsx'
 import AccessibilityControls from './components/AccessibilityControls.jsx'
-import RAGChatbotInitializer from './components/RAGChatbotInitializer.jsx'
 import Toast from './components/Toast.jsx'
 import ErrorBoundary from './components/ErrorBoundary.jsx'
 import CoursesPage from './pages/CoursesPage.jsx'
@@ -89,28 +88,7 @@ function AppShell() {
         </Routes>
       </main>
 
-      {/* Global container for Educore RAG Chatbot */}
-      <div
-        id="edu-bot-container"
-        style={{
-          position: 'fixed',
-          bottom: '24px',
-          right: '24px',
-          minWidth: '64px',
-          minHeight: '64px',
-          width: 'auto',
-          height: 'auto',
-          zIndex: 2147483647,
-          pointerEvents: 'auto',
-          display: 'block',
-          visibility: 'visible',
-          opacity: 1,
-          overflow: 'visible'
-        }}
-      ></div>
-
       <AccessibilityControls />
-      <RAGChatbotInitializer />
       <Toast />
     </div>
   )

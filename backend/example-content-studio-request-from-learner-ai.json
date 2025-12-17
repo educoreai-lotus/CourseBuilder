@@ -1,0 +1,160 @@
+{
+  "requester_service": "course-builder-service",
+  "payload": {
+    "action": "generate_course_content",
+    "description": "Generate course content including topics, modules, and lessons based on learning path and skills",
+    "company_id": "ba3dff4a-9177-4b74-b77e-6bdd6488de86",
+    "company_name": "Lotus techhub",
+    "learning_flow": "career_path_driven",
+    "learners_data": [
+      {
+        "user_id": "b2c3d4e5-f6a7-8901-2345-678901234567",
+        "user_name": "Sara Neer",
+        "company_id": "ba3dff4a-9177-4b74-b77e-6bdd6488de86",
+        "company_name": "TechCorp Inc.",
+        "learning_flow": "career_path_driven",
+        "career_learning_paths": [
+          {
+            "competency_target_name": "Node.js Backend Development",
+            "skills_raw_data": {
+              "Competency_Database_Integration": [
+                "Variables and Data Types",
+                "Input and Output (cin, cout)",
+                "MGS_Express_Framework"
+              ],
+              "Competency_API_Security_and_Authentication": [
+                "HTTP Authentication Concepts",
+                "JWT Token Generation and Validation",
+                "Password Hashing and Salting",
+                "Authorization and Role-Based Access Control (RBAC)",
+                "Securing Express Routes with Middleware",
+                "Handling Authentication Errors Securely",
+                "Environment Variables and Secrets Management"
+              ]
+            },
+            "learning_path": {
+              "learner_id": "b2c3d4e5-f6a7-8901-2345-678901234567",
+              "path_title": "Personalized Learning Path for Node.js Backend Development – API Security and Authentication",
+              "learning_modules": [
+                {
+                  "module_order": 1,
+                  "module_title": "Foundations of Programming and Backend Setup",
+                  "skills_in_module": [
+                    "Variables and Data Types",
+                    "Input and Output (cin, cout)",
+                    "MGS_Express_Framework",
+                    "Environment Variables and Secrets Management"
+                  ],
+                  "estimated_duration_hours": 8.5,
+                  "steps": [
+                    {
+                      "step": 1,
+                      "title": "Understanding Variables and Data Types",
+                      "description": "Learn the fundamentals of programming by exploring how to declare variables and understand the different data types they can hold. This is the first building block for writing any software.",
+                      "estimatedTime": 2,
+                      "skills_covered": ["Variables and Data Types"]
+                    },
+                    {
+                      "step": 2,
+                      "title": "Basic Program Input and Output",
+                      "description": "Master the core concept of handling data flow in an application. Using 'cin' and 'cout' as a model, you will learn how programs receive input and display output, a universal concept in software development.",
+                      "estimatedTime": 1,
+                      "skills_covered": ["Input and Output (cin, cout)"]
+                    },
+                    {
+                      "step": 3,
+                      "title": "Building Your First Server with MGS_Express_Framework",
+                      "description": "Transition from general programming concepts to backend development by setting up a basic web server using the MGS_Express_Framework. You will learn to create routes and handle HTTP requests.",
+                      "estimatedTime": 4,
+                      "skills_covered": ["MGS_Express_Framework"]
+                    },
+                    {
+                      "step": 4,
+                      "title": "Managing Application Secrets with Environment Variables",
+                      "description": "Learn the critical practice of separating configuration and secrets from your codebase. This step covers how to use environment variables to manage sensitive data like API keys and database credentials securely.",
+                      "estimatedTime": 1.5,
+                      "skills_covered": ["Environment Variables and Secrets Management"]
+                    }
+                  ]
+                },
+                {
+                  "module_order": 2,
+                  "module_title": "Core API Authentication Mechanisms",
+                  "skills_in_module": [
+                    "HTTP Authentication Concepts",
+                    "Password Hashing and Salting",
+                    "JWT Token Generation and Validation"
+                  ],
+                  "estimated_duration_hours": 7.5,
+                  "steps": [
+                    {
+                      "step": 1,
+                      "title": "Introduction to HTTP Authentication Concepts",
+                      "description": "Explore the theoretical foundations of web authentication. This step covers different strategies like Basic, Bearer, and OAuth to understand how servers verify a client's identity over the stateless HTTP protocol.",
+                      "estimatedTime": 2,
+                      "skills_covered": ["HTTP Authentication Concepts"]
+                    },
+                    {
+                      "step": 2,
+                      "title": "Securely Storing User Passwords with Hashing and Salting",
+                      "description": "Implement a fundamental security measure for any application with user accounts. Learn to use cryptographic hashing and salting techniques to protect user passwords in your database, preventing them from being exposed in plain text.",
+                      "estimatedTime": 2.5,
+                      "skills_covered": ["Password Hashing and Salting"]
+                    },
+                    {
+                      "step": 3,
+                      "title": "Implementing Stateless Authentication with JWT",
+                      "description": "Build a modern, stateless authentication system using JSON Web Tokens (JWT). This step covers the entire JWT lifecycle: generating tokens upon successful login, sending them to the client, and validating them on subsequent API requests.",
+                      "estimatedTime": 3,
+                      "skills_covered": ["JWT Token Generation and Validation"]
+                    }
+                  ]
+                },
+                {
+                  "module_order": 3,
+                  "module_title": "Securing and Controlling API Access",
+                  "skills_in_module": [
+                    "Securing Express Routes with Middleware",
+                    "Authorization and Role-Based Access Control (RBAC)",
+                    "Handling Authentication Errors Securely"
+                  ],
+                  "estimated_duration_hours": 8,
+                  "steps": [
+                    {
+                      "step": 1,
+                      "title": "Protecting API Endpoints using Express Middleware",
+                      "description": "Apply your knowledge of JWT validation to protect specific API routes. You will learn to write and use middleware functions in the MGS_Express_Framework to ensure that only authenticated users can access certain endpoints.",
+                      "estimatedTime": 2.5,
+                      "skills_covered": ["Securing Express Routes with Middleware"]
+                    },
+                    {
+                      "step": 2,
+                      "title": "Defining User Permissions with Role-Based Access Control (RBAC)",
+                      "description": "Go beyond authentication to implement authorization. Learn to design and build a Role-Based Access Control (RBAC) system to manage what authenticated users are allowed to do, such as distinguishing between 'admin' and 'user' privileges.",
+                      "estimatedTime": 3.5,
+                      "skills_covered": ["Authorization and Role-Based Access Control (RBAC)"]
+                    },
+                    {
+                      "step": 3,
+                      "title": "Secure Error Handling for Authentication and Authorization",
+                      "description": "Refine your security implementation by learning to handle errors gracefully and securely. This step focuses on providing meaningful error responses without leaking potentially sensitive information about your system's security mechanisms.",
+                      "estimatedTime": 2,
+                      "skills_covered": ["Handling Authentication Errors Securely"]
+                    }
+                  ]
+                }
+              ],
+              "total_estimated_duration_hours": 24
+            }
+          }
+        ],
+        "preferred_language": "en"
+      }
+    ]
+  },
+  "response": {
+    "course": []
+  }
+}
+
+
