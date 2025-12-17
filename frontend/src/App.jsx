@@ -92,10 +92,8 @@ function AppShell() {
       <AccessibilityControls />
       <Toast />
       
-      {/* RAG Chatbot container - must exist before initialization */}
+      {/* RAG Chatbot container and initializer */}
       <div id="edu-bot-container"></div>
-      
-      {/* RAG Chatbot initializer - side-effect only component */}
       <RAGChatbotInitializer />
     </div>
   )
