@@ -56,6 +56,12 @@ export function normalizeLessonData(lessonData) {
     trainer_ids = [lessonData.trainer_id];
   }
 
+  // Normalize format_order - must ALWAYS be an array (matches personalized flow)
+  let format_order = [];
+  if (Array.isArray(lessonData.format_order)) {
+    format_order = lessonData.format_order;
+  }
+
   // Derive content_type - MUST always exist
   let content_type = lessonData.content_type;
   if (!content_type && Array.isArray(content_data) && content_data.length > 0) {
@@ -74,7 +80,8 @@ export function normalizeLessonData(lessonData) {
     content_data, // Normalized array
     devlab_exercises, // Normalized array
     skills, // Normalized array
-    trainer_ids // Normalized array
+    trainer_ids, // Normalized array
+    format_order // Normalized array (even if empty)
   };
 }
 

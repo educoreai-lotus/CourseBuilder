@@ -74,8 +74,8 @@ export async function handleContentStudioIntegration(payloadObject, responseTemp
       });
     }
 
-    // Create lessons from Content Studio topics[] array
-    // Each Content Studio topic becomes a Course Builder lesson
+    // Create lessons from Content Studio topics[] array (normalized via Content Studio normalizer)
+    // Each normalized lesson already has content_data, devlab_exercises, skills, trainer_ids, format_order
     const createdLessons = [];
     for (const lessonData of normalized.lessons) {
       const lesson = await lessonRepository.create({
@@ -87,7 +87,8 @@ export async function handleContentStudioIntegration(payloadObject, responseTemp
         trainer_ids: lessonData.trainer_ids,
         content_type: lessonData.content_type,
         content_data: lessonData.content_data,
-        devlab_exercises: lessonData.devlab_exercises
+        devlab_exercises: lessonData.devlab_exercises,
+        format_order: lessonData.format_order
       });
       createdLessons.push(lesson);
     }
