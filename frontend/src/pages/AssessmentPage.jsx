@@ -12,8 +12,9 @@ import {
 } from 'lucide-react'
 import Button from '../components/Button.jsx'
 import LoadingSpinner from '../components/LoadingSpinner.jsx'
-import { getCourseById, startAssessment } from '../services/apiService.js'
+import { getCourseById } from '../services/apiService.js'
 import { useApp } from '../context/AppContext'
+import { useAssessmentLauncher } from '../hooks/useAssessmentLauncher.js'
 import Container from '../components/Container.jsx'
 
 export default function AssessmentPage() {
@@ -22,7 +23,7 @@ export default function AssessmentPage() {
   const { showToast, userProfile } = useApp()
   const [course, setCourse] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [redirecting, setRedirecting] = useState(false)
+  const { launchAssessment, launching } = useAssessmentLauncher()
 
   useEffect(() => {
     const loadCourse = async () => {
@@ -40,35 +41,13 @@ export default function AssessmentPage() {
     loadCourse()
   }, [id, showToast])
 
-  const handleStartAssessment = async () => {
-    if (redirecting) return
-    
-    setRedirecting(true)
-    showToast('Starting assessment...', 'info')
-    
-    try {
-      // Call backend API to start assessment via Coordinator
-      const response = await startAssessment(id, {
-        learner_id: userProfile?.id,
-        learner_name: userProfile?.name
-      })
-
-      // Always redirect to Assessment intro page for postcourse exam
-      // Ignore any redirect_url from backend to keep UX deterministic
-      const assessmentUrl = 'https://assessment-seven-liard.vercel.app/exam-intro?examType=postcourse'
-      
-      showToast('Redirecting to assessment...', 'success')
-      // Redirect to external Assessment service
-      window.location.href = assessmentUrl
-    } catch (error) {
-      console.error('Error starting assessment:', error)
-      showToast(
-        error?.response?.data?.message || 'Failed to start assessment. Please try again.',
-        'error'
-      )
-      setRedirecting(false)
+  // Auto-launch assessment when this page is accessed directly (legacy entry point)
+  // This keeps behavior consistent while removing the need for a second user click.
+  useEffect(() => {
+    if (!loading && course && userProfile?.id) {
+      launchAssessment(id)
     }
-  }
+  }, [loading, course, userProfile?.id, id, launchAssessment])
 
   if (loading) {
     return (
@@ -88,7 +67,7 @@ export default function AssessmentPage() {
     <div className="page-surface bg-[var(--bg-primary)] transition-colors">
       <Container>
         <div className="mx-auto flex max-w-4xl flex-col gap-10 py-10">
-          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center justify-between gap-4">
             <Button variant="secondary" onClick={() => navigate(`/course/${id}/overview`)}>
               <ArrowLeft className="mr-2 h-4 w-4" />
               Back to overview
@@ -139,62 +118,16 @@ export default function AssessmentPage() {
             </div>
 
             <div className="rounded-3xl border border-[rgba(148,163,184,0.18)] bg-[var(--bg-card)]/90 p-6 shadow-sm backdrop-blur transition-colors">
-              <h2 className="mb-4 text-lg font-semibold text-[var(--text-primary)]">Assessment checklist</h2>
-              <ul className="space-y-3 text-sm text-[var(--text-secondary)]">
-                <li className="flex items-start gap-3">
-                  <CheckCircle2 className="mt-0.5 h-4 w-4 text-[#047857]" />
-                  Covers all course modules and key learning objectives
-                </li>
-                <li className="flex items-start gap-3">
-                  <CheckCircle2 className="mt-0.5 h-4 w-4 text-[#047857]" />
-                  Mix of scenario-based multiple choice and short-form responses
-                </li>
-                <li className="flex items-start gap-3">
-                  <CheckCircle2 className="mt-0.5 h-4 w-4 text-[#047857]" />
-                  Adaptive scoring aligned with capability framework
-                </li>
-                <li className="flex items-start gap-3">
-                  <CheckCircle2 className="mt-0.5 h-4 w-4 text-[#047857]" />
-                  Results shared with Analytics & Credentialing services
-                </li>
-              </ul>
-            </div>
-
-            <div className="rounded-3xl border border-[rgba(245,158,11,0.3)] bg-[rgba(245,158,11,0.12)] p-6 text-sm text-[#b45309] shadow-sm">
-              <div className="mb-3 flex items-center gap-2 font-semibold uppercase tracking-widest text-[#b45309]">
-                <AlertTriangle size={16} />
-                Important notes
+              <div className="flex flex-col items-center gap-4 text-center">
+                <Loader2 className="h-8 w-8 animate-spin text-[var(--primary-cyan)]" />
+                <div>
+                  <h2 className="text-lg font-semibold text-[var(--text-primary)]">Launching assessment…</h2>
+                  <p className="mt-2 text-sm text-[var(--text-secondary)]">
+                    You&apos;ll be redirected to the assessment in a moment.
+                  </p>
+                </div>
               </div>
-              <ul className="space-y-2 text-[var(--text-secondary)]">
-                <li>Ensure all lessons are completed before starting the exam.</li>
-                <li>You have a single attempt — plan your time carefully.</li>
-                <li>Keep a stable internet connection to avoid interruptions.</li>
-                <li>Passing the assessment issues your digital credential automatically.</li>
-              </ul>
             </div>
-
-            <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
-              <Button variant="primary" size="lg" onClick={handleStartAssessment} disabled={redirecting}>
-                {redirecting ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Redirecting...
-                  </>
-                ) : (
-                  <>
-                    Launch assessment
-                    <Target className="ml-3 h-4 w-4" />
-                  </>
-                )}
-              </Button>
-              <Button variant="secondary" onClick={() => navigate(`/course/${id}/overview`)} disabled={redirecting}>
-                Review overview
-              </Button>
-            </div>
-
-            <p className="text-center text-xs text-[var(--text-muted)]">
-              Once finished, you&apos;ll move straight into the feedback experience to reflect on your learning journey.
-            </p>
           </section>
         </div>
       </Container>

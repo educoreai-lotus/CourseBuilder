@@ -12,11 +12,13 @@ import CourseStructureSidebar from '../components/course/CourseStructureSidebar.
 import { useApp } from '../context/AppContext'
 import Container from '../components/Container.jsx'
 import { isPersonalized } from '../utils/courseTypeUtils.js'
+import { useAssessmentLauncher } from '../hooks/useAssessmentLauncher.js'
 
 export default function LessonPage() {
   const { id: courseId, lessonId } = useParams()
   const navigate = useNavigate()
   const { showToast, userRole, userProfile } = useApp()
+  const { launchAssessment } = useAssessmentLauncher()
   const learnerId = userRole === 'learner' ? userProfile?.id : null
 
   const [loading, setLoading] = useState(true)
@@ -283,7 +285,8 @@ export default function LessonPage() {
       showToast('Complete the final lesson to unlock the assessment.', 'info')
       return
     }
-    navigate(`/course/${courseId}/assessment`)
+    // Directly launch assessment without intermediate page
+    launchAssessment(courseId)
   }
   const completionSummary = isFinalLesson
     ? 'Final assessment ready – take the test when you are ready.'
