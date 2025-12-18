@@ -13,8 +13,8 @@ import {
   Code
 } from 'lucide-react'
 import Button from './Button.jsx'
-import { getLessonExercises } from '../services/apiService.js'
 import { MindMapViewer } from './MindMapViewer.jsx'
+import DevLabExerciseRenderer from './DevLabExerciseRenderer.jsx'
 
 const renderContent = (lesson) => {
   // Handle content_data - can be array, object, or JSON string
@@ -268,39 +268,10 @@ export default function LessonViewer({
 }) {
   const [completed, setCompleted] = useState(isCompleted)
   const [isProcessing, setProcessing] = useState(false)
-  const [exercisesHTML, setExercisesHTML] = useState(null)
-  const [exercisesLoading, setExercisesLoading] = useState(false)
-  const [exercisesError, setExercisesError] = useState(null)
-  const [showExercises, setShowExercises] = useState(false)
 
   useEffect(() => {
     setCompleted(isCompleted)
   }, [isCompleted])
-
-  // Load exercises via AJAX when user wants to view them
-  const loadExercises = async () => {
-    if (!lesson?.id && !lesson?.lesson_id) return
-    
-    const lessonId = lesson.id || lesson.lesson_id
-    if (exercisesHTML !== null) {
-      // Already loaded, just toggle display
-      setShowExercises(!showExercises)
-      return
-    }
-
-    setExercisesLoading(true)
-    setExercisesError(null)
-    try {
-      const html = await getLessonExercises(lessonId)
-      setExercisesHTML(html)
-      setShowExercises(true)
-    } catch (err) {
-      setExercisesError(err.message || 'Failed to load exercises')
-      console.error('Error loading exercises:', err)
-    } finally {
-      setExercisesLoading(false)
-    }
-  }
 
   if (!lesson) {
     return (
@@ -394,42 +365,15 @@ export default function LessonViewer({
       <div className="rounded-3xl border border-[rgba(148,163,184,0.12)] bg-[var(--bg-secondary)]/40 p-6 shadow-inner backdrop-blur">
         {renderContent(lesson)}
 
-        {/* Exercises Section - Loaded via AJAX */}
-        {(lesson.devlab_exercises && Array.isArray(lesson.devlab_exercises) && lesson.devlab_exercises.length > 0) || completed ? (
-          <div className="mt-8 space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-[var(--text-primary)] flex items-center gap-2">
-                <Code size={20} className="text-[var(--primary-cyan)]" />
-                Exercises
-              </h3>
-              <Button
-                variant="secondary"
-                onClick={loadExercises}
-                disabled={exercisesLoading}
-                className="text-sm"
-              >
-                {exercisesLoading ? (
-                  'Loading...'
-                ) : showExercises ? (
-                  'Hide Exercises'
-                ) : (
-                  'View Exercises'
-                )}
-              </Button>
-            </div>
-            {exercisesError && (
-              <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-                {exercisesError}
-              </div>
-            )}
-            {showExercises && exercisesHTML && (
-              <div
-                className="rounded-2xl border border-[rgba(148,163,184,0.14)] bg-[var(--bg-card)]/90 p-5 shadow-sm backdrop-blur transition-colors"
-                dangerouslySetInnerHTML={{ __html: exercisesHTML }}
-              />
-            )}
-          </div>
-        ) : null}
+        {/* DevLab Exercises - Rendered as iframes after lesson content */}
+        {lesson.devlab_exercises && Array.isArray(lesson.devlab_exercises) && lesson.devlab_exercises.length > 0 && (
+          lesson.devlab_exercises.map((exercise, index) => (
+            <DevLabExerciseRenderer
+              key={index}
+              html={exercise.html}
+            />
+          ))
+        )}
 
         {(lesson.enrichment_data || lesson.micro_skills || lesson.nano_skills) && (
           <div className="mt-8 space-y-6">
