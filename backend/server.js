@@ -13,6 +13,7 @@ import { authenticateRequest } from './middleware/auth.middleware.js';
 import { apiLimiter } from './middleware/rateLimiter.middleware.js';
 import { startScheduledPublishingJob } from './services/scheduledPublishing.service.js';
 import { initCache } from './services/cache.service.js';
+import grpcServer from './src/grpc/server.js';
 
 dotenv.config();
 
@@ -180,23 +181,41 @@ let serverInstance;
 let scheduledJobCleanup = null;
 
 if (process.env.NODE_ENV !== 'test') {
-  // Initialize cache and start server
-  initCache().then(() => {
-    serverInstance = app.listen(PORT, () => {
+  // Initialize cache and start servers
+  initCache().then(async () => {
+    serverInstance = app.listen(PORT, async () => {
       console.log(`🚀 Course Builder API server running on port ${PORT}`);
       console.log(`📝 Environment: ${process.env.NODE_ENV || 'development'}`);
       console.log(`🔗 Health check: http://localhost:${PORT}/health`);
       
+      // Start GRPC server
+      try {
+        await grpcServer.start();
+        console.log(`🔌 GRPC server running on port ${process.env.GRPC_PORT || 50051}`);
+      } catch (error) {
+        console.error('Failed to start GRPC server:', error);
+        // Continue without GRPC if it fails
+      }
+      
       // Start scheduled publishing job (will handle missing tables gracefully)
       scheduledJobCleanup = startScheduledPublishingJob();
     });
-  }).catch(error => {
+  }).catch(async error => {
     console.error('Error initializing cache:', error);
     // Start server anyway (cache is optional)
-    serverInstance = app.listen(PORT, () => {
+    serverInstance = app.listen(PORT, async () => {
       console.log(`🚀 Course Builder API server running on port ${PORT}`);
       console.log(`📝 Environment: ${process.env.NODE_ENV || 'development'}`);
       console.log(`🔗 Health check: http://localhost:${PORT}/health`);
+      
+      // Start GRPC server
+      try {
+        await grpcServer.start();
+        console.log(`🔌 GRPC server running on port ${process.env.GRPC_PORT || 50051}`);
+      } catch (error) {
+        console.error('Failed to start GRPC server:', error);
+        // Continue without GRPC if it fails
+      }
       
       scheduledJobCleanup = startScheduledPublishingJob();
     });
@@ -204,29 +223,37 @@ if (process.env.NODE_ENV !== 'test') {
 }
 
 // Graceful shutdown
-process.on('SIGTERM', () => {
+process.on('SIGTERM', async () => {
   console.log('SIGTERM received, shutting down gracefully...');
   if (scheduledJobCleanup) {
     scheduledJobCleanup();
   }
+  // Shutdown GRPC server
+  await grpcServer.shutdown();
   if (serverInstance) {
     serverInstance.close(() => {
-      console.log('Server closed');
+      console.log('HTTP server closed');
       process.exit(0);
     });
+  } else {
+    process.exit(0);
   }
 });
 
-process.on('SIGINT', () => {
+process.on('SIGINT', async () => {
   console.log('SIGINT received, shutting down gracefully...');
   if (scheduledJobCleanup) {
     scheduledJobCleanup();
   }
+  // Shutdown GRPC server
+  await grpcServer.shutdown();
   if (serverInstance) {
     serverInstance.close(() => {
-      console.log('Server closed');
+      console.log('HTTP server closed');
       process.exit(0);
     });
+  } else {
+    process.exit(0);
   }
 });
 
