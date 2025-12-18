@@ -14,7 +14,6 @@ import {
 } from 'lucide-react'
 import Button from './Button.jsx'
 import { MindMapViewer } from './MindMapViewer.jsx'
-import DevLabExerciseRenderer from './DevLabExerciseRenderer.jsx'
 
 const renderContent = (lesson) => {
   // Handle content_data - can be array, object, or JSON string
@@ -264,7 +263,9 @@ export default function LessonViewer({
   onComplete,
   isCompleted = false,
   onTakeTest,
-  isFinalLesson = false
+  isFinalLesson = false,
+  onViewExercises,
+  courseId
 }) {
   const [completed, setCompleted] = useState(isCompleted)
   const [isProcessing, setProcessing] = useState(false)
@@ -365,14 +366,32 @@ export default function LessonViewer({
       <div className="rounded-3xl border border-[rgba(148,163,184,0.12)] bg-[var(--bg-secondary)]/40 p-6 shadow-inner backdrop-blur">
         {renderContent(lesson)}
 
-        {/* DevLab Exercises - Rendered as iframes after lesson content */}
+        {/* DevLab Exercises - Show button to navigate to exercises page */}
         {lesson.devlab_exercises && Array.isArray(lesson.devlab_exercises) && lesson.devlab_exercises.length > 0 && (
-          lesson.devlab_exercises.map((exercise, index) => (
-            <DevLabExerciseRenderer
-              key={index}
-              html={exercise.html}
-            />
-          ))
+          <div className="mt-8 rounded-2xl border border-[rgba(148,163,184,0.18)] bg-[var(--bg-card)]/90 p-6 shadow-sm backdrop-blur transition-colors">
+            <div className="flex flex-col items-center gap-4 text-center sm:flex-row sm:justify-between sm:text-left">
+              <div className="flex items-center gap-3">
+                <div className="rounded-2xl bg-[rgba(14,165,233,0.12)] p-3 text-[var(--primary-cyan)]">
+                  <Code size={22} />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-[var(--text-primary)]">
+                    Practice Exercises Available
+                  </h3>
+                  <p className="text-sm text-[var(--text-secondary)]">
+                    {lesson.devlab_exercises.length} {lesson.devlab_exercises.length === 1 ? 'exercise' : 'exercises'} ready for hands-on practice
+                  </p>
+                </div>
+              </div>
+              {onViewExercises && (
+                <Button variant="primary" onClick={onViewExercises}>
+                  <Code className="mr-2 h-4 w-4" />
+                  Start Exercises
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              )}
+            </div>
+          </div>
         )}
 
         {(lesson.enrichment_data || lesson.micro_skills || lesson.nano_skills) && (

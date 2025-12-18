@@ -8,6 +8,7 @@ import RAGChatbotInitializer from './components/RAGChatbotInitializer.jsx'
 import CoursesPage from './pages/CoursesPage.jsx'
 import CourseDetailsPage from './pages/CourseDetailsPage.jsx'
 import LessonPage from './pages/LessonPage.jsx'
+import LessonExercisesPage from './pages/LessonExercisesPage.jsx'
 import TrainerDashboard from './pages/TrainerDashboard.jsx'
 import FeedbackPage from './pages/FeedbackPage.jsx'
 import LearnerDashboard from './pages/LearnerDashboard.jsx'
@@ -52,6 +53,7 @@ function AppShell() {
           {/* Shared */}
           <Route path="/course/:id/overview" element={<CourseDetailsPage />} />
           <Route path="/course/:id/lesson/:lessonId" element={<LessonPage />} />
+          <Route path="/course/:id/lesson/:lessonId/exercises" element={<LessonExercisesPage />} />
           <Route path="/courses/:id" element={<LegacyCourseRedirect />} />
           <Route path="/lessons/:id" element={<LegacyLessonRedirect />} />
           <Route path="/course/:id/assessment" element={<AssessmentPage />} />

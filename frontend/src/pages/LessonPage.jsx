@@ -288,6 +288,10 @@ export default function LessonPage() {
     // Directly launch assessment without intermediate page
     launchAssessment(courseId)
   }
+
+  const handleViewExercises = () => {
+    navigate(`/course/${courseId}/lesson/${normalizedLessonId}/exercises`)
+  }
   const completionSummary = isFinalLesson
     ? 'Final assessment ready – take the test when you are ready.'
     : allLessonsCompleted
@@ -338,6 +342,7 @@ export default function LessonPage() {
                 course={course}
                 courseId={courseId}
                 userRole={userRole}
+                onViewExercises={handleViewExercises}
               />
             </div>
           </Container>

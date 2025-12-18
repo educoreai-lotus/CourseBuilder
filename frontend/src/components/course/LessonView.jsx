@@ -38,7 +38,8 @@ export default function LessonView({
   onEnrichmentError = null,
   course = null,
   courseId = null,
-  userRole = null
+  userRole = null,
+  onViewExercises = null
 }) {
   const navigate = useNavigate()
   
@@ -169,6 +170,8 @@ export default function LessonView({
               isCompleted={isCompleted}
               onTakeTest={isFinalLesson ? onTakeTest : undefined}
               isFinalLesson={isFinalLesson}
+              onViewExercises={onViewExercises}
+              courseId={courseId}
             />
 
             {/* AI-Curated Resources Section */}
