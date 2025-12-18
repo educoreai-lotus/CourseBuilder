@@ -53,11 +53,9 @@ export default function AssessmentPage() {
         learner_name: userProfile?.name
       })
 
-      // Always redirect to Assessment service
-      // If Assessment service returns a redirect_url, use it; otherwise use new default intro URL
-      const assessmentUrl =
-        response?.redirect_url ||
-        'https://assessment-seven-liard.vercel.app/exam-intro?examType=postcourse'
+      // Always redirect to Assessment intro page for postcourse exam
+      // Ignore any redirect_url from backend to keep UX deterministic
+      const assessmentUrl = 'https://assessment-seven-liard.vercel.app/exam-intro?examType=postcourse'
       
       showToast('Redirecting to assessment...', 'success')
       // Redirect to external Assessment service

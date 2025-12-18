@@ -74,9 +74,9 @@ export const startAssessment = async (req, res, next) => {
       has_assessment_session_id: !!assessmentResponse?.assessment_session_id
     });
 
-    // Always redirect to the Assessment service frontend
-    // Use the provided Assessment service URL regardless of what the service returns
-    const ASSESSMENT_SERVICE_URL = 'https://assessment-seven-liard.vercel.app/';
+    // Always redirect to the Assessment service intro page for postcourse exams
+    // Keep URL in sync with frontend AssessmentPage.jsx
+    const ASSESSMENT_SERVICE_URL = 'https://assessment-seven-liard.vercel.app/exam-intro?examType=postcourse';
     
     return res.status(200).json({
       assessment_session_id: assessmentResponse?.assessment_session_id || assessmentResponse?.learner_id || learnerId,
