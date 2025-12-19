@@ -333,7 +333,7 @@ export default function FeedbackPage() {
                 </h1>
                 <p className="text-base leading-7 text-[var(--text-secondary)]">
                   Help us improve <strong>{course?.title || course?.course_name || 'the course'}</strong> by rating the learning experience and adding insights.
-                  Your perspective informs recommendations and future iterations...
+                  Your perspective informs recommendations and future iterations!
                 </p>
               </div>
             </div>
