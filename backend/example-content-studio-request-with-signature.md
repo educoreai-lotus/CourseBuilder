@@ -1,3 +1,22 @@
+# Content Studio Request with Real Signature
+
+## Complete Request Example
+
+### HTTP Request
+
+**Method:** `POST`  
+**URL:** `https://coordinator-production-6004.up.railway.app/api/fill-content-metrics/`
+
+**Headers:**
+```http
+Content-Type: application/json
+X-Service-Name: course-builder-service
+X-Signature: MEQCIEKHyErHmtA0DPJnTpDxNBC+Pc4HYmWsFLBCC2T0uj8IAiARqiE3Bjx2zWP3ORlXaH/sMl0FXDEsF6P77inJu934cA==
+```
+
+### Request Body (Envelope)
+
+```json
 {
   "requester_service": "course-builder-service",
   "payload": {
@@ -38,3 +57,19 @@
     "course": []
   }
 }
+```
+
+### Signature Details
+
+**Signature:** `MEQCIEKHyErHmtA0DPJnTpDxNBC+Pc4HYmWsFLBCC2T0uj8IAiARqiE3Bjx2zWP3ORlXaH/sMl0FXDEsF6P77inJu934cA==`
+
+**Generation Process:**
+1. **Service Name:** `course-builder-service`
+2. **Payload Hash:** SHA-256 hash of the entire envelope JSON (stringified, no whitespace)
+3. **Message:** `educoreai-course-builder-service-{sha256-hash}`
+4. **Algorithm:** ECDSA P-256
+5. **Signing:** Signed with Course Builder's private key
+6. **Encoding:** Base64-encoded signature
+
+**Note:** This signature is valid for the exact envelope structure shown above. Any change to the payload will require a new signature.
+

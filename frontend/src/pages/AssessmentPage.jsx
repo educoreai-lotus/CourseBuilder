@@ -32,7 +32,7 @@ export default function AssessmentPage() {
         const data = await getCourseById(id)
         setCourse(data)
       } catch (err) {
-        showToast('Failed to load course', 'error')
+        showToast('Failed to load course!', 'error')
       } finally {
         setLoading(false)
       }
