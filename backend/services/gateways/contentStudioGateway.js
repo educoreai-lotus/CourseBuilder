@@ -33,14 +33,26 @@ export async function sendToContentStudio(payloadObject) {
       sendPayload = {
         ...payloadObject.learner_ai_data // This contains company_id, company_name, learning_flow, learners_data[]
       };
+      // Override action and description only
+      sendPayload.action = 'generate_course_content';
+      sendPayload.description = 'Generate course content including topics, modules, and lessons based on learning path and skills';
+    } else if (payloadObject.user_id || payloadObject.skills_raw_data || payloadObject.competency_target_name) {
+      // CRITICAL: This is a Learner AI request - send payload AS-IS with ONLY action/description overridden
+      // NO mappings, NO renaming, NO restructuring - Content Studio receives the same structure as Learner AI
+      console.log('[ContentStudio Gateway] Detected Learner AI request - forwarding payload AS-IS');
+      sendPayload = {
+        ...payloadObject, // Copy ALL fields from Learner AI payload AS-IS
+        action: payloadObject.action || 'generate_course_content', // Use existing action or override
+        description: payloadObject.description || 'Generate course content from learning path' // Use existing description or override
+      };
     } else {
-      // Legacy path: Build payload using DTO
+      // Legacy path: Build payload using DTO (for other request types like marketplace courses)
       sendPayload = contentStudioDTO.buildSendPayload(
         payloadObject.learnerData || {},
         payloadObject.skills || []
       );
 
-      // Add NEW fields for Directory → Learner AI → Content Studio flow
+      // Forward additional fields from payloadObject (for marketplace courses and other flows)
       if (payloadObject.learning_path) {
         sendPayload.learning_path = payloadObject.learning_path;
       }
@@ -51,8 +63,6 @@ export async function sendToContentStudio(payloadObject) {
         sendPayload.trainer_id = payloadObject.trainerData.trainer_id;
         sendPayload.trainer_name = payloadObject.trainerData.trainer_name;
       }
-
-      // Add additional context if provided (for marketplace courses)
       if (payloadObject.courseId) {
         sendPayload.courseId = payloadObject.courseId;
       }
@@ -62,11 +72,11 @@ export async function sendToContentStudio(payloadObject) {
       if (payloadObject.topic) {
         sendPayload.topic = payloadObject.topic;
       }
+      
+      // Add action and description fields for Coordinator routing
+      sendPayload.action = 'generate_course_content';
+      sendPayload.description = 'Generate course content including topics, modules, and lessons based on learning path and skills';
     }
-    
-    // Add action and description fields for Coordinator routing
-    sendPayload.action = 'generate_course_content';
-    sendPayload.description = 'Generate course content including topics, modules, and lessons based on learning path and skills';
 
     // Build response template (empty, Content Studio will fill it)
     const responseTemplate = {

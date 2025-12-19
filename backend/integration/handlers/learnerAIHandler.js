@@ -25,28 +25,46 @@ import { getFallbackData, shouldUseFallback } from '../fallbackData.js';
  */
 export async function handleLearnerAIIntegration(payloadObject, responseTemplate) {
   try {
-    // Normalize Learner AI payload
+    // Log raw incoming request BEFORE any processing
+    console.log(`
+==================== LEARNER AI ====================
+Received payload:
+${JSON.stringify(payloadObject, null, 2)}
+================== END LEARNER AI ==================
+`);
+
+    // Normalize Learner AI payload (for Course Builder internal logic only)
     const data = learnerAIDTO.buildFromReceived(payloadObject);
 
     console.log('[LearnerAI Handler] Received from Learner AI:', {
       user_id: data.user_id,
       user_name: data.user_name,
-      skills: data.skills,
-      competency_name: data.competency_name
+      skills: data.skills?.length || 0,
+      competency_name: data.competency_name,
+      has_learning_path: !!data.learning_path,
+      preferred_language: data.preferred_language
     });
 
     // Step 1: Call Content Studio to generate personalized lessons
-    // Content Studio needs: learner_id, learner_name, learner_company, skills
+    // CRITICAL: Send the EXACT payload received from Learner AI to Content Studio
+    // ONLY action and description may be overridden - everything else must be UNMODIFIED
     console.log('[LearnerAI Handler] Calling Content Studio to generate lessons...');
     
+    // Build Content Studio payload: EXACT copy of payloadObject with ONLY action/description overridden
+    // NO mappings, NO renaming, NO restructuring - Content Studio receives the same structure as Learner AI
     const contentStudioPayload = {
-      learnerData: {
-        learner_id: data.user_id, // Learner AI user_id = Content Studio learner_id
-        learner_name: data.user_name,
-        learner_company: data.company_name || ''
-      },
-      skills: data.skills || []
+      ...payloadObject, // Copy ALL fields from Learner AI payload AS-IS
+      action: 'generate_course_content', // Override action only
+      description: 'Generate course content from learning path' // Override description only
     };
+
+    // Log exact outgoing request BEFORE calling Content Studio
+    console.log(`
+================= CONTENT STUDIO ===================
+Sent payload:
+${JSON.stringify(contentStudioPayload, null, 2)}
+=============== END CONTENT STUDIO =================
+`);
 
     let contentStudioResponse;
     try {
