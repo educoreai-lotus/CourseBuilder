@@ -98,7 +98,7 @@ async function registerService() {
       version: SERVICE_VERSION,
       endpoint: SERVICE_ENDPOINT,
       healthCheck: HEALTH_CHECK_PATH,
-      description: 'Course Builder microservice - Manages courses, lessons, topics, modules, registrations, and feedback. Provides AI-powered course generation and integrates with Content Studio, Learner AI, Assessment, Directory, Learning Analytics, and Management Reporting services.',
+      description: 'Course Builder is the structural orchestration microservice responsible for generating full course structures based on approved learning paths and learner context. It is triggered by Learner AI, which provides the finalized learning path along with learner identity, organizational context, and competency targets. Course Builder does NOT generate educational content itself and does NOT decide learning paths. Instead, it forwards the received learning path to Content Studio to generate lesson content, then organizes the returned content into a structured hierarchy (Course → Topic → Module → Lesson), applies metadata, manages versions, and stores the complete structured course in the database. Course Builder also manages learner registrations and feedback internally, generates skill-coverage maps for downstream Assessment services, and exposes read-optimized DTOs for other consuming microservices.',
       metadata: {
         team: 'Team Course Builder',
         owner: 'Course Builder Team',
