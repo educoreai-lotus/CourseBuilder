@@ -459,43 +459,52 @@ export default function LessonContentView() {
     );
   };
 
-  const renderAvatarVideoContent = contentData => {
-    // Normalize video data when parsing content
-    // Note: renderContentItem already extracts content_data, so contentData is the inner object
-    let parsedData = contentData;
-    if (typeof contentData === 'string') {
-      try {
-        parsedData = JSON.parse(contentData);
-      } catch (e) {
-        parsedData = {};
-      }
+  const renderAvatarVideoContent = contentItem => {
+    // CRITICAL: renderAvatarVideoContent must extract data ONLY from contentItem.content_data
+    // contentItem is the FULL object: { content_type: "avatar_video", content_data: {...} }
+    
+    if (!contentItem || typeof contentItem !== 'object') {
+      console.warn('[AvatarVideo] contentItem is not an object:', contentItem);
+      return (
+        <div className={`p-4 rounded-lg ${theme === 'day-mode' ? 'bg-gray-50' : 'bg-[#334155]'}`}>
+          <p className={theme === 'day-mode' ? 'text-gray-500' : 'text-gray-400'}>
+            No video content available
+          </p>
+        </div>
+      );
     }
 
-    // Handle both cases:
-    // 1. contentData is already the inner object: { fileUrl: "...", videoUrl: "...", videoId: "..." }
-    // 2. contentData is nested: { content_data: { fileUrl: "...", videoUrl: "..." } }
-    const contentDataObj = parsedData?.content_data || parsedData;
+    // Extract content_data ONLY from contentItem.content_data
+    let contentData = contentItem.content_data;
+    
+    // If content_data is a JSON string, parse it
+    if (typeof contentData === 'string') {
+      try {
+        contentData = JSON.parse(contentData);
+      } catch (e) {
+        console.warn('[AvatarVideo] Failed to parse content_data:', e);
+        contentData = {};
+      }
+    }
+    
+    // Ensure contentData is an object
+    if (!contentData || typeof contentData !== 'object') {
+      console.warn('[AvatarVideo] content_data is not an object:', contentData);
+      contentData = {};
+    }
 
     // Priority for videoUrl resolution (EXACT ORDER AS SPECIFIED)
-    // Note: renderContentItem extracts content_data, so parsedData is likely the inner object
-    // But we check both parsedData and contentDataObj to handle all cases
-    const videoUrl = parsedData?.videoUrl ||
-                     parsedData?.storageUrl ||
-                     parsedData?.metadata?.heygen_video_url ||
-                     parsedData?.heygen_video_url ||
-                     parsedData?.metadata?.heygenVideoUrl ||
-                     parsedData?.heygenVideoUrl ||
-                     contentDataObj?.videoUrl ||
-                     contentDataObj?.fileUrl ||  // fileUrl is checked after videoUrl in content_data
-                     parsedData?.fileUrl ||      // Also check fileUrl in parsedData (in case it's the direct object)
-                     contentDataObj?.storageUrl ||
-                     contentDataObj?.metadata?.heygen_video_url ||
-                     contentDataObj?.heygen_video_url ||
-                     contentDataObj?.metadata?.heygenVideoUrl ||
-                     contentDataObj?.heygenVideoUrl;
+    // Extract ONLY from contentData (which is contentItem.content_data)
+    const videoUrl = contentData?.videoUrl ||
+                     contentData?.storageUrl ||
+                     contentData?.metadata?.heygen_video_url ||
+                     contentData?.heygen_video_url ||
+                     contentData?.metadata?.heygenVideoUrl ||
+                     contentData?.heygenVideoUrl ||
+                     contentData?.fileUrl;  // fileUrl is checked after videoUrl in content_data
 
-    // Extract videoId
-    const videoId = parsedData?.videoId || contentDataObj?.videoId;
+    // Extract videoId ONLY from contentData
+    const videoId = contentData?.videoId;
 
     // Case A: videoUrl exists - Render HTML5 video
     if (videoUrl) {
@@ -533,8 +542,8 @@ export default function LessonContentView() {
     }
 
     // Case C: Neither videoUrl nor videoId - Render fallback text with debug info
-    console.warn('[AvatarVideo] No videoUrl or videoId found. Parsed data:', parsedData);
-    console.warn('[AvatarVideo] ContentDataObj:', contentDataObj);
+    console.warn('[AvatarVideo] No videoUrl or videoId found. ContentItem:', contentItem);
+    console.warn('[AvatarVideo] ContentData:', contentData);
     return (
       <div
         className={`p-4 rounded-lg ${
@@ -547,7 +556,7 @@ export default function LessonContentView() {
         {/* Temporary debug display - remove after fixing */}
         {process.env.NODE_ENV === 'development' && (
           <pre className="text-xs mt-2 p-2 bg-gray-800 text-white rounded overflow-auto max-h-40">
-            {JSON.stringify({ parsedData, contentDataObj, videoUrl, videoId }, null, 2)}
+            {JSON.stringify({ contentItem, contentData, videoUrl, videoId }, null, 2)}
           </pre>
         )}
       </div>
@@ -555,76 +564,128 @@ export default function LessonContentView() {
   };
 
   const renderContentItem = (formatType, contentItem, index) => {
-    // Extract content_data, handling both object and string formats
-    let contentData = contentItem.content_data || contentItem;
+    // CRITICAL: renderContentItem must always receive the FULL content object:
+    // { content_type, content_data } - never only content_data
+    // Do NOT flatten or replace the content object before routing by content_type
     
-    // If content_data is a JSON string, parse it
-    if (typeof contentData === 'string') {
-      try {
-        contentData = JSON.parse(contentData);
-      } catch (e) {
-        console.warn('Failed to parse content_data:', e);
-      }
-    }
-    
-    // Ensure contentData is an object
-    if (!contentData || typeof contentData !== 'object') {
-      console.warn('[LessonContentView] contentData is not an object:', contentData);
-      contentData = {};
+    // Ensure contentItem has the expected structure
+    if (!contentItem || typeof contentItem !== 'object') {
+      console.warn('[LessonContentView] contentItem is not an object:', contentItem);
+      return null;
     }
 
     switch (formatType) {
       case 'text':
+        // Extract content_data for text rendering
+        let textContentData = contentItem.content_data || contentItem;
+        if (typeof textContentData === 'string') {
+          try {
+            textContentData = JSON.parse(textContentData);
+          } catch (e) {
+            console.warn('Failed to parse text content_data:', e);
+            textContentData = {};
+          }
+        }
         // MANDATORY: content_type "text" is Text + Audio combined
         // Always render both together in the same block
         return (
           <div key={`text-${index}`} className="space-y-4">
-            {renderTextContent(contentData, false)}
+            {renderTextContent(textContentData, false)}
           </div>
         );
       case 'text_audio':
       case 'text_audio_combined':
         // Alias formats - treat same as "text" (display helpers only)
+        let textAudioContentData = contentItem.content_data || contentItem;
+        if (typeof textAudioContentData === 'string') {
+          try {
+            textAudioContentData = JSON.parse(textAudioContentData);
+          } catch (e) {
+            textAudioContentData = {};
+          }
+        }
         return (
           <div key={`text-${index}`} className="space-y-4">
-            {renderTextContent(contentData, false)}
+            {renderTextContent(textAudioContentData, false)}
           </div>
         );
       case 'audio_text':
         // Alias format - audio first, then text (still combined block)
+        let audioTextContentData = contentItem.content_data || contentItem;
+        if (typeof audioTextContentData === 'string') {
+          try {
+            audioTextContentData = JSON.parse(audioTextContentData);
+          } catch (e) {
+            audioTextContentData = {};
+          }
+        }
         return (
           <div key={`audio-text-${index}`} className="space-y-4">
-            {renderTextContent(contentData, true)}
+            {renderTextContent(audioTextContentData, true)}
           </div>
         );
       case 'code':
+        let codeContentData = contentItem.content_data || contentItem;
+        if (typeof codeContentData === 'string') {
+          try {
+            codeContentData = JSON.parse(codeContentData);
+          } catch (e) {
+            codeContentData = {};
+          }
+        }
         return (
           <div key={`code-${index}`}>
-            {renderCodeContent(contentData)}
+            {renderCodeContent(codeContentData)}
           </div>
         );
       case 'presentation':
+        let presentationContentData = contentItem.content_data || contentItem;
+        if (typeof presentationContentData === 'string') {
+          try {
+            presentationContentData = JSON.parse(presentationContentData);
+          } catch (e) {
+            presentationContentData = {};
+          }
+        }
         return (
           <div key={`presentation-${index}`}>
-            {renderPresentationContent(contentData)}
+            {renderPresentationContent(presentationContentData)}
           </div>
         );
       case 'audio':
+        let audioContentData = contentItem.content_data || contentItem;
+        if (typeof audioContentData === 'string') {
+          try {
+            audioContentData = JSON.parse(audioContentData);
+          } catch (e) {
+            audioContentData = {};
+          }
+        }
         return (
           <div key={`audio-${index}`}>
-            {renderAudioContent(contentData)}
+            {renderAudioContent(audioContentData)}
           </div>
         );
       case 'mind_map':
+        let mindMapContentData = contentItem.content_data || contentItem;
+        if (typeof mindMapContentData === 'string') {
+          try {
+            mindMapContentData = JSON.parse(mindMapContentData);
+          } catch (e) {
+            mindMapContentData = {};
+          }
+        }
         return (
           <div key={`mindmap-${index}`}>
-            {renderMindMapContent(contentData)}
+            {renderMindMapContent(mindMapContentData)}
           </div>
         );
       case 'avatar_video':
+        // CRITICAL: renderAvatarVideoContent must extract data ONLY from contentItem.content_data
+        // Pass the FULL contentItem object, not just content_data
         return (
           <div key={`avatar-${index}`}>
-            {renderAvatarVideoContent(contentData)}
+            {renderAvatarVideoContent(contentItem)}
           </div>
         );
       default:
@@ -752,8 +813,14 @@ export default function LessonContentView() {
   // Build formats array by iterating over format_order
   const formats = formatOrder.map((formatType, index) => {
     // Filter content_data items that match this format type
+    // CRITICAL: Matching must be done using item.content_type === formatType (not type, format, or any other field)
     const matchingContent = contentData.filter(item => {
-      const itemContentType = item.content_type || item.type;
+      // Use ONLY content_type for matching
+      const itemContentType = item.content_type;
+      
+      if (!itemContentType) {
+        return false;
+      }
       
       // MANDATORY: content_type "text" is Text + Audio combined
       // Alias formats (text_audio, audio_text, text_audio_combined) are display helpers only
@@ -763,16 +830,19 @@ export default function LessonContentView() {
         return itemContentType === 'text';
       }
       
-      // For other formats, match exactly
+      // For other formats, match exactly using content_type
       return itemContentType === formatType;
     });
 
     return {
       type: formatType,
       display_order: index,
+      // CRITICAL: Pass the FULL content object, not just content_data
+      // Do NOT flatten or replace the content object before routing by content_type
       content: matchingContent.map((item, itemIndex) => ({
         content_id: item.id || `content-${index}-${itemIndex}`,
-        content_data: item.content_data || item
+        content_type: item.content_type,  // Keep content_type
+        content_data: item.content_data    // Keep content_data
       }))
     };
   });
