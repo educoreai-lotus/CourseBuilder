@@ -121,68 +121,105 @@ export async function generateSQLQuery(payloadObject, responseTemplate, action =
   }
   console.log('[AI Query Builder] ✅ OPENAI_API_KEY found in environment');
 
-  try {
-    console.log('[AI Query Builder] Initializing OpenAI...');
-    const client = new OpenAI({ apiKey: OPENAI_API_KEY });
-    const modelName = process.env.OPENAI_MODEL || 'gpt-4o-mini';
-    console.log(`[AI Query Builder] ✅ OpenAI initialized with model: ${modelName}`);
+  const maxRetries = 3;
+  let lastError = null;
 
-    // Build the prompt
-    console.log('[AI Query Builder] Building prompt with field normalization rules...');
-    const prompt = buildQueryGenerationPrompt(payloadObject, responseTemplate, action, isActionMode);
-    console.log('[AI Query Builder] ✅ Prompt built successfully');
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      if (attempt > 1) {
+        console.log(`[AI Query Builder] 🔄 Retry attempt ${attempt}/${maxRetries}...`);
+      }
 
-    // System message depends on mode
-    const systemMessage = isActionMode
-      ? 'You are an expert SQL query generator for PostgreSQL. Generate valid SQL queries including INSERT, UPDATE, DELETE, or SELECT validation queries. For Action mode, you may write to the database or validate state.'
-      : 'You are an expert SQL query generator for PostgreSQL. Generate only valid SELECT queries for reading data. Never use INSERT, UPDATE, DELETE, or any other non-SELECT statements.';
+      console.log('[AI Query Builder] Initializing OpenAI...');
+      const client = new OpenAI({ apiKey: OPENAI_API_KEY });
+      const modelName = process.env.OPENAI_MODEL || 'gpt-4o-mini';
+      console.log(`[AI Query Builder] ✅ OpenAI initialized with model: ${modelName}`);
 
-    // Generate SQL query using OpenAI
-    console.log('[AI Query Builder] 🚀 Calling OpenAI to generate SQL query...');
-    const startTime = Date.now();
-    const completion = await client.chat.completions.create({
-      model: modelName,
-      messages: [
-        {
-          role: 'system',
-          content: systemMessage
-        },
-        {
-          role: 'user',
-          content: prompt
+      // Build the prompt (add retry context on subsequent attempts)
+      console.log('[AI Query Builder] Building prompt with field normalization rules...');
+      let prompt = buildQueryGenerationPrompt(payloadObject, responseTemplate, action, isActionMode);
+      if (attempt > 1 && lastError) {
+        prompt += `\n\n⚠️ PREVIOUS ATTEMPT FAILED: ${lastError.message}\n⚠️ You must generate a SELECT query only. Do NOT use UPDATE, INSERT, or DELETE anywhere in your query, even in comments or subqueries.`;
+      }
+      console.log('[AI Query Builder] ✅ Prompt built successfully');
+
+      // System message depends on mode
+      const systemMessage = isActionMode
+        ? 'You are an expert SQL query generator for PostgreSQL. Generate valid SQL queries including INSERT, UPDATE, DELETE, or SELECT validation queries. For Action mode, you may write to the database or validate state.'
+        : 'You are an expert SQL query generator for PostgreSQL. Generate ONLY SELECT queries for reading data. NEVER use INSERT, UPDATE, DELETE, or any other non-SELECT statements. Do NOT include UPDATE, INSERT, or DELETE anywhere in your query, including in comments, subqueries, or string literals.';
+
+      // Generate SQL query using OpenAI
+      console.log('[AI Query Builder] 🚀 Calling OpenAI to generate SQL query...');
+      const startTime = Date.now();
+      const completion = await client.chat.completions.create({
+        model: modelName,
+        messages: [
+          {
+            role: 'system',
+            content: systemMessage
+          },
+          {
+            role: 'user',
+            content: prompt
+          }
+        ],
+        temperature: 0.1, // Low temperature for more deterministic SQL generation
+        max_tokens: 1000
+      });
+      
+      const text = completion.choices[0]?.message?.content || '';
+      const duration = Date.now() - startTime;
+      console.log(`[AI Query Builder] ✅ OpenAI responded in ${duration}ms`);
+      console.log('[AI Query Builder] Raw AI response length:', text.length, 'characters');
+
+      if (!text) {
+        throw new Error('OpenAI returned empty response');
+      }
+
+      // Extract SQL from response (may contain markdown code fences)
+      console.log('[AI Query Builder] Extracting SQL from AI response...');
+      const sqlQuery = extractSQLFromResponse(text, isActionMode);
+      console.log('[AI Query Builder] ✅ SQL extracted (first 200 chars):', sqlQuery.substring(0, 200) + '...');
+      console.log('[AI Query Builder] Full SQL query length:', sqlQuery.length, 'characters');
+
+      // Validate the query based on mode
+      console.log('[AI Query Builder] Validating SQL query...');
+      try {
+        validateQuery(sqlQuery, isActionMode);
+        console.log('[AI Query Builder] ✅ SQL query validated successfully');
+        
+        const finalQuery = sqlQuery.trim();
+        console.log('[AI Query Builder] ✅ Final SQL query generated:', finalQuery);
+        return finalQuery;
+      } catch (validationError) {
+        // Log the full query for debugging
+        console.error('[AI Query Builder] ❌ Validation failed. Full SQL query:');
+        console.error(sqlQuery);
+        lastError = validationError;
+        
+        // If this is the last attempt, throw the error
+        if (attempt === maxRetries) {
+          throw validationError;
         }
-      ],
-      temperature: 0.1, // Low temperature for more deterministic SQL generation
-      max_tokens: 1000
-    });
-    
-    const text = completion.choices[0]?.message?.content || '';
-    const duration = Date.now() - startTime;
-    console.log(`[AI Query Builder] ✅ OpenAI responded in ${duration}ms`);
-    console.log('[AI Query Builder] Raw AI response length:', text.length, 'characters');
-
-    if (!text) {
-      throw new Error('OpenAI returned empty response');
+        // Otherwise, continue to retry
+        continue;
+      }
+    } catch (error) {
+      lastError = error;
+      
+      // If this is the last attempt or it's not a validation error, throw
+      if (attempt === maxRetries || !error.message.includes('Security violation')) {
+        console.error('[AI Query Builder] ❌ Error generating SQL query:', error.message);
+        console.error('[AI Query Builder] Error stack:', error.stack);
+        throw new Error(`Failed to generate SQL query: ${error.message}`);
+      }
+      // Otherwise, continue to retry
+      console.warn(`[AI Query Builder] ⚠️ Attempt ${attempt} failed, retrying...`);
     }
-
-    // Extract SQL from response (may contain markdown code fences)
-    console.log('[AI Query Builder] Extracting SQL from AI response...');
-    const sqlQuery = extractSQLFromResponse(text, isActionMode);
-    console.log('[AI Query Builder] ✅ SQL extracted:', sqlQuery.substring(0, 100) + '...');
-
-    // Validate the query based on mode
-    console.log('[AI Query Builder] Validating SQL query...');
-    validateQuery(sqlQuery, isActionMode);
-    console.log('[AI Query Builder] ✅ SQL query validated successfully');
-
-    const finalQuery = sqlQuery.trim();
-    console.log('[AI Query Builder] ✅ Final SQL query generated:', finalQuery);
-    return finalQuery;
-  } catch (error) {
-    console.error('[AI Query Builder] ❌ Error generating SQL query:', error.message);
-    console.error('[AI Query Builder] Error stack:', error.stack);
-    throw new Error(`Failed to generate SQL query: ${error.message}`);
   }
+
+  // Should never reach here, but just in case
+  throw new Error(`Failed to generate SQL query after ${maxRetries} attempts: ${lastError?.message || 'Unknown error'}`);
 }
 
 /**
@@ -222,15 +259,17 @@ function buildQueryGenerationPrompt(payloadObject, responseTemplate, action = nu
   * SELECT CASE WHEN passed = true THEN 'OK' ELSE 'FAILED' END AS answer FROM assessments WHERE learner_id = $1 AND course_id = $2`
     : `DATA-FILLING MODE (CRITICAL - READ CAREFULLY):
 - ⚠️ YOU MUST GENERATE ONLY SELECT QUERIES
-- ⚠️ UPDATE STATEMENTS ARE FORBIDDEN AND WILL CAUSE SECURITY ERRORS
-- ⚠️ INSERT STATEMENTS ARE FORBIDDEN AND WILL CAUSE SECURITY ERRORS
-- ⚠️ DELETE STATEMENTS ARE FORBIDDEN AND WILL CAUSE SECURITY ERRORS
+- ⚠️ THE WORD "UPDATE" MUST NOT APPEAR ANYWHERE IN YOUR QUERY (not in comments, not in strings, not in subqueries)
+- ⚠️ THE WORD "INSERT" MUST NOT APPEAR ANYWHERE IN YOUR QUERY
+- ⚠️ THE WORD "DELETE" MUST NOT APPEAR ANYWHERE IN YOUR QUERY
 - ⚠️ ANY WRITE OPERATION WILL BE REJECTED BY THE SYSTEM
+- ⚠️ IF YOUR QUERY CONTAINS "UPDATE", "INSERT", OR "DELETE" ANYWHERE, IT WILL FAIL VALIDATION
 - Return exactly the columns required by response_template
 - Use column aliases (AS) to match response template field names
 - Use SELECT with JOINs, aggregations, and CASE expressions to derive data
 - If you need to compute values, use SELECT with expressions, NOT UPDATE
-- Example: SELECT COUNT(*) AS total_courses FROM courses (NOT UPDATE courses SET...)`;
+- Example: SELECT COUNT(*) AS total_courses FROM courses (NOT UPDATE courses SET...)
+- Your query must start with SELECT and contain ONLY SELECT statements`;
 
   return `You are a "Response-Driven SQL Generator" for the Course Builder microservice.
 
