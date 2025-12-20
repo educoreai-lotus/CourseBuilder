@@ -220,11 +220,17 @@ function buildQueryGenerationPrompt(payloadObject, responseTemplate, action = nu
   * INSERT INTO registrations (learner_id, course_id) VALUES ($1, $2) RETURNING 'OK' AS answer
   * UPDATE assessments SET passed = true WHERE learner_id = $1 AND course_id = $2 RETURNING CASE WHEN passed THEN 'OK' ELSE 'FAILED' END AS answer
   * SELECT CASE WHEN passed = true THEN 'OK' ELSE 'FAILED' END AS answer FROM assessments WHERE learner_id = $1 AND course_id = $2`
-    : `DATA-FILLING MODE:
-- Generate ONLY SELECT queries to read data
+    : `DATA-FILLING MODE (CRITICAL - READ CAREFULLY):
+- ⚠️ YOU MUST GENERATE ONLY SELECT QUERIES
+- ⚠️ UPDATE STATEMENTS ARE FORBIDDEN AND WILL CAUSE SECURITY ERRORS
+- ⚠️ INSERT STATEMENTS ARE FORBIDDEN AND WILL CAUSE SECURITY ERRORS
+- ⚠️ DELETE STATEMENTS ARE FORBIDDEN AND WILL CAUSE SECURITY ERRORS
+- ⚠️ ANY WRITE OPERATION WILL BE REJECTED BY THE SYSTEM
 - Return exactly the columns required by response_template
 - Use column aliases (AS) to match response template field names
-- Never use INSERT, UPDATE, DELETE, or any write operations`;
+- Use SELECT with JOINs, aggregations, and CASE expressions to derive data
+- If you need to compute values, use SELECT with expressions, NOT UPDATE
+- Example: SELECT COUNT(*) AS total_courses FROM courses (NOT UPDATE courses SET...)`;
 
   return `You are a "Response-Driven SQL Generator" for the Course Builder microservice.
 
@@ -273,10 +279,13 @@ Examples:
 • passed → CASE WHEN final_grade >= passing_grade THEN true ELSE false END
 
 ============================================================
-MODE
+MODE (CRITICAL - READ THIS FIRST)
 ============================================================
 
 MODE: ${isActionMode ? 'ACTION/COMMAND' : 'DATA-FILLING'}
+
+${isActionMode ? '' : '🚨 SECURITY WARNING: You are in DATA-FILLING mode. Any UPDATE, INSERT, or DELETE statement will be REJECTED and cause the request to FAIL. You MUST use SELECT only. 🚨'}
+
 ${modeInstructions}
 
 ============================================================
