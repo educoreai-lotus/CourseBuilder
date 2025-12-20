@@ -4,7 +4,6 @@ import Header from './components/Header.jsx'
 import AccessibilityControls from './components/AccessibilityControls.jsx'
 import Toast from './components/Toast.jsx'
 import ErrorBoundary from './components/ErrorBoundary.jsx'
-import RAGChatbotInitializer from './components/RAGChatbotInitializer.jsx'
 import CoursesPage from './pages/CoursesPage.jsx'
 import CourseDetailsPage from './pages/CourseDetailsPage.jsx'
 import LessonPage from './pages/LessonPage.jsx'
@@ -93,24 +92,16 @@ function AppShell() {
 
       <AccessibilityControls />
       <Toast />
-      
-      {/* RAG Chatbot initializer (needs AppProvider context) */}
-      <RAGChatbotInitializer />
     </div>
   )
 }
 
 export default function App() {
   return (
-    <>
-      {/* Chatbot container MUST be at root level, always mounted, never conditional */}
-      <div id="edu-bot-container"></div>
-      
-      <ErrorBoundary>
-        <AppProvider>
-          <AppShell />
-        </AppProvider>
-      </ErrorBoundary>
-    </>
+    <ErrorBoundary>
+      <AppProvider>
+        <AppShell />
+      </AppProvider>
+    </ErrorBoundary>
   )
 }

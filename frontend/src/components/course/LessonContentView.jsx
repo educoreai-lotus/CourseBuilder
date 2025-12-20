@@ -46,6 +46,11 @@ export default function LessonContentView() {
 
       // Fetch lesson data from our backend
       const lessonData = await getLessonById(lessonId);
+      
+      // DEBUG: Log raw lesson content EXACTLY once
+      console.log('LESSON RAW:', lessonData);
+      console.log('LESSON.content_data:', lessonData.content_data);
+      
       setLesson(lessonData);
 
       // Extract course info if available in lesson response
@@ -813,8 +818,28 @@ export default function LessonContentView() {
     contentData = [];
   }
 
+  // DEBUG: Log contentData BEFORE building formats
+  console.log('FORMAT ORDER:', formatOrder);
+  console.log('CONTENT DATA ARRAY:', contentData);
+  contentData.forEach((item, i) => {
+    console.log(
+      `CONTENT ITEM ${i}:`,
+      item,
+      'content_type =',
+      item?.content_type
+    );
+  });
+
   // Build formats array by iterating over format_order
   const formats = formatOrder.map((formatType, index) => {
+    // DEBUG: Log matchingContent for avatar_video ONLY
+    if (formatType === 'avatar_video') {
+      console.log(
+        'AVATAR FILTER CHECK:',
+        contentData.map(i => i?.content_type)
+      );
+    }
+    
     // Filter content_data items that match this format type
     // CRITICAL: Matching must be done using item.content_type === formatType (not type, format, or any other field)
     const matchingContent = contentData.filter(item => {
@@ -836,6 +861,11 @@ export default function LessonContentView() {
       // For other formats, match exactly using content_type
       return itemContentType === formatType;
     });
+    
+    // DEBUG: Log matchingContent for avatar_video ONLY
+    if (formatType === 'avatar_video') {
+      console.log('AVATAR MATCHING CONTENT:', matchingContent);
+    }
 
     return {
       type: formatType,
