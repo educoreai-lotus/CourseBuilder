@@ -461,6 +461,7 @@ export default function LessonContentView() {
 
   const renderAvatarVideoContent = contentData => {
     // Normalize video data when parsing content
+    // Note: renderContentItem already extracts content_data, so contentData is the inner object
     let parsedData = contentData;
     if (typeof contentData === 'string') {
       try {
@@ -470,10 +471,14 @@ export default function LessonContentView() {
       }
     }
 
-    // Extract content_data if nested
+    // Handle both cases:
+    // 1. contentData is already the inner object: { fileUrl: "...", videoUrl: "...", videoId: "..." }
+    // 2. contentData is nested: { content_data: { fileUrl: "...", videoUrl: "..." } }
     const contentDataObj = parsedData?.content_data || parsedData;
 
     // Priority for videoUrl resolution (EXACT ORDER AS SPECIFIED)
+    // Note: renderContentItem extracts content_data, so parsedData is likely the inner object
+    // But we check both parsedData and contentDataObj to handle all cases
     const videoUrl = parsedData?.videoUrl ||
                      parsedData?.storageUrl ||
                      parsedData?.metadata?.heygen_video_url ||
@@ -481,13 +486,20 @@ export default function LessonContentView() {
                      parsedData?.metadata?.heygenVideoUrl ||
                      parsedData?.heygenVideoUrl ||
                      contentDataObj?.videoUrl ||
-                     contentDataObj?.fileUrl;
+                     contentDataObj?.fileUrl ||  // fileUrl is checked after videoUrl in content_data
+                     parsedData?.fileUrl ||      // Also check fileUrl in parsedData (in case it's the direct object)
+                     contentDataObj?.storageUrl ||
+                     contentDataObj?.metadata?.heygen_video_url ||
+                     contentDataObj?.heygen_video_url ||
+                     contentDataObj?.metadata?.heygenVideoUrl ||
+                     contentDataObj?.heygenVideoUrl;
 
     // Extract videoId
     const videoId = parsedData?.videoId || contentDataObj?.videoId;
 
     // Case A: videoUrl exists - Render HTML5 video
     if (videoUrl) {
+      console.log('[AvatarVideo] Rendering video with URL:', videoUrl);
       return (
         <div className="bg-black rounded-lg overflow-hidden shadow-2xl">
           <video
@@ -495,6 +507,13 @@ export default function LessonContentView() {
             controls
             className="w-full h-auto"
             style={{ maxHeight: '500px' }}
+            onError={(e) => {
+              console.error('[AvatarVideo] Video load error:', e);
+              console.error('[AvatarVideo] Video src:', videoUrl);
+            }}
+            onLoadStart={() => {
+              console.log('[AvatarVideo] Video loading started');
+            }}
           />
         </div>
       );
@@ -513,7 +532,9 @@ export default function LessonContentView() {
       );
     }
 
-    // Case C: Neither videoUrl nor videoId - Render fallback text
+    // Case C: Neither videoUrl nor videoId - Render fallback text with debug info
+    console.warn('[AvatarVideo] No videoUrl or videoId found. Parsed data:', parsedData);
+    console.warn('[AvatarVideo] ContentDataObj:', contentDataObj);
     return (
       <div
         className={`p-4 rounded-lg ${
@@ -523,6 +544,12 @@ export default function LessonContentView() {
         <p className={theme === 'day-mode' ? 'text-gray-500' : 'text-gray-400'}>
           No video content available
         </p>
+        {/* Temporary debug display - remove after fixing */}
+        {process.env.NODE_ENV === 'development' && (
+          <pre className="text-xs mt-2 p-2 bg-gray-800 text-white rounded overflow-auto max-h-40">
+            {JSON.stringify({ parsedData, contentDataObj, videoUrl, videoId }, null, 2)}
+          </pre>
+        )}
       </div>
     );
   };
