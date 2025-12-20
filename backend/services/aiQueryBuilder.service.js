@@ -264,11 +264,15 @@ function buildQueryGenerationPrompt(payloadObject, responseTemplate, action = nu
 - ⚠️ THE WORD "DELETE" MUST NOT APPEAR ANYWHERE IN YOUR QUERY
 - ⚠️ ANY WRITE OPERATION WILL BE REJECTED BY THE SYSTEM
 - ⚠️ IF YOUR QUERY CONTAINS "UPDATE", "INSERT", OR "DELETE" ANYWHERE, IT WILL FAIL VALIDATION
+- ⚠️ DO NOT USE WINDOW FUNCTIONS (ROW_NUMBER(), RANK(), etc.) INSIDE AGGREGATE FUNCTIONS (json_agg(), COUNT(), etc.)
+- ⚠️ PostgreSQL does not allow window functions inside aggregate functions
+- ⚠️ For ordering/ranking inside json_agg(), use ORDER BY in the json_agg() itself: json_agg(... ORDER BY column)
 - Return exactly the columns required by response_template
 - Use column aliases (AS) to match response template field names
 - Use SELECT with JOINs, aggregations, and CASE expressions to derive data
 - If you need to compute values, use SELECT with expressions, NOT UPDATE
 - Example: SELECT COUNT(*) AS total_courses FROM courses (NOT UPDATE courses SET...)
+- Example for ordering: json_agg(json_build_object(...) ORDER BY l.id) (NOT ROW_NUMBER() OVER (...) inside json_agg)
 - Your query must start with SELECT and contain ONLY SELECT statements`;
 
   return `You are a "Response-Driven SQL Generator" for the Course Builder microservice.
@@ -316,6 +320,13 @@ Examples:
 • completed_lessons → COUNT(...) with filters
 • progress_percentage → (completed_lessons / total_lessons) * 100
 • passed → CASE WHEN final_grade >= passing_grade THEN true ELSE false END
+
+⚠️ CRITICAL: WINDOW FUNCTIONS & AGGREGATES
+• DO NOT use window functions (ROW_NUMBER(), RANK(), etc.) inside aggregate functions
+• PostgreSQL error: "aggregate function calls cannot contain window function calls"
+• For ordering in json_agg(), use: json_agg(... ORDER BY column) NOT ROW_NUMBER() OVER (...)
+• Example: json_agg(json_build_object('lesson_order', l.id) ORDER BY l.id) ✅
+• Example: json_agg(json_build_object('lesson_order', ROW_NUMBER() OVER (...))) ❌ WRONG
 
 ============================================================
 MODE (CRITICAL - READ THIS FIRST)
