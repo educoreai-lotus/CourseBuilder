@@ -19,6 +19,7 @@ export default function LessonContentView() {
   const [error, setError] = useState(null);
   const [isEnrolled, setIsEnrolled] = useState(false);
   const learnerId = userRole === 'learner' ? userProfile?.id : null;
+  console.log('🔥 LESSON CONTENT VIEW RENDERED 🔥');
 
   useEffect(() => {
     loadLessonContent();
@@ -689,6 +690,8 @@ export default function LessonContentView() {
           </div>
         );
       case 'avatar_video':
+        console.log('🔥 we are in avatar vedio case 🔥');
+
         // CRITICAL: renderAvatarVideoContent must extract data ONLY from contentItem.content_data
         // Pass the FULL contentItem object, not just content_data
         return (
