@@ -563,10 +563,11 @@ export default function LessonContentView() {
     );
   };
 
-  const renderContentItem = (formatType, contentItem, index) => {
+  const renderContentItem = (contentType, contentItem, index) => {
     // CRITICAL: renderContentItem must always receive the FULL content object:
     // { content_type, content_data } - never only content_data
     // Do NOT flatten or replace the content object before routing by content_type
+    // Rendering must be decided ONLY by the data itself (contentItem.content_type), not by format_order
     
     // Ensure contentItem has the expected structure
     if (!contentItem || typeof contentItem !== 'object') {
@@ -574,7 +575,10 @@ export default function LessonContentView() {
       return null;
     }
 
-    switch (formatType) {
+    // Quick sanity check
+    console.log('[Render]', contentItem.content_type, contentItem.content_data?.videoUrl || contentItem.content_data?.fileUrl);
+
+    switch (contentType) {
       case 'text':
         // Extract content_data for text rendering
         let textContentData = contentItem.content_data || contentItem;
@@ -939,7 +943,11 @@ export default function LessonContentView() {
                 {formatItem.content && formatItem.content.length > 0 ? (
                   <div>
                     {formatItem.content.map((contentItem, itemIndex) =>
-                      renderContentItem(formatItem.type, contentItem, itemIndex)
+                      renderContentItem(
+                        contentItem.content_type, // 🔥 USE REAL DATA TYPE, not formatItem.type
+                        contentItem,
+                        itemIndex
+                      )
                     )}
                   </div>
                 ) : (
