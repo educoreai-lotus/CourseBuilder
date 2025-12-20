@@ -91,71 +91,73 @@ export async function sendToContentStudio(payloadObject) {
     };
 
     // ========== LOG REQUEST BODY TO CONTENT STUDIO ==========
-    console.log('[ContentStudio Gateway] ========== REQUEST BODY TO CONTENT STUDIO ==========');
-    console.log('[ContentStudio Gateway] Full envelope:', JSON.stringify(envelope, null, 2));
-    console.log('[ContentStudio Gateway] Payload type:', typeof sendPayload);
-    console.log('[ContentStudio Gateway] Payload keys:', Object.keys(sendPayload));
-    console.log('[ContentStudio Gateway] Payload structure:', {
-      has_action: !!sendPayload.action,
-      has_description: !!sendPayload.description,
-      has_learner_id: !!sendPayload.learner_id,
-      has_learner_name: !!sendPayload.learner_name,
-      has_learner_company: !!sendPayload.learner_company,
-      has_skills: !!sendPayload.skills,
-      skills_count: Array.isArray(sendPayload.skills) ? sendPayload.skills.length : 0,
-      has_learning_path: !!sendPayload.learning_path,
-      learning_path_type: typeof sendPayload.learning_path,
-      learning_path_is_array: Array.isArray(sendPayload.learning_path),
-      has_language: !!sendPayload.language,
-      has_career_learning_paths: !!sendPayload.career_learning_paths,
-      career_learning_paths_type: typeof sendPayload.career_learning_paths,
-      career_learning_paths_is_array: Array.isArray(sendPayload.career_learning_paths),
-      has_learners_data: !!sendPayload.learners_data,
-      learners_data_type: typeof sendPayload.learners_data,
-      learners_data_is_array: Array.isArray(sendPayload.learners_data)
-    });
-    console.log('[ContentStudio Gateway] Full payload:', JSON.stringify(sendPayload, null, 2));
-    console.log('[ContentStudio Gateway] ===================================================');
+    console.log('\n[ContentStudio Gateway] ========== SENDING REQUEST TO CONTENT STUDIO ==========');
+    console.log('[ContentStudio Gateway] Full Request Envelope:');
+    console.log(JSON.stringify(envelope, null, 2));
+    console.log('\n[ContentStudio Gateway] Payload Details:');
+    console.log('- Action:', sendPayload.action);
+    console.log('- Description:', sendPayload.description);
+    console.log('- User ID:', sendPayload.user_id || sendPayload.learner_id || 'NOT SET');
+    console.log('- User Name:', sendPayload.user_name || sendPayload.learner_name || 'NOT SET');
+    console.log('- Company ID:', sendPayload.company_id || 'NOT SET');
+    console.log('- Company Name:', sendPayload.company_name || 'NOT SET');
+    console.log('- Preferred Language:', sendPayload.preferred_language || 'NOT SET');
+    console.log('- Skills Raw Data:', sendPayload.skills_raw_data?.length || 0, 'skills');
+    console.log('- Has Learning Path:', !!sendPayload.learning_path);
+    if (sendPayload.learning_path) {
+      console.log('  - Path Title:', sendPayload.learning_path.path_title || 'NOT SET');
+      console.log('  - Total Duration Hours:', sendPayload.learning_path.total_estimated_duration_hours || 0);
+      console.log('  - Learning Modules:', sendPayload.learning_path.learning_modules?.length || 0);
+    }
+    console.log('[ContentStudio Gateway] ===================================================\n');
 
     // Send via Coordinator
     const { data: json } = await postToCoordinator(envelope).catch(() => ({ data: {} }));
     
     // ========== LOG RAW RESPONSE FROM COORDINATOR (CONTENT STUDIO) ==========
-    console.log('[ContentStudio Gateway] ========== RAW RESPONSE FROM COORDINATOR ==========');
-    console.log('[ContentStudio Gateway] Full response object:', JSON.stringify(json, null, 2));
-    console.log('[ContentStudio Gateway] Response type:', typeof json);
-    console.log('[ContentStudio Gateway] Response keys:', json ? Object.keys(json) : 'null/undefined');
-    console.log('[ContentStudio Gateway] Has response field:', !!json?.response);
-    console.log('[ContentStudio Gateway] Has success field:', !!json?.success);
-    console.log('[ContentStudio Gateway] Has data field:', !!json?.data);
+    console.log('\n[ContentStudio Gateway] ========== RECEIVED RESPONSE FROM CONTENT STUDIO ==========');
+    console.log('[ContentStudio Gateway] Full Response Object:');
+    console.log(JSON.stringify(json, null, 2));
+    console.log('\n[ContentStudio Gateway] Response Structure:');
+    console.log('- Has response field:', !!json?.response);
+    console.log('- Has success field:', !!json?.success);
+    console.log('- Has data field:', !!json?.data);
     if (json?.response) {
-      console.log('[ContentStudio Gateway] response keys:', Object.keys(json.response));
-      console.log('[ContentStudio Gateway] response type:', typeof json.response);
+      console.log('- Response keys:', Object.keys(json.response));
+      if (json.response.courses) {
+        console.log('- Courses count:', Array.isArray(json.response.courses) ? json.response.courses.length : 'NOT ARRAY');
+      }
+      if (json.response.course) {
+        console.log('- Course count:', Array.isArray(json.response.course) ? json.response.course.length : 'NOT ARRAY');
+      }
+      if (json.response.topics) {
+        console.log('- Topics count:', Array.isArray(json.response.topics) ? json.response.topics.length : 'NOT ARRAY');
+      }
     }
-    console.log('[ContentStudio Gateway] ===================================================');
+    console.log('[ContentStudio Gateway] ===================================================\n');
     
     // Coordinator returns the envelope with filled response field
     // Extract response from envelope structure
     let result = json && json.response ? json.response : (json && json.success ? json.data : json);
 
     // ========== LOG EXTRACTED RESULT ==========
-    console.log('[ContentStudio Gateway] ========== EXTRACTED RESULT ==========');
-    console.log('[ContentStudio Gateway] Result type:', typeof result);
-    console.log('[ContentStudio Gateway] Result keys:', result ? Object.keys(result) : 'null/undefined');
-    console.log('[ContentStudio Gateway] Result structure:', {
-      has_courses: !!result?.courses,
-      has_course: !!result?.course,
-      courses_type: typeof result?.courses,
-      course_type: typeof result?.course,
-      courses_is_array: Array.isArray(result?.courses),
-      course_is_array: Array.isArray(result?.course),
-      result_is_array: Array.isArray(result),
-      courses_length: result?.courses?.length || 0,
-      course_length: result?.course?.length || 0,
-      result_length: Array.isArray(result) ? result.length : 0
-    });
-    console.log('[ContentStudio Gateway] Full result:', JSON.stringify(result, null, 2));
-    console.log('[ContentStudio Gateway] ===================================================');
+    console.log('\n[ContentStudio Gateway] ========== EXTRACTED RESULT (FINAL) ==========');
+    console.log('[ContentStudio Gateway] Final Result:');
+    console.log(JSON.stringify(result, null, 2));
+    console.log('\n[ContentStudio Gateway] Result Summary:');
+    console.log('- Has courses:', !!result?.courses);
+    console.log('- Has course:', !!result?.course);
+    console.log('- Has topics:', !!result?.topics);
+    if (result?.courses) {
+      console.log('- Courses array length:', Array.isArray(result.courses) ? result.courses.length : 'NOT ARRAY');
+    }
+    if (result?.course) {
+      console.log('- Course array length:', Array.isArray(result.course) ? result.course.length : 'NOT ARRAY');
+    }
+    if (result?.topics) {
+      console.log('- Topics array length:', Array.isArray(result.topics) ? result.topics.length : 'NOT ARRAY');
+    }
+    console.log('[ContentStudio Gateway] ===================================================\n');
 
     // Return the filled response object (Content Studio fills the 'course' array)
     return result;

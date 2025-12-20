@@ -136,6 +136,19 @@ async function postToCoordinator(envelope) {
     console.warn('[CoordinatorClient] PRIVATE_KEY is not set. Requests will not be signed and Coordinator will likely reject them.');
   }
 
+  // ========== LOG REQUEST TO COORDINATOR ==========
+  console.log('\n[CoordinatorClient] ========== SENDING REQUEST TO COORDINATOR ==========');
+  console.log('[CoordinatorClient] URL:', url);
+  console.log('[CoordinatorClient] Method: POST');
+  console.log('[CoordinatorClient] Headers:', {
+    'Content-Type': headers['Content-Type'],
+    'X-Service-Name': headers['X-Service-Name'],
+    'X-Signature': headers['X-Signature'] ? `${headers['X-Signature'].substring(0, 20)}...` : 'NOT SET'
+  });
+  console.log('[CoordinatorClient] Request Body (Envelope):');
+  console.log(JSON.stringify(envelope, null, 2));
+  console.log('[CoordinatorClient] ===================================================\n');
+
   const fetchFn = await getFetch();
   const resp = await fetchFn(url, {
     method: 'POST',
@@ -144,6 +157,17 @@ async function postToCoordinator(envelope) {
   });
 
   const data = await resp.json().catch(() => ({}));
+
+  // ========== LOG RESPONSE FROM COORDINATOR ==========
+  console.log('\n[CoordinatorClient] ========== RECEIVED RESPONSE FROM COORDINATOR ==========');
+  console.log('[CoordinatorClient] Status:', resp.status, resp.statusText);
+  console.log('[CoordinatorClient] Response Headers:', {
+    'x-service-name': resp.headers.get('x-service-name'),
+    'x-service-signature': resp.headers.get('x-service-signature') ? 'PRESENT' : 'NOT PRESENT'
+  });
+  console.log('[CoordinatorClient] Response Body:');
+  console.log(JSON.stringify(data, null, 2));
+  console.log('[CoordinatorClient] ===================================================\n');
 
   const coordinatorName =
     resp.headers.get('x-service-name') || resp.headers.get('X-Service-Name');
