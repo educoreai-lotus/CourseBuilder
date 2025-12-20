@@ -469,12 +469,17 @@ export default function LessonContentView() {
       }
     }
 
+    // Check for video URL in multiple possible fields
     const videoUrl = parsedData?.videoUrl || 
+                     parsedData?.fileUrl ||  // Add fileUrl support
                      parsedData?.storageUrl ||
                      parsedData?.metadata?.heygen_video_url ||
                      parsedData?.heygen_video_url ||
                      parsedData?.metadata?.heygenVideoUrl ||
                      parsedData?.heygenVideoUrl;
+    
+    // Get video file type
+    const videoFileType = parsedData?.fileType || 'video/mp4';
 
     return (
       <div className="space-y-4">
@@ -519,11 +524,12 @@ export default function LessonContentView() {
             </div>
             <div className="relative rounded-lg overflow-hidden shadow-2xl bg-black">
               <video
-                src={videoUrl}
                 controls
                 className="w-full h-auto"
                 style={{ maxHeight: '500px' }}
+                preload="metadata"
               >
+                <source src={videoUrl} type={videoFileType} />
                 Your browser does not support the video tag.
               </video>
             </div>
@@ -767,11 +773,26 @@ export default function LessonContentView() {
   }
 
   // ADAPTATION: Transform our backend data structure to component's expected format
-  // Our backend provides: lesson.format_order (array) and lesson.content_data (array)
+  // Our backend provides: lesson.format_order (array) and lesson.content_data (array or object)
   // Component expects: formats array with type, display_order, and content array
   
   const formatOrder = Array.isArray(lesson.format_order) ? lesson.format_order : [];
-  const contentData = Array.isArray(lesson.content_data) ? lesson.content_data : [];
+  let contentData = lesson.content_data;
+  
+  // Handle case where content_data is an object (not array) - convert to array format
+  if (contentData && !Array.isArray(contentData)) {
+    // If lesson has content_type at lesson level, create a content item
+    if (lesson.content_type) {
+      contentData = [{
+        content_type: lesson.content_type,
+        content_data: contentData
+      }];
+    } else {
+      contentData = [contentData];
+    }
+  } else if (!Array.isArray(contentData)) {
+    contentData = [];
+  }
 
   // Build formats array by iterating over format_order
   const formats = formatOrder.map((formatType, index) => {
@@ -800,6 +821,18 @@ export default function LessonContentView() {
       }))
     };
   });
+  
+  // If no formats found but lesson has content_type and content_data, add it
+  if (formats.length === 0 && lesson.content_type && lesson.content_data) {
+    formats.push({
+      type: lesson.content_type,
+      display_order: 0,
+      content: [{
+        content_id: `content-0-0`,
+        content_data: lesson.content_data
+      }]
+    });
+  }
 
   return (
     <div className={`min-h-screen ${theme === 'day-mode' ? 'bg-gray-50' : 'bg-[#1e293b]'}`}>
