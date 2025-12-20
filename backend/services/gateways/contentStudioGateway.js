@@ -124,14 +124,11 @@ export async function sendToContentStudio(payloadObject) {
     console.log('- Has data field:', !!json?.data);
     if (json?.response) {
       console.log('- Response keys:', Object.keys(json.response));
-      if (json.response.courses) {
-        console.log('- Courses count:', Array.isArray(json.response.courses) ? json.response.courses.length : 'NOT ARRAY');
-      }
       if (json.response.course) {
         console.log('- Course count:', Array.isArray(json.response.course) ? json.response.course.length : 'NOT ARRAY');
-      }
-      if (json.response.topics) {
-        console.log('- Topics count:', Array.isArray(json.response.topics) ? json.response.topics.length : 'NOT ARRAY');
+        if (Array.isArray(json.response.course) && json.response.course.length > 0) {
+          console.log('- First course has topics:', !!json.response.course[0]?.topics);
+        }
       }
     }
     console.log('[ContentStudio Gateway] ===================================================\n');
@@ -145,17 +142,15 @@ export async function sendToContentStudio(payloadObject) {
     console.log('[ContentStudio Gateway] Final Result:');
     console.log(JSON.stringify(result, null, 2));
     console.log('\n[ContentStudio Gateway] Result Summary:');
-    console.log('- Has courses:', !!result?.courses);
     console.log('- Has course:', !!result?.course);
-    console.log('- Has topics:', !!result?.topics);
-    if (result?.courses) {
-      console.log('- Courses array length:', Array.isArray(result.courses) ? result.courses.length : 'NOT ARRAY');
-    }
     if (result?.course) {
       console.log('- Course array length:', Array.isArray(result.course) ? result.course.length : 'NOT ARRAY');
-    }
-    if (result?.topics) {
-      console.log('- Topics array length:', Array.isArray(result.topics) ? result.topics.length : 'NOT ARRAY');
+      if (Array.isArray(result.course) && result.course.length > 0) {
+        console.log('- First course has topics:', !!result.course[0]?.topics);
+        if (result.course[0]?.topics) {
+          console.log('- Topics in first course:', Array.isArray(result.course[0].topics) ? result.course[0].topics.length : 'NOT ARRAY');
+        }
+      }
     }
     console.log('[ContentStudio Gateway] ===================================================\n');
 

@@ -150,11 +150,56 @@ async function postToCoordinator(envelope) {
   console.log('[CoordinatorClient] ===================================================\n');
 
   const fetchFn = await getFetch();
-  const resp = await fetchFn(url, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify(envelope),
-  });
+  
+  // Create AbortController for timeout (30 minutes = 1800000ms)
+  const CONTENT_STUDIO_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), CONTENT_STUDIO_TIMEOUT_MS);
+  
+  try {
+    const resp = await fetchFn(url, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(envelope),
+      signal: controller.signal
+    });
+    
+    clearTimeout(timeoutId);
+    
+    const data = await resp.json().catch(() => ({}));
+    
+    // ========== LOG RESPONSE FROM COORDINATOR ==========
+    console.log('\n[CoordinatorClient] ========== RECEIVED RESPONSE FROM COORDINATOR ==========');
+    console.log('[CoordinatorClient] Status:', resp.status, resp.statusText);
+    console.log('[CoordinatorClient] Response Headers:', {
+      'x-service-name': resp.headers.get('x-service-name'),
+      'x-service-signature': resp.headers.get('x-service-signature') ? 'PRESENT' : 'NOT PRESENT'
+    });
+    console.log('[CoordinatorClient] Response Body:');
+    console.log(JSON.stringify(data, null, 2));
+    console.log('[CoordinatorClient] ===================================================\n');
+    
+    const coordinatorName =
+      resp.headers.get('x-service-name') || resp.headers.get('X-Service-Name');
+    const coordinatorSig =
+      resp.headers.get('x-service-signature') || resp.headers.get('X-Service-Signature');
+    
+    const coordinatorPublicKey = getCoordinatorPublicKey();
+    if (coordinatorPublicKey && coordinatorName === 'coordinator' && coordinatorSig) {
+      const ok = verifySignature('coordinator', coordinatorSig, coordinatorPublicKey, data);
+      if (!ok) {
+        console.warn('[CoordinatorClient] Invalid Coordinator response signature');
+      }
+    }
+    
+    return { resp, data };
+  } catch (error) {
+    clearTimeout(timeoutId);
+    if (error.name === 'AbortError') {
+      throw new Error(`Request timeout after ${CONTENT_STUDIO_TIMEOUT_MS / 1000 / 60} minutes. Content Studio may still be generating content.`);
+    }
+    throw error;
+  }
 
   const data = await resp.json().catch(() => ({}));
 
