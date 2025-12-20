@@ -473,10 +473,18 @@ function validateQuery(sqlQuery, isActionMode = false) {
     }
     
     // Check for write operations in data mode
-    const writeKeywords = ['INSERT', 'UPDATE', 'DELETE'];
-    for (const keyword of writeKeywords) {
-      if (upperQuery.includes(keyword)) {
-        throw new Error(`Security violation: Data-Filling mode cannot use ${keyword} statements`);
+    // Only flag if they appear as SQL statement keywords, not in column names (e.g., "updated_at")
+    const writeKeywords = [
+      { keyword: 'INSERT', patterns: [/^\s*INSERT\s+/i, /\bINSERT\s+INTO\s+/i] },
+      { keyword: 'UPDATE', patterns: [/^\s*UPDATE\s+/i, /\bUPDATE\s+\w+\s+SET\s+/i] },
+      { keyword: 'DELETE', patterns: [/^\s*DELETE\s+/i, /\bDELETE\s+FROM\s+/i] }
+    ];
+    
+    for (const { keyword, patterns } of writeKeywords) {
+      for (const pattern of patterns) {
+        if (pattern.test(sqlQuery)) {
+          throw new Error(`Security violation: Data-Filling mode cannot use ${keyword} statements`);
+        }
       }
     }
   }
