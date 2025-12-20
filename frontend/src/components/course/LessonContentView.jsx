@@ -460,6 +460,7 @@ export default function LessonContentView() {
   };
 
   const renderAvatarVideoContent = contentData => {
+    // Normalize video data when parsing content
     let parsedData = contentData;
     if (typeof contentData === 'string') {
       try {
@@ -469,132 +470,59 @@ export default function LessonContentView() {
       }
     }
 
-    // Check for video URL in multiple possible fields
-    const videoUrl = parsedData?.videoUrl || 
-                     parsedData?.fileUrl ||  // Add fileUrl support
+    // Extract content_data if nested
+    const contentDataObj = parsedData?.content_data || parsedData;
+
+    // Priority for videoUrl resolution (EXACT ORDER AS SPECIFIED)
+    const videoUrl = parsedData?.videoUrl ||
                      parsedData?.storageUrl ||
                      parsedData?.metadata?.heygen_video_url ||
                      parsedData?.heygen_video_url ||
                      parsedData?.metadata?.heygenVideoUrl ||
-                     parsedData?.heygenVideoUrl;
-    
-    // Get video file type
-    const videoFileType = parsedData?.fileType || 'video/mp4';
+                     parsedData?.heygenVideoUrl ||
+                     contentDataObj?.videoUrl ||
+                     contentDataObj?.fileUrl;
 
+    // Extract videoId
+    const videoId = parsedData?.videoId || contentDataObj?.videoId;
+
+    // Case A: videoUrl exists - Render HTML5 video
+    if (videoUrl) {
+      return (
+        <div className="bg-black rounded-lg overflow-hidden shadow-2xl">
+          <video
+            src={videoUrl}
+            controls
+            className="w-full h-auto"
+            style={{ maxHeight: '500px' }}
+          />
+        </div>
+      );
+    }
+
+    // Case B: No videoUrl but videoId exists - Render HeyGen link
+    if (videoId) {
+      return (
+        <a
+          href={`https://app.heygen.com/share/${videoId}`}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Open avatar video
+        </a>
+      );
+    }
+
+    // Case C: Neither videoUrl nor videoId - Render fallback text
     return (
-      <div className="space-y-4">
-        {parsedData?.script && (
-          <div
-            className={`p-4 rounded-lg ${
-              theme === 'day-mode' ? 'bg-gray-50' : 'bg-[#334155]'
-            }`}
-          >
-            <h4
-              className={`font-semibold mb-2 ${
-                theme === 'day-mode' ? 'text-gray-900' : 'text-white'
-              }`}
-            >
-              Video Script
-            </h4>
-            <div
-              className={`whitespace-pre-wrap font-sans ${
-                theme === 'day-mode' ? 'text-gray-900' : 'text-gray-100'
-              }`}
-            >
-              {parsedData.script}
-            </div>
-          </div>
-        )}
-
-        {videoUrl ? (
-          <div className="space-y-3">
-            <div
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg ${
-                theme === 'day-mode' ? 'bg-blue-50' : 'bg-blue-900/20'
-              }`}
-            >
-              <i className="fas fa-video text-blue-600"></i>
-              <span
-                className={`text-sm font-medium ${
-                  theme === 'day-mode' ? 'text-blue-900' : 'text-blue-300'
-                }`}
-              >
-                Avatar Video
-              </span>
-            </div>
-            <div className="relative rounded-lg overflow-hidden shadow-2xl bg-black">
-              <video
-                controls
-                className="w-full h-auto"
-                style={{ maxHeight: '500px' }}
-                preload="metadata"
-              >
-                <source src={videoUrl} type={videoFileType} />
-                Your browser does not support the video tag.
-              </video>
-            </div>
-            {parsedData?.videoId && (
-              <div
-                className={`text-xs text-center ${
-                  theme === 'day-mode' ? 'text-gray-500' : 'text-gray-400'
-                }`}
-              >
-                Video ID: {parsedData.videoId}
-              </div>
-            )}
-            {parsedData?.duration_seconds && (
-              <div
-                className={`text-xs text-center ${
-                  theme === 'day-mode' ? 'text-gray-500' : 'text-gray-400'
-                }`}
-              >
-                Duration: {Math.round(parsedData.duration_seconds)}s
-              </div>
-            )}
-          </div>
-        ) : parsedData?.videoId ? (
-          <div className="space-y-3">
-            <div
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg ${
-                theme === 'day-mode' ? 'bg-blue-50' : 'bg-blue-900/20'
-              }`}
-            >
-              <i className="fas fa-video text-blue-600"></i>
-              <span
-                className={`text-sm font-medium ${
-                  theme === 'day-mode' ? 'text-blue-900' : 'text-blue-300'
-                }`}
-              >
-                Avatar Video
-              </span>
-            </div>
-            <div className="text-center p-4">
-              <a
-                href={`https://app.heygen.com/share/${parsedData.videoId}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className={`inline-block px-6 py-3 rounded-lg ${
-                  theme === 'day-mode'
-                    ? 'bg-blue-600 hover:bg-blue-700 text-white'
-                    : 'bg-blue-500 hover:bg-blue-600 text-white'
-                }`}
-              >
-                <i className="fas fa-external-link-alt mr-2"></i>
-                View Video on Heygen
-              </a>
-            </div>
-          </div>
-        ) : (
-          <div
-            className={`p-4 rounded-lg ${
-              theme === 'day-mode' ? 'bg-gray-50' : 'bg-[#334155]'
-            }`}
-          >
-            <p className={theme === 'day-mode' ? 'text-gray-500' : 'text-gray-400'}>
-              No video content available
-            </p>
-          </div>
-        )}
+      <div
+        className={`p-4 rounded-lg ${
+          theme === 'day-mode' ? 'bg-gray-50' : 'bg-[#334155]'
+        }`}
+      >
+        <p className={theme === 'day-mode' ? 'text-gray-500' : 'text-gray-400'}>
+          No video content available
+        </p>
       </div>
     );
   };
