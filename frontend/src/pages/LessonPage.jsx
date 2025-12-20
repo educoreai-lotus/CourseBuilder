@@ -18,7 +18,7 @@ export default function LessonPage() {
   const { id: courseId, lessonId } = useParams()
   const navigate = useNavigate()
   const { showToast, userRole, userProfile } = useApp()
-  const { launchAssessment } = useAssessmentLauncher()
+  const { launchAssessment, launching } = useAssessmentLauncher()
   const learnerId = userRole === 'learner' ? userProfile?.id : null
 
   const [loading, setLoading] = useState(true)
@@ -300,6 +300,20 @@ export default function LessonPage() {
 
   // Early returns AFTER all hooks have been called
   // This ensures hooks are always called in the same order
+  
+  // Show loading overlay when launching assessment
+  if (launching) {
+    return (
+      <div className="page-surface bg-[var(--bg-primary)] transition-colors">
+        <Container>
+          <div className="surface-card soft flex min-h-[60vh] items-center justify-center">
+            <LoadingSpinner message="Launching assessment..." />
+          </div>
+        </Container>
+      </div>
+    )
+  }
+  
   return (
     <div className="page-surface bg-[var(--bg-primary)] min-h-screen transition-colors">
       <div className="flex flex-col lg:flex-row gap-6 py-4">
