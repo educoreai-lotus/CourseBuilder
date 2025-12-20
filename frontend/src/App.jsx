@@ -1,5 +1,6 @@
 import { Routes, Route, Navigate, useParams } from 'react-router-dom'
-import { AppProvider } from './context/AppContext.jsx'
+import { useEffect } from 'react'
+import { AppProvider, useApp } from './context/AppContext.jsx'
 import Header from './components/Header.jsx'
 import AccessibilityControls from './components/AccessibilityControls.jsx'
 import Toast from './components/Toast.jsx'
@@ -32,7 +33,39 @@ function LegacyLessonRedirect() {
 
 function AppShell() {
   const { userRole } = useRole()
+  const { userProfile } = useApp()
   const isLearner = userRole === 'learner'
+
+  // Initialize Educore Bot when user profile is available
+  useEffect(() => {
+    if (!userProfile || !userProfile.id) return
+
+    // Wait for bot script to load
+    const initializeBot = () => {
+      if (window.initializeEducoreBot) {
+        window.initializeEducoreBot({
+          microservice: 'COURSE_BUILDER',
+          userId: userProfile.id,
+          token: userProfile.id, // Using user ID as token since we don't have JWT tokens
+          tenantId: 'default'
+        })
+      }
+    }
+
+    // Check if script is already loaded
+    if (window.initializeEducoreBot) {
+      initializeBot()
+    } else {
+      // Wait for script to load
+      window.addEventListener('load', initializeBot)
+      // Also try after a short delay in case load event already fired
+      const timeoutId = setTimeout(initializeBot, 1000)
+      return () => {
+        window.removeEventListener('load', initializeBot)
+        clearTimeout(timeoutId)
+      }
+    }
+  }, [userProfile])
 
   return (
     <div className="min-h-screen" data-testid="app-root">

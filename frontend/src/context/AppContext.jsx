@@ -4,7 +4,8 @@ import React, {
   useMemo,
   useState,
   useEffect,
-  useCallback
+  useCallback,
+  useRef
 } from 'react'
 
 const AppContext = createContext(null)
@@ -46,6 +47,7 @@ export function AppProvider({ children }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [toast, setToast] = useState(null) // { message, type: 'success' | 'error' | 'info' }
+  const pendingUserIdRef = useRef(null) // Store userId from URL to apply after role is set
   
   // Accessibility features
   const [accessibility, setAccessibility] = useState({
@@ -107,6 +109,48 @@ export function AppProvider({ children }) {
     const fallbackRole = allowedRoles.includes(userRole) ? userRole : 'learner'
     setUserProfileState(getProfileForRole(fallbackRole))
   }, [userRole])
+
+  // Handle userId from URL query parameters
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    const urlParams = new URLSearchParams(window.location.search)
+    const userIdFromUrl = urlParams.get('userId')
+
+    if (userIdFromUrl) {
+      // Store userId to apply after role is set
+      pendingUserIdRef.current = userIdFromUrl
+      
+      // Set role to learner if userId is provided (since it's typically for learner dashboard)
+      const currentRole = getStoredRole()
+      if (currentRole !== 'learner') {
+        setUserRole('learner')
+      } else {
+        // If role is already learner, apply userId immediately
+        setUserProfileState(prev => ({
+          ...prev,
+          id: userIdFromUrl
+        }))
+        pendingUserIdRef.current = null
+      }
+
+      // Clean up URL by removing userId parameter (optional - keeps URL clean)
+      const newUrl = new URL(window.location.href)
+      newUrl.searchParams.delete('userId')
+      window.history.replaceState({}, '', newUrl.toString())
+    }
+  }, [setUserRole, setUserProfileState]) // Run once on mount
+
+  // Apply pending userId after role is set to learner
+  useEffect(() => {
+    if (pendingUserIdRef.current && userRole === 'learner') {
+      setUserProfileState(prev => ({
+        ...prev,
+        id: pendingUserIdRef.current
+      }))
+      pendingUserIdRef.current = null
+    }
+  }, [userRole, setUserProfileState])
 
   const showToast = (message, type = 'success') => {
     setToast({ message, type })
