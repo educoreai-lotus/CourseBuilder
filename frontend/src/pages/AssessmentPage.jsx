@@ -49,12 +49,12 @@ export default function AssessmentPage() {
     }
   }, [loading, course, userProfile?.id, id, launchAssessment])
 
-  if (loading) {
+  if (loading || launching) {
     return (
       <div className="page-surface bg-[var(--bg-primary)] transition-colors">
         <Container>
           <div className="surface-card soft flex min-h-[60vh] items-center justify-center">
-            <LoadingSpinner message="Loading assessment..." />
+            <LoadingSpinner message={loading ? "Loading assessment..." : "Launching assessment..."} />
           </div>
         </Container>
       </div>
