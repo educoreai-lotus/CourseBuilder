@@ -140,12 +140,10 @@ const renderContent = (lesson) => {
             )
           }
           
-          if (contentType === 'presentation' || contentType === 'avatar_video') {
+          if (contentType === 'presentation') {
             return (
               <div key={idx} className="rounded-2xl border border-[rgba(148,163,184,0.14)] bg-[var(--bg-card)]/90 p-4">
-                <p className="mb-2 text-sm font-semibold text-[var(--text-primary)]">
-                  {contentType === 'presentation' ? 'Presentation' : 'Video Content'}
-                </p>
+                <p className="mb-2 text-sm font-semibold text-[var(--text-primary)]">Presentation</p>
                 {(item.presentationUrl || item.url) && (
                   <div className="space-y-3">
                     {item.presentationUrl && (
@@ -171,6 +169,42 @@ const renderContent = (lesson) => {
                 )}
                 {item.content && (
                   <p className="mt-4 text-base leading-7 text-[var(--text-secondary)]">{item.content}</p>
+                )}
+              </div>
+            )
+          }
+          
+          if (contentType === 'avatar_video') {
+            const videoUrl = item.videoUrl || item.fileUrl
+            
+            return (
+              <div key={idx} className="rounded-2xl border border-[rgba(148,163,184,0.14)] bg-[var(--bg-card)]/90 p-4">
+                <p className="mb-2 text-sm font-semibold text-[var(--text-primary)]">Video Content</p>
+                {videoUrl ? (
+                  <div className="bg-black rounded-lg overflow-hidden shadow-2xl aspect-video">
+                    <video
+                      src={videoUrl}
+                      controls
+                      className="w-full h-full"
+                      onError={(e) => {
+                        console.error('[AvatarVideo] Video load error:', e)
+                        console.error('[AvatarVideo] Video src:', videoUrl)
+                      }}
+                    />
+                  </div>
+                ) : item.videoId ? (
+                  <a
+                    href={`https://app.heygen.com/share/${item.videoId}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-block px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+                  >
+                    Open avatar video
+                  </a>
+                ) : (
+                  <div className="p-4 rounded-lg bg-[var(--bg-secondary)]">
+                    <p className="text-sm text-[var(--text-muted)]">No video content available</p>
+                  </div>
                 )}
               </div>
             )
