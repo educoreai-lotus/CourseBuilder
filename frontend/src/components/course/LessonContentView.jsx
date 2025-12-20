@@ -510,12 +510,11 @@ export default function LessonContentView() {
     if (videoUrl) {
       console.log('[AvatarVideo] Rendering video with URL:', videoUrl);
       return (
-        <div className="bg-black rounded-lg overflow-hidden shadow-2xl">
+        <div className="bg-black rounded-lg overflow-hidden shadow-2xl aspect-video">
           <video
             src={videoUrl}
             controls
-            className="w-full h-auto"
-            style={{ maxHeight: '500px' }}
+            className="w-full h-full"
             onError={(e) => {
               console.error('[AvatarVideo] Video load error:', e);
               console.error('[AvatarVideo] Video src:', videoUrl);
