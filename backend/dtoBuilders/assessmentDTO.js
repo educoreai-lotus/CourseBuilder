@@ -29,24 +29,29 @@ export function buildCoverageMapFromLessons(lessons = []) {
  * @param {Object} course - Course entity
  * @param {string} learnerId - Learner ID
  * @param {string} learnerName - Learner name
- * @param {Array} lessons - Lessons array (to build coverage_map dynamically)
+ * @param {Array} lessons - Lessons array (to build coverage_map dynamically, optional for launch)
+ * @param {boolean} includeCoverageMap - Whether to include coverage_map (default: false for launch)
  * @returns {Object} Assessment send payload
  */
-export function buildSendPayload(course, learnerId, learnerName, lessons = []) {
+export function buildSendPayload(course, learnerId, learnerName, lessons = [], includeCoverageMap = false) {
   if (!course || !course.id) {
     throw new Error('Course is required with id property');
   }
 
-  // Build coverage_map dynamically from lessons
-  const coverage_map = buildCoverageMapFromLessons(lessons);
-
-  return {
+  const payload = {
     learner_id: learnerId,
     learner_name: learnerName,
     course_id: course.id,
-    course_name: course.course_name,
-    coverage_map
+    course_name: course.course_name
   };
+
+  // Only include coverage_map if explicitly requested (for backward compatibility)
+  if (includeCoverageMap) {
+    const coverage_map = buildCoverageMapFromLessons(lessons);
+    payload.coverage_map = coverage_map;
+  }
+
+  return payload;
 }
 
 /**
@@ -56,7 +61,7 @@ export function buildSendPayload(course, learnerId, learnerName, lessons = []) {
  */
 export function buildFromReceived(data) {
   return {
-    learner_id: data.learner_id,
+    learner_id: data.user_id || data.learner_id, // Support both user_id and learner_id
     course_id: data.course_id,
     course_name: data.course_name,
     exam_type: data.exam_type || 'postcourse',
