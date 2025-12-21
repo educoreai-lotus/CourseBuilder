@@ -57,8 +57,15 @@ function inferSpecializedServiceFromPayload(payloadObject) {
     return 'LearnerAI';
   }
   
-  // Assessment: has coverage_map
-  if (payloadObject.coverage_map) {
+  // Assessment: has action "coverage map" or exam result fields, AND requester_service is assessment-service
+  // Note: requester_service is not in payloadObject, it's in envelope, so we check action and exam result fields
+  const action = payloadObject.action ? payloadObject.action.toLowerCase().trim() : null;
+  const isCoverageMapAction = action === 'coverage map' || action === 'coverge map'; // Handle typo
+  const hasExamResultFields = payloadObject.final_grade !== undefined || 
+                               payloadObject.passed !== undefined ||
+                               (payloadObject.exam_type && payloadObject.passing_grade !== undefined);
+  
+  if (isCoverageMapAction || hasExamResultFields) {
     return 'Assessment';
   }
   

@@ -50,7 +50,7 @@ export async function dispatchIntegrationRequest(serviceName, payloadObject, res
       return await handleLearnerAIIntegration(payloadObject, responseTemplate);
 
     case 'Assessment':
-      return await handleAssessmentIntegration(payloadObject, responseTemplate);
+      return await handleAssessmentIntegration(payloadObject, responseTemplate, requesterService);
 
     case 'SkillsEngine':
       return await handleSkillsIntegration(payloadObject, responseTemplate);
