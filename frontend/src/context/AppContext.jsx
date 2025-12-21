@@ -41,7 +41,7 @@ const getStoredRole = () => {
 const getProfileForRole = (role) => roleProfiles[role] || roleProfiles.learner
 
 export function AppProvider({ children }) {
-  const [theme, setTheme] = useState('day-mode') // 'day-mode' or 'night-mode'
+  const [theme, setTheme] = useState('day-mode') // 'day-mode' or 'night-mode' ***
   const [userRole, setUserRoleState] = useState(getStoredRole)
   const [userProfile, setUserProfileState] = useState(() => getProfileForRole(getStoredRole()))
   const [loading, setLoading] = useState(false)
