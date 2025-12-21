@@ -179,6 +179,26 @@ export class CourseRepository {
   }
 
   /**
+   * Find learner-specific course by competency_target_name and learner_id
+   * TEMPORARY: Used for delete+rebuild after failure scenario
+   * @param {string} competencyTargetName - Competency target name from learning_path_designation
+   * @param {string} userId - Learner user ID (created_by_user_id)
+   * @returns {Promise<Course|null>} - Found course or null
+   */
+  async findByCompetencyAndLearner(competencyTargetName, userId) {
+    const query = `
+      SELECT * FROM courses 
+      WHERE course_type = 'learner_specific'
+        AND created_by_user_id = $1
+        AND learning_path_designation->>'competency_target_name' = $2
+      ORDER BY created_at DESC
+      LIMIT 1
+    `;
+    const row = await db.oneOrNone(query, [userId, competencyTargetName]);
+    return row ? Course.fromRow(row) : null;
+  }
+
+  /**
    * Update student in studentsIDDictionary
    */
   async updateStudentDictionary(courseId, studentId, studentData) {

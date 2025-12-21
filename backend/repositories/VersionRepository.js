@@ -60,6 +60,25 @@ export class VersionRepository {
     const row = await db.oneOrNone(query, [entityType, entityId]);
     return row ? Version.fromRow(row) : null;
   }
+
+  /**
+   * Delete versions for multiple entity IDs of the same type
+   * TEMPORARY: Used for cleanup before deleting course entities
+   * @param {string} entityType - Entity type ('course', 'topic', 'module', 'lesson')
+   * @param {string[]} entityIds - Array of entity IDs
+   * @returns {Promise<number>} - Number of deleted versions
+   */
+  async deleteByEntityIds(entityType, entityIds) {
+    if (!Array.isArray(entityIds) || entityIds.length === 0) {
+      return 0;
+    }
+    const query = `
+      DELETE FROM versions 
+      WHERE entity_type = $1 AND entity_id = ANY($2::uuid[])
+    `;
+    const result = await db.result(query, [entityType, entityIds]);
+    return result.rowCount || 0;
+  }
 }
 
 export default new VersionRepository();
