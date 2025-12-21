@@ -19,7 +19,114 @@ import { getFallbackData, shouldUseFallback } from '../fallbackData.js';
 import courseRepository from '../../repositories/CourseRepository.js';
 import topicRepository from '../../repositories/TopicRepository.js';
 import moduleRepository from '../../repositories/ModuleRepository.js';
+import lessonRepository from '../../repositories/LessonRepository.js';
+import versionRepository from '../../repositories/VersionRepository.js';
+import db from '../../config/database.js';
 import { generateAIStructure } from '../../services/AIStructureGenerator.js';
+
+/**
+ * TEMPORARY: Delete existing failed course before rebuild
+ * This is a temporary solution for "rebuild course after learner fails" scenario.
+ * TODO: Replace with proper versioning system later.
+ * 
+ * @param {string} competencyTargetName - Competency target name to match
+ * @param {string} userId - Learner user ID (must own the course)
+ * @returns {Promise<boolean>} - True if course was found and deleted, false otherwise
+ */
+async function deleteExistingFailedCourse(competencyTargetName, userId) {
+  if (!competencyTargetName || !userId) {
+    console.log('[LearnerAI Handler] ⚠️ Cannot delete course: missing competency_target_name or user_id');
+    return false;
+  }
+
+  try {
+    // Find existing course with matching competency and learner
+    const existingCourse = await courseRepository.findByCompetencyAndLearner(competencyTargetName, userId);
+    
+    if (!existingCourse) {
+      console.log('[LearnerAI Handler] No existing course found for deletion:', {
+        competency_target_name: competencyTargetName,
+        user_id: userId
+      });
+      return false;
+    }
+
+    // Safety check: Ensure it's a learner-specific course owned by this learner
+    if (existingCourse.course_type !== 'learner_specific') {
+      console.warn('[LearnerAI Handler] ⚠️ SAFETY: Cannot delete course - not learner_specific:', {
+        course_id: existingCourse.id,
+        course_type: existingCourse.course_type
+      });
+      return false;
+    }
+
+    if (existingCourse.created_by_user_id !== userId) {
+      console.warn('[LearnerAI Handler] ⚠️ SAFETY: Cannot delete course - not owned by learner:', {
+        course_id: existingCourse.id,
+        course_owner: existingCourse.created_by_user_id,
+        requesting_user: userId
+      });
+      return false;
+    }
+
+    console.log('[LearnerAI Handler] 🗑️ TEMPORARY: Deleting existing failed course before rebuild:', {
+      course_id: existingCourse.id,
+      course_name: existingCourse.course_name,
+      competency_target_name: competencyTargetName,
+      user_id: userId
+    });
+
+    // Get all related entities for logging before deletion
+    const existingTopics = await topicRepository.findByCourseId(existingCourse.id);
+    const topicIds = existingTopics.map(t => t.id);
+    const moduleIds = [];
+    const lessonIds = [];
+
+    for (const topic of existingTopics) {
+      const modules = await moduleRepository.findByTopicId(topic.id);
+      moduleIds.push(...modules.map(m => m.id));
+      
+      for (const module of modules) {
+        const lessons = await lessonRepository.findByModuleId(module.id);
+        lessonIds.push(...lessons.map(l => l.id));
+      }
+    }
+
+    console.log('[LearnerAI Handler] Entities to be deleted:', {
+      course_id: existingCourse.id,
+      topics_count: topicIds.length,
+      modules_count: moduleIds.length,
+      lessons_count: lessonIds.length
+    });
+
+    // Delete within a transaction to ensure atomicity
+    await db.tx(async (t) => {
+      // Delete versions manually (no FK cascade)
+      if (topicIds.length > 0) {
+        await versionRepository.deleteByEntityIds('topic', topicIds);
+      }
+      if (moduleIds.length > 0) {
+        await versionRepository.deleteByEntityIds('module', moduleIds);
+      }
+      if (lessonIds.length > 0) {
+        await versionRepository.deleteByEntityIds('lesson', lessonIds);
+      }
+      // Delete course version
+      await versionRepository.deleteByEntityIds('course', [existingCourse.id]);
+
+      // Delete course (cascades to topics, modules, lessons, registrations, assessments, feedback)
+      await t.none('DELETE FROM courses WHERE id = $1', [existingCourse.id]);
+    });
+
+    console.log('[LearnerAI Handler] ✅ Successfully deleted existing course and all dependent entities');
+    return true;
+  } catch (error) {
+    console.error('[LearnerAI Handler] ❌ Error deleting existing course:', error);
+    // Don't throw - allow rebuild to proceed even if deletion fails
+    // The new course creation will handle the uniqueness constraint
+    return false;
+  }
+}
 
 /**
  * Handle Learner AI integration request
@@ -46,8 +153,17 @@ ${JSON.stringify(payloadObject, null, 2)}
       skills: data.skills?.length || 0,
       competency_name: data.competency_name,
       has_learning_path: !!data.learning_path,
-      preferred_language: data.preferred_language
+      preferred_language: data.preferred_language,
+      exam_status: payloadObject.exam_status
     });
+
+    // TEMPORARY: Delete existing failed course before rebuild
+    // This ensures a learner can never have two learner-specific courses with the same competency_target_name
+    // TODO: Replace with proper versioning system later
+    if (payloadObject.exam_status === 'fail' && data.competency_name) {
+      console.log('[LearnerAI Handler] 🔄 TEMPORARY: Detected failed exam status - deleting existing course before rebuild');
+      await deleteExistingFailedCourse(data.competency_name, data.user_id);
+    }
 
     // Step 1: Create course structure (course, topics, modules) BEFORE calling Content Studio
     // This ensures the course structure exists in the database immediately
