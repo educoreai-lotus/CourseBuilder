@@ -24,8 +24,12 @@ function normalizeAction(action) {
     return null;
   }
   const normalized = action.toLowerCase().trim();
+  // Handle underscore format: "coverage_map" -> "coverage map"
+  if (normalized === 'coverage_map') {
+    return 'coverage map';
+  }
   // Handle known typo: "coverge map" -> "coverage map"
-  if (normalized === 'coverge map') {
+  if (normalized === 'coverge map' || normalized === 'coverge_map') {
     return 'coverage map';
   }
   return normalized;

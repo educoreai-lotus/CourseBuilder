@@ -57,15 +57,26 @@ function inferSpecializedServiceFromPayload(payloadObject) {
     return 'LearnerAI';
   }
   
-  // Assessment: has action "coverage map" or exam result fields, AND requester_service is assessment-service
+  // Assessment: has action "coverage map" (or "coverage_map" with underscore) or exam result fields
   // Note: requester_service is not in payloadObject, it's in envelope, so we check action and exam result fields
   const action = payloadObject.action ? payloadObject.action.toLowerCase().trim() : null;
-  const isCoverageMapAction = action === 'coverage map' || action === 'coverge map'; // Handle typo
+  // Handle both "coverage map" (space) and "coverage_map" (underscore) formats
+  const isCoverageMapAction = action === 'coverage map' || 
+                               action === 'coverage_map' || 
+                               action === 'coverge map' || // Handle typo
+                               action === 'coverge_map';   // Handle typo with underscore
   const hasExamResultFields = payloadObject.final_grade !== undefined || 
                                payloadObject.passed !== undefined ||
                                (payloadObject.exam_type && payloadObject.passing_grade !== undefined);
   
   if (isCoverageMapAction || hasExamResultFields) {
+    console.log('[Integration Controller] 🎯 Assessment service detected:', {
+      action,
+      isCoverageMapAction,
+      hasExamResultFields,
+      course_id: payloadObject.course_id,
+      learner_id: payloadObject.learner_id || payloadObject.user_id
+    });
     return 'Assessment';
   }
   
@@ -223,8 +234,10 @@ function determineTargetService(payloadObject, responseTemplate) {
     // Action mode: {} or {answer: ""} OR write operations with result fields
     // First, check if payload matches a specialized handler pattern
     // If yes, use that handler (specialized handlers can handle empty response)
+    // IMPORTANT: Check specialized services FIRST before defaulting to CourseBuilder
     const specializedService = inferSpecializedServiceFromPayload(payloadObject);
     if (specializedService) {
+      console.log(`[Integration Controller] 🎯 Specialized service detected: ${specializedService} (overriding Action mode default)`);
       return specializedService;
     }
     // Empty {} response for write operations must execute (command-only request)
