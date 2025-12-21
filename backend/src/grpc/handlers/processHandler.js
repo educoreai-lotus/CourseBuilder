@@ -252,23 +252,50 @@ class ProcessHandler {
 
   /**
    * Query database with pagination (for Batch Sync)
+   * Returns flattened structure: one row per lesson with course/topic/module/lesson data
    */
   async queryDatabase({ tenant_id, limit, offset, since }) {
-    let query = 'SELECT * FROM courses WHERE 1=1';
+    let query = `
+      SELECT 
+        c.id as course_id,
+        c.course_name,
+        c.course_description,
+        c.course_type,
+        c.duration_hours,
+        c.created_at,
+        c.created_by_user_id,
+        c.learning_path_designation,
+        c.ai_assets,
+        r.learner_id,
+        r.learner_name,
+        t.id as topic_id,
+        t.topic_name,
+        m.id as module_id,
+        m.module_name,
+        l.id as lesson_id,
+        l.lesson_name,
+        l.lesson_description,
+        l.skills,
+        l.content_data
+      FROM lessons l
+      INNER JOIN modules m ON l.module_id = m.id
+      INNER JOIN topics t ON l.topic_id = t.id AND m.topic_id = t.id
+      INNER JOIN courses c ON t.course_id = c.id
+      LEFT JOIN registrations r ON c.id = r.course_id
+      WHERE 1=1
+    `;
     const params = [];
     let paramIndex = 1;
 
-    // Filter by tenant_id if provided (using created_by_user_id or company matching)
-    // Note: Course Builder doesn't have explicit tenant_id, so we'll return all courses
-    // In production, you might filter by company_id or similar
-
-    // Filter by since date if provided
+    // Filter by since date if provided (check BOTH created_at AND updated_at)
     if (since) {
-      query += ` AND created_at >= $${paramIndex++}`;
-      params.push(new Date(since));
+      const sinceDate = new Date(since);
+      query += ` AND (c.created_at >= $${paramIndex} OR c.updated_at >= $${paramIndex})`;
+      params.push(sinceDate);
+      paramIndex++;
     }
 
-    query += ' ORDER BY created_at DESC';
+    query += ' ORDER BY c.created_at DESC, t.id, m.id, l.id';
     query += ` LIMIT $${paramIndex++}`;
     params.push(limit);
     query += ` OFFSET $${paramIndex++}`;
@@ -279,40 +306,69 @@ class ProcessHandler {
     // Convert to JSON format for RAG
     return rows.map(row => {
       // Parse JSONB fields
-      const course = {
-        course_id: row.id,
+      const learning_path_designation = typeof row.learning_path_designation === 'string' 
+        ? JSON.parse(row.learning_path_designation) 
+        : row.learning_path_designation || {};
+      
+      const ai_assets = typeof row.ai_assets === 'string' 
+        ? JSON.parse(row.ai_assets) 
+        : row.ai_assets || {};
+      
+      const skills = typeof row.skills === 'string' 
+        ? JSON.parse(row.skills) 
+        : (Array.isArray(row.skills) ? row.skills : []);
+      
+      const content_data = typeof row.content_data === 'string' 
+        ? JSON.parse(row.content_data) 
+        : (Array.isArray(row.content_data) ? row.content_data : []);
+
+      return {
+        course_id: row.course_id,
         course_name: row.course_name,
         course_description: row.course_description,
         course_type: row.course_type,
-        status: row.status,
-        level: row.level,
         duration_hours: row.duration_hours,
-        start_date: row.start_date?.toISOString() || null,
         created_at: row.created_at?.toISOString() || null,
-        updated_at: row.updated_at?.toISOString() || null,
         created_by_user_id: row.created_by_user_id,
-        learning_path_designation: typeof row.learning_path_designation === 'string' 
-          ? JSON.parse(row.learning_path_designation) 
-          : row.learning_path_designation || {},
-        ai_assets: typeof row.ai_assets === 'string' 
-          ? JSON.parse(row.ai_assets) 
-          : row.ai_assets || {}
+        learning_path_designation,
+        ai_assets,
+        learner_id: row.learner_id || null,
+        learner_name: row.learner_name || null,
+        topic_id: row.topic_id,
+        topic_name: row.topic_name,
+        module_id: row.module_id,
+        module_name: row.module_name,
+        lesson_id: row.lesson_id,
+        lesson_name: row.lesson_name,
+        lesson_description: row.lesson_description,
+        skills,
+        content_data
       };
-      return course;
     });
   }
 
   /**
    * Get total count (for Batch Sync pagination)
+   * Counts lessons (one row per lesson in the flattened structure)
    */
   async getTotalCount({ tenant_id, since }) {
-    let query = 'SELECT COUNT(*) as count FROM courses WHERE 1=1';
+    let query = `
+      SELECT COUNT(*) as count
+      FROM lessons l
+      INNER JOIN modules m ON l.module_id = m.id
+      INNER JOIN topics t ON l.topic_id = t.id AND m.topic_id = t.id
+      INNER JOIN courses c ON t.course_id = c.id
+      WHERE 1=1
+    `;
     const params = [];
     let paramIndex = 1;
 
+    // Filter by since date if provided (check BOTH created_at AND updated_at)
     if (since) {
-      query += ` AND created_at >= $${paramIndex++}`;
-      params.push(new Date(since));
+      const sinceDate = new Date(since);
+      query += ` AND (c.created_at >= $${paramIndex} OR c.updated_at >= $${paramIndex})`;
+      params.push(sinceDate);
+      paramIndex++;
     }
 
     const result = await db.one(query, params);
@@ -321,81 +377,288 @@ class ProcessHandler {
 
   /**
    * Get recent items (for Real-time queries)
+   * Returns flattened structure: one row per lesson with course/topic/module/lesson data
    */
   async getRecentItems(tenant_id, user_id) {
-    const courses = await courseRepository.findAll({
-      limit: 10,
-      status: 'active'
-    });
+    const query = `
+      SELECT 
+        c.id as course_id,
+        c.course_name,
+        c.course_description,
+        c.course_type,
+        c.duration_hours,
+        c.created_at,
+        c.created_by_user_id,
+        c.learning_path_designation,
+        c.ai_assets,
+        r.learner_id,
+        r.learner_name,
+        t.id as topic_id,
+        t.topic_name,
+        m.id as module_id,
+        m.module_name,
+        l.id as lesson_id,
+        l.lesson_name,
+        l.lesson_description,
+        l.skills,
+        l.content_data
+      FROM lessons l
+      INNER JOIN modules m ON l.module_id = m.id
+      INNER JOIN topics t ON l.topic_id = t.id AND m.topic_id = t.id
+      INNER JOIN courses c ON t.course_id = c.id
+      LEFT JOIN registrations r ON c.id = r.course_id
+      WHERE c.status = 'active'
+      ORDER BY c.created_at DESC, t.id, m.id, l.id
+      LIMIT 10
+    `;
 
-    return courses.map(course => course.toJSON()).map(course => ({
-      course_id: course.id,
-      course_name: course.course_name,
-      course_description: course.course_description,
-      course_type: course.course_type,
-      status: course.status,
-      level: course.level,
-      duration_hours: course.duration_hours,
-      start_date: course.start_date,
-      created_at: course.created_at,
-      updated_at: course.updated_at,
-      created_by_user_id: course.created_by_user_id,
-      learning_path_designation: course.learning_path_designation,
-      ai_assets: course.ai_assets
-    }));
+    const rows = await db.any(query);
+    
+    return rows.map(row => {
+      // Parse JSONB fields
+      const learning_path_designation = typeof row.learning_path_designation === 'string' 
+        ? JSON.parse(row.learning_path_designation) 
+        : row.learning_path_designation || {};
+      
+      const ai_assets = typeof row.ai_assets === 'string' 
+        ? JSON.parse(row.ai_assets) 
+        : row.ai_assets || {};
+      
+      const skills = typeof row.skills === 'string' 
+        ? JSON.parse(row.skills) 
+        : (Array.isArray(row.skills) ? row.skills : []);
+      
+      const content_data = typeof row.content_data === 'string' 
+        ? JSON.parse(row.content_data) 
+        : (Array.isArray(row.content_data) ? row.content_data : []);
+
+      return {
+        course_id: row.course_id,
+        course_name: row.course_name,
+        course_description: row.course_description,
+        course_type: row.course_type,
+        duration_hours: row.duration_hours,
+        created_at: row.created_at?.toISOString() || null,
+        created_by_user_id: row.created_by_user_id,
+        learning_path_designation,
+        ai_assets,
+        learner_id: row.learner_id || null,
+        learner_name: row.learner_name || null,
+        topic_id: row.topic_id,
+        topic_name: row.topic_name,
+        module_id: row.module_id,
+        module_name: row.module_name,
+        lesson_id: row.lesson_id,
+        lesson_name: row.lesson_name,
+        lesson_description: row.lesson_description,
+        skills,
+        content_data
+      };
+    });
   }
 
   /**
    * Get item by ID (for Real-time queries)
+   * Returns flattened structure: one row per lesson with course/topic/module/lesson data
+   * If ID is a course_id, returns all lessons for that course
+   * If ID is a lesson_id, returns that specific lesson
    */
   async getItemById(tenant_id, id) {
-    const course = await courseRepository.findById(id);
-    if (!course) {
+    // Try as lesson_id first
+    let query = `
+      SELECT 
+        c.id as course_id,
+        c.course_name,
+        c.course_description,
+        c.course_type,
+        c.duration_hours,
+        c.created_at,
+        c.created_by_user_id,
+        c.learning_path_designation,
+        c.ai_assets,
+        r.learner_id,
+        r.learner_name,
+        t.id as topic_id,
+        t.topic_name,
+        m.id as module_id,
+        m.module_name,
+        l.id as lesson_id,
+        l.lesson_name,
+        l.lesson_description,
+        l.skills,
+        l.content_data
+      FROM lessons l
+      INNER JOIN modules m ON l.module_id = m.id
+      INNER JOIN topics t ON l.topic_id = t.id AND m.topic_id = t.id
+      INNER JOIN courses c ON t.course_id = c.id
+      LEFT JOIN registrations r ON c.id = r.course_id
+      WHERE l.id = $1
+      LIMIT 1
+    `;
+
+    let row = await db.oneOrNone(query, [id]);
+    
+    // If not found as lesson_id, try as course_id and return first lesson
+    if (!row) {
+      query = `
+        SELECT 
+          c.id as course_id,
+          c.course_name,
+          c.course_description,
+          c.course_type,
+          c.duration_hours,
+          c.created_at,
+          c.created_by_user_id,
+          c.learning_path_designation,
+          c.ai_assets,
+          r.learner_id,
+          r.learner_name,
+          t.id as topic_id,
+          t.topic_name,
+          m.id as module_id,
+          m.module_name,
+          l.id as lesson_id,
+          l.lesson_name,
+          l.lesson_description,
+          l.skills,
+          l.content_data
+        FROM lessons l
+        INNER JOIN modules m ON l.module_id = m.id
+        INNER JOIN topics t ON l.topic_id = t.id AND m.topic_id = t.id
+        INNER JOIN courses c ON t.course_id = c.id
+        LEFT JOIN registrations r ON c.id = r.course_id
+        WHERE c.id = $1
+        ORDER BY t.id, m.id, l.id
+        LIMIT 1
+      `;
+      row = await db.oneOrNone(query, [id]);
+    }
+
+    if (!row) {
       return null;
     }
 
-    const courseJson = course.toJSON();
+    // Parse JSONB fields
+    const learning_path_designation = typeof row.learning_path_designation === 'string' 
+      ? JSON.parse(row.learning_path_designation) 
+      : row.learning_path_designation || {};
+    
+    const ai_assets = typeof row.ai_assets === 'string' 
+      ? JSON.parse(row.ai_assets) 
+      : row.ai_assets || {};
+    
+    const skills = typeof row.skills === 'string' 
+      ? JSON.parse(row.skills) 
+      : (Array.isArray(row.skills) ? row.skills : []);
+    
+    const content_data = typeof row.content_data === 'string' 
+      ? JSON.parse(row.content_data) 
+      : (Array.isArray(row.content_data) ? row.content_data : []);
+
     return {
-      course_id: courseJson.id,
-      course_name: courseJson.course_name,
-      course_description: courseJson.course_description,
-      course_type: courseJson.course_type,
-      status: courseJson.status,
-      level: courseJson.level,
-      duration_hours: courseJson.duration_hours,
-      start_date: courseJson.start_date,
-      created_at: courseJson.created_at,
-      updated_at: courseJson.updated_at,
-      created_by_user_id: courseJson.created_by_user_id,
-      learning_path_designation: courseJson.learning_path_designation,
-      ai_assets: courseJson.ai_assets
+      course_id: row.course_id,
+      course_name: row.course_name,
+      course_description: row.course_description,
+      course_type: row.course_type,
+      duration_hours: row.duration_hours,
+      created_at: row.created_at?.toISOString() || null,
+      created_by_user_id: row.created_by_user_id,
+      learning_path_designation,
+      ai_assets,
+      learner_id: row.learner_id || null,
+      learner_name: row.learner_name || null,
+      topic_id: row.topic_id,
+      topic_name: row.topic_name,
+      module_id: row.module_id,
+      module_name: row.module_name,
+      lesson_id: row.lesson_id,
+      lesson_name: row.lesson_name,
+      lesson_description: row.lesson_description,
+      skills,
+      content_data
     };
   }
 
   /**
    * Get default data (for Real-time queries)
+   * Returns flattened structure: one row per lesson with course/topic/module/lesson data
    */
   async getDefaultData(tenant_id, user_id) {
-    const courses = await courseRepository.findAll({
-      limit: 20,
-      status: 'active'
-    });
+    const query = `
+      SELECT 
+        c.id as course_id,
+        c.course_name,
+        c.course_description,
+        c.course_type,
+        c.duration_hours,
+        c.created_at,
+        c.created_by_user_id,
+        c.learning_path_designation,
+        c.ai_assets,
+        r.learner_id,
+        r.learner_name,
+        t.id as topic_id,
+        t.topic_name,
+        m.id as module_id,
+        m.module_name,
+        l.id as lesson_id,
+        l.lesson_name,
+        l.lesson_description,
+        l.skills,
+        l.content_data
+      FROM lessons l
+      INNER JOIN modules m ON l.module_id = m.id
+      INNER JOIN topics t ON l.topic_id = t.id AND m.topic_id = t.id
+      INNER JOIN courses c ON t.course_id = c.id
+      LEFT JOIN registrations r ON c.id = r.course_id
+      WHERE c.status = 'active'
+      ORDER BY c.created_at DESC, t.id, m.id, l.id
+      LIMIT 20
+    `;
 
-    return courses.map(course => course.toJSON()).map(course => ({
-      course_id: course.id,
-      course_name: course.course_name,
-      course_description: course.course_description,
-      course_type: course.course_type,
-      status: course.status,
-      level: course.level,
-      duration_hours: course.duration_hours,
-      start_date: course.start_date,
-      created_at: course.created_at,
-      updated_at: course.updated_at,
-      created_by_user_id: course.created_by_user_id,
-      learning_path_designation: course.learning_path_designation,
-      ai_assets: course.ai_assets
-    }));
+    const rows = await db.any(query);
+    
+    return rows.map(row => {
+      // Parse JSONB fields
+      const learning_path_designation = typeof row.learning_path_designation === 'string' 
+        ? JSON.parse(row.learning_path_designation) 
+        : row.learning_path_designation || {};
+      
+      const ai_assets = typeof row.ai_assets === 'string' 
+        ? JSON.parse(row.ai_assets) 
+        : row.ai_assets || {};
+      
+      const skills = typeof row.skills === 'string' 
+        ? JSON.parse(row.skills) 
+        : (Array.isArray(row.skills) ? row.skills : []);
+      
+      const content_data = typeof row.content_data === 'string' 
+        ? JSON.parse(row.content_data) 
+        : (Array.isArray(row.content_data) ? row.content_data : []);
+
+      return {
+        course_id: row.course_id,
+        course_name: row.course_name,
+        course_description: row.course_description,
+        course_type: row.course_type,
+        duration_hours: row.duration_hours,
+        created_at: row.created_at?.toISOString() || null,
+        created_by_user_id: row.created_by_user_id,
+        learning_path_designation,
+        ai_assets,
+        learner_id: row.learner_id || null,
+        learner_name: row.learner_name || null,
+        topic_id: row.topic_id,
+        topic_name: row.topic_name,
+        module_id: row.module_id,
+        module_name: row.module_name,
+        lesson_id: row.lesson_id,
+        lesson_name: row.lesson_name,
+        lesson_description: row.lesson_description,
+        skills,
+        content_data
+      };
+    });
   }
 
   /**

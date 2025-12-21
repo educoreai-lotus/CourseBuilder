@@ -1,69 +1,79 @@
 {
   "service_name": "course-builder",
-  "description": "Course Builder is the structural orchestration microservice responsible for generating full course structures based on approved learning paths and learner context. It is triggered by Learner AI, which provides the finalized learning path along with learner identity, organizational context, and competency targets. Course Builder does NOT generate educational content itself and does NOT decide learning paths. Instead, it forwards the received learning path to Content Studio to generate lesson content, then organizes the returned content into a structured hierarchy (Course → Topic → Module → Lesson), applies metadata, manages versions, and stores the complete structured course in the database. Course Builder also manages learner registrations and feedback internally, generates skill-coverage maps for downstream Assessment services, and exposes read-optimized DTOs for other consuming microservices.",
-  "version": "1.0.0",
+  "description": "Course Builder is the structural orchestration microservice responsible for generating full course structures based on approved learning paths and learner context. It manages hierarchical course data (Course → Topic → Module → Lesson) and returns flattened lesson-level records with all hierarchical context for RAG ingestion.",
+  "version": "2.0.0",
   "data_structure": {
     "course_id": "string",
     "course_name": "string",
     "course_description": "text",
     "course_type": "string",
-    "status": "string",
-    "level": "string",
     "duration_hours": "number",
-    "start_date": "datetime",
     "created_at": "datetime",
-    "updated_at": "datetime",
     "created_by_user_id": "string",
     "learning_path_designation": "object",
-    "ai_assets": "object"
+    "ai_assets": "object",
+    "learner_id": "string",
+    "learner_name": "string",
+    "topic_id": "string",
+    "topic_name": "string",
+    "module_id": "string",
+    "module_name": "string",
+    "lesson_id": "string",
+    "lesson_name": "string",
+    "lesson_description": "text",
+    "skills": "array",
+    "content_data": "array"
   },
   "field_descriptions": {
     "course_id": "Unique UUID identifier for the course",
     "course_name": "Display name/title of the course",
     "course_description": "Detailed description of the course content and objectives",
     "course_type": "Type of course: 'learner_specific' (personalized) or 'trainer' (marketplace)",
-    "status": "Course status: 'active' (published and available), 'archived' (no longer active), or 'draft' (not yet published)",
-    "level": "Difficulty level: 'beginner', 'intermediate', or 'advanced'",
     "duration_hours": "Estimated total duration of the course in hours",
-    "start_date": "Scheduled start date for the course (ISO 8601 timestamp)",
     "created_at": "Timestamp when the course was created (ISO 8601)",
-    "updated_at": "Timestamp when the course was last modified (ISO 8601)",
     "created_by_user_id": "UUID of the user who created the course (trainer UUID for marketplace courses, learner UUID for personalized courses)",
-    "learning_path_designation": "Metadata object indicating if course is part of a learning path, includes source (learner_ai), flow type (CAREER_PATH_DRIVEN), and competency target information",
-    "ai_assets": "Course-level AI enrichment assets including videos, GitHub repositories, and other curated resources"
+    "learning_path_designation": "Metadata object indicating if course is part of a learning path, includes source (learner_ai), and competency target information",
+    "ai_assets": "Course-level AI enrichment assets including videos, GitHub repositories, and other curated resources",
+    "learner_id": "Unique UUID for the learner that is registered to course (null if no registration exists)",
+    "learner_name": "Display name of the learner (null if no registration exists)",
+    "topic_id": "Unique identifier for the topic",
+    "topic_name": "Display name of the topic",
+    "module_id": "Unique identifier for the module",
+    "module_name": "Display name of the module",
+    "lesson_id": "Unique identifier for the lesson",
+    "lesson_name": "Display name of the lesson",
+    "lesson_description": "Description/overview of what the lesson covers",
+    "skills": "Skills covered in lesson - array of skill strings",
+    "content_data": "Course content stored as single JSONB array (one lesson) - contains all content blocks from Content Studio"
   },
   "sample_data": {
-    "course_id": "550e8400-e29b-41d4-a716-446655440000",
-    "course_name": "Advanced Node.js Backend Development",
-    "course_description": "Master server-side JavaScript development with Node.js, Express, and PostgreSQL. Learn to build scalable REST APIs, handle authentication, implement database migrations, and deploy production-ready applications.",
-    "course_type": "trainer",
-    "status": "active",
-    "level": "advanced",
-    "duration_hours": 40,
-    "start_date": "2025-02-01T00:00:00.000Z",
+    "course_id": "0c00344c-7a82-4367-b7d8-1cf4c347786a",
+    "course_name": "Advanced React Development with Hooks",
+    "course_description": "Master React Hooks, Context API, and advanced state management patterns. Learn to build scalable React applications with modern best practices.",
+    "course_type": "learner_specific",
+    "duration_hours": 25.5,
     "created_at": "2025-01-15T10:30:00.000Z",
-    "updated_at": "2025-01-20T14:22:00.000Z",
-    "created_by_user_id": "20000000-0000-0000-0000-000000000001",
+    "created_by_user_id": "10000000-0000-0000-0000-000000000001",
     "learning_path_designation": {
-      "is_designated": false,
-      "source": null,
-      "flow": null,
-      "competency_target_name": null,
-      "structured_path": false
+      "is_designated": true,
+      "source": "learner_ai",
+      "flow": "CAREER_PATH_DRIVEN",
+      "competency_target_name": "React Hooks",
+      "structured_path": true
     },
     "ai_assets": {
       "videos": [
         {
-          "title": "Node.js Event Loop Explained",
-          "url": "https://www.youtube.com/watch?v=8aGhZQkoFbQ",
-          "description": "Deep dive into Node.js event loop architecture"
+          "title": "React Hooks Explained",
+          "url": "https://www.youtube.com/watch?v=dpw9EHDh2bM",
+          "description": "Comprehensive guide to React Hooks"
         }
       ],
       "repos": [
         {
-          "name": "expressjs/express",
-          "url": "https://github.com/expressjs/express",
-          "description": "Fast, unopinionated, minimalist web framework for Node.js"
+          "name": "facebook/react",
+          "url": "https://github.com/facebook/react",
+          "description": "React library source code"
         }
       ],
       "suggestedUrls": {
@@ -72,17 +82,92 @@
       },
       "enrichedItems": [],
       "generated_at": "2025-01-15T10:35:00.000Z"
-    }
+    },
+    "learner_id": "10000000-0000-0000-0000-000000000001",
+    "learner_name": "John Doe",
+    "topic_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "topic_name": "React Hooks Fundamentals",
+    "module_id": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
+    "module_name": "useState and useEffect",
+    "lesson_id": "b6ca4c17-e9a0-4aa9-984c-af0f4d06b8f9",
+    "lesson_name": "Introduction to useState Hook",
+    "lesson_description": "Learn how to manage component state using the useState hook, including initialization, updates, and best practices.",
+    "skills": [
+      "React Hooks",
+      "State Management",
+      "useState"
+    ],
+    "content_data": [
+      {
+        "content_type": "text_audio",
+        "content": "Welcome to the useState hook lesson. The useState hook allows you to add state to functional components.",
+        "audio_url": "https://storage.example.com/audio/useState-intro.mp3"
+      },
+      {
+        "content_type": "presentation",
+        "slides": [
+          {
+            "title": "What is useState?",
+            "content": "useState is a React Hook that lets you add state to functional components."
+          }
+        ]
+      },
+      {
+        "content_type": "avatar_video",
+        "videoUrl": "https://storage.example.com/videos/useState-intro.mp4",
+        "videoId": "a4b50fb09e0549d2a4b04e9e06cb93f1",
+        "fileType": "video/mp4",
+        "duration_seconds": 15
+      },
+      {
+        "content_type": "code",
+        "language": "javascript",
+        "code": "import { useState } from 'react';\n\nfunction Counter() {\n  const [count, setCount] = useState(0);\n  return (\n    <div>\n      <p>Count: {count}</p>\n      <button onClick={() => setCount(count + 1)}>Increment</button>\n    </div>\n  );\n}"
+      }
+    ]
   },
   "notes": [
-    "Course Builder manages hierarchical course structure: Course → Topics → Modules → Lessons",
-    "Each course can have multiple topics, each topic can have multiple modules, and each module contains lessons",
-    "learning_path_designation is a JSONB object that contains metadata for personalized courses created via Learner AI",
-    "ai_assets is a JSONB object containing course-level enrichment resources (videos, repos) that appear on all lesson pages",
-    "course_type 'learner_specific' indicates personalized courses created for individual learners",
-    "course_type 'trainer' indicates marketplace courses created by trainers and available to all learners",
-    "status 'active' courses are published and visible to learners, 'draft' courses are still being edited",
-    "The service also manages assessments, feedback, and registrations, but GRPC queries primarily return course data"
+    "Data structure is flattened: one row per lesson with all hierarchical context (course, topic, module, lesson)",
+    "Each lesson record includes complete course, topic, and module information for context",
+    "learner_id and learner_name come from registrations table (LEFT JOIN) - may be null if course has no registrations",
+    "learning_path_designation (object) contains:",
+    "  └─ is_designated (boolean): whether course is part of a learning path",
+    "  └─ source (string): source of learning path (e.g., 'learner_ai')",
+    "  └─ flow (string): flow type (e.g., 'CAREER_PATH_DRIVEN')",
+    "  └─ competency_target_name (string): target competency name",
+    "  └─ structured_path (boolean): whether path is structured",
+    "",
+    "ai_assets (object) contains:",
+    "  └─ videos (array of objects):",
+    "      └─ title (string): video title",
+    "      └─ url (string): video URL",
+    "      └─ description (string): video description",
+    "  └─ repos (array of objects):",
+    "      └─ name (string): repository name",
+    "      └─ url (string): repository URL",
+    "      └─ description (string): repository description",
+    "  └─ suggestedUrls (object):",
+    "      └─ youtube (array): suggested YouTube URLs",
+    "      └─ github (array): suggested GitHub URLs",
+    "  └─ enrichedItems (array): enriched content items",
+    "  └─ generated_at (datetime): when assets were generated",
+    "",
+    "skills (array) contains:",
+    "  └─ Each element is a string representing a skill covered in the lesson",
+    "  └─ Example: [\"React Hooks\", \"State Management\", \"useState\"]",
+    "",
+    "content_data (array) contains:",
+    "  └─ Each element is a content block object from Content Studio",
+    "  └─ content_type (string): type of content (e.g., 'text_audio', 'presentation', 'avatar_video', 'code')",
+    "  └─ Content structure varies by type:",
+    "      └─ text_audio: { content_type, content, audio_url }",
+    "      └─ presentation: { content_type, slides: [{ title, content }] }",
+    "      └─ avatar_video: { content_type, videoUrl, videoId, fileType, duration_seconds }",
+    "      └─ code: { content_type, language, code }",
+    "",
+    "All datetime fields are in ISO 8601 format with UTC timezone",
+    "All UUID fields are in standard UUID format (8-4-4-4-12 hexadecimal)",
+    "course_type values: 'learner_specific' (personalized courses) or 'trainer' (marketplace courses)",
+    "The flattened structure allows RAG to understand lesson content within full course context"
   ]
 }
-
