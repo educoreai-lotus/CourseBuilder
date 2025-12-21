@@ -147,6 +147,9 @@ ${JSON.stringify(payloadObject, null, 2)}
     // Normalize Learner AI payload (for Course Builder internal logic only)
     const data = learnerAIDTO.buildFromReceived(payloadObject);
 
+    // Normalize exam_status for logging (case-insensitive)
+    const normalizedExamStatus = payloadObject.exam_status?.toLowerCase() || null;
+
     console.log('[LearnerAI Handler] Received from Learner AI:', {
       user_id: data.user_id,
       user_name: data.user_name,
@@ -154,15 +157,45 @@ ${JSON.stringify(payloadObject, null, 2)}
       competency_name: data.competency_name,
       has_learning_path: !!data.learning_path,
       preferred_language: data.preferred_language,
-      exam_status: payloadObject.exam_status
+      exam_status: normalizedExamStatus
     });
 
-    // TEMPORARY: Delete existing failed course before rebuild
+    // TEMPORARY: Delete existing course before rebuild (if exists)
+    // Primary trigger: Existing learner-specific course found for same competency + learner
     // This ensures a learner can never have two learner-specific courses with the same competency_target_name
     // TODO: Replace with proper versioning system later
-    if (payloadObject.exam_status === 'fail' && data.competency_name) {
-      console.log('[LearnerAI Handler] 🔄 TEMPORARY: Detected failed exam status - deleting existing course before rebuild');
-      await deleteExistingFailedCourse(data.competency_name, data.user_id);
+    if (data.competency_name && data.user_id) {
+      const existingCourse = await courseRepository.findByCompetencyAndLearner(
+        data.competency_name,
+        data.user_id
+      );
+
+      if (existingCourse) {
+        // Safety checks: only delete learner_specific courses owned by this learner
+        if (existingCourse.course_type === 'learner_specific' && 
+            existingCourse.created_by_user_id === data.user_id) {
+          console.log('[LearnerAI Handler] 🔄 TEMPORARY: REBUILD - Existing learner-specific course found for same competency; deleting before rebuild', {
+            existing_course_id: existingCourse.id,
+            competency_target_name: data.competency_name,
+            user_id: data.user_id,
+            exam_status: normalizedExamStatus
+          });
+          await deleteExistingFailedCourse(data.competency_name, data.user_id);
+        } else {
+          console.log('[LearnerAI Handler] ⚠️ SAFETY: Existing course found but not eligible for deletion', {
+            course_id: existingCourse.id,
+            course_type: existingCourse.course_type,
+            course_owner: existingCourse.created_by_user_id,
+            requesting_user: data.user_id
+          });
+        }
+      } else {
+        console.log('[LearnerAI Handler] ✅ FIRST-TIME: No existing course found; proceeding with normal course creation', {
+          competency_target_name: data.competency_name,
+          user_id: data.user_id,
+          exam_status: normalizedExamStatus
+        });
+      }
     }
 
     // Step 1: Create course structure (course, topics, modules) BEFORE calling Content Studio
