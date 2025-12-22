@@ -15,11 +15,11 @@ const allowedRoles = ['learner', 'trainer']
 
 const roleProfiles = {
   learner: {
-    id: '10000000-0000-0000-0000-000000000001',
-    name: 'Alice Learner',
-    email: 'alice.learner@example.com',
+    id: '50a630f4-826e-45aa-8f70-653e5e592fc3',
+    name: 'Jasmine Mograby',
+    email: 'jasmine.mograby@example.com',
     company: 'Emerald Learning',
-    avatar: 'AL'
+    avatar: 'JM'
   },
   trainer: {
     id: '20000000-0000-0000-0000-000000000001',
@@ -111,25 +111,26 @@ export function AppProvider({ children }) {
   }, [userRole])
 
   // Handle userId from URL query parameters
+  // Always use Jasmine Mograby's ID (from apiService.js) regardless of URL parameter
   useEffect(() => {
     if (typeof window === 'undefined') return
 
     const urlParams = new URLSearchParams(window.location.search)
     const userIdFromUrl = urlParams.get('userId')
 
+    // Always use Jasmine Mograby's ID as the learner ID
+    const jasmineLearnerId = '50a630f4-826e-45aa-8f70-653e5e592fc3'
+    
     if (userIdFromUrl) {
-      // Store userId to apply after role is set
-      pendingUserIdRef.current = userIdFromUrl
-      
       // Set role to learner if userId is provided (since it's typically for learner dashboard)
       const currentRole = getStoredRole()
       if (currentRole !== 'learner') {
         setUserRole('learner')
       } else {
-        // If role is already learner, apply userId immediately
+        // If role is already learner, apply Jasmine's ID immediately (override URL userId)
         setUserProfileState(prev => ({
           ...prev,
-          id: userIdFromUrl
+          id: jasmineLearnerId
         }))
         pendingUserIdRef.current = null
       }
@@ -141,12 +142,13 @@ export function AppProvider({ children }) {
     }
   }, [setUserRole, setUserProfileState]) // Run once on mount
 
-  // Apply pending userId after role is set to learner
+  // Apply Jasmine's ID after role is set to learner
   useEffect(() => {
     if (pendingUserIdRef.current && userRole === 'learner') {
+      const jasmineLearnerId = '50a630f4-826e-45aa-8f70-653e5e592fc3'
       setUserProfileState(prev => ({
         ...prev,
-        id: pendingUserIdRef.current
+        id: jasmineLearnerId
       }))
       pendingUserIdRef.current = null
     }

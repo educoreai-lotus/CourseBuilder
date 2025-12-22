@@ -129,7 +129,10 @@ export default function CourseDetailsPage() {
 
   // Detect assessment passed status (strict priority order)
   const assessmentPassed = useMemo(() => {
-    if (!course) return false
+    if (!course) {
+      console.log('[Competition Button] Course Overview - No course data yet')
+      return false
+    }
 
     // Strict priority order - stop at first valid source
     let assessment = null
@@ -139,28 +142,38 @@ export default function CourseDetailsPage() {
     const passedFromUrl = urlParams.get('passed')
     const examTypeFromUrl = urlParams.get('exam_type')
     
+    console.log('[Competition Button] Course Overview - URL params:', { passed: passedFromUrl, exam_type: examTypeFromUrl })
+    
     if (passedFromUrl === 'true' && examTypeFromUrl === 'postcourse') {
       assessment = { passed: true, exam_type: 'postcourse' }
+      console.log('[Competition Button] Course Overview - ✅ Found in URL params')
     } else {
       // 2. Check navigation state (only if URL params not found)
+      console.log('[Competition Button] Course Overview - Navigation state:', location.state)
       if (location.state?.passed === true && location.state?.exam_type === 'postcourse') {
         assessment = { passed: true, exam_type: 'postcourse' }
+        console.log('[Competition Button] Course Overview - ✅ Found in navigation state')
       } else {
         // 3. Check course response (only if above not found)
+        console.log('[Competition Button] Course Overview - Course assessment:', course?.assessment)
         if (course?.assessment?.passed === true && course?.assessment?.exam_type === 'postcourse') {
           assessment = course.assessment
+          console.log('[Competition Button] Course Overview - ✅ Found in course response')
         } else {
           // 4. Check localStorage (LAST fallback, only if above not found)
           if (learnerId) {
-            const stored = localStorage.getItem(`assessment_${id}_${learnerId}`)
+            const storageKey = `assessment_${id}_${learnerId}`
+            const stored = localStorage.getItem(storageKey)
+            console.log('[Competition Button] Course Overview - localStorage key:', storageKey, 'value:', stored)
             if (stored) {
               try {
                 const parsed = JSON.parse(stored)
                 if (parsed.passed === true && parsed.exam_type === 'postcourse') {
                   assessment = parsed
+                  console.log('[Competition Button] Course Overview - ✅ Found in localStorage')
                 }
               } catch (e) {
-                // Invalid JSON, ignore
+                console.log('[Competition Button] Course Overview - ❌ Invalid JSON in localStorage:', e)
               }
             }
           }
@@ -168,8 +181,9 @@ export default function CourseDetailsPage() {
       }
     }
 
-    // Return true only if assessment passed
-    return assessment && assessment.passed === true && assessment.exam_type === 'postcourse'
+    const result = assessment && assessment.passed === true && assessment.exam_type === 'postcourse'
+    console.log('[Competition Button] Course Overview - Final result:', result, 'assessment:', assessment)
+    return result
   }, [course, location, id, learnerId])
 
   // Get first lesson ID for navigation - MUST be before any early returns

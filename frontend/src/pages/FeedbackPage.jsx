@@ -173,6 +173,14 @@ export default function FeedbackPage() {
   useEffect(() => {
     if (pageLoading || !course) return
 
+    // DEBUG: Log all possible data sources
+    console.log('[Competition Button] Checking assessment data sources...')
+    console.log('[Competition Button] URL:', window.location.href)
+    console.log('[Competition Button] URL Params:', window.location.search)
+    console.log('[Competition Button] Navigation State:', location.state)
+    console.log('[Competition Button] Course Data:', course)
+    console.log('[Competition Button] Course Assessment:', course?.assessment)
+
     // Strict priority order - stop at first valid source
     let assessment = null
 
@@ -181,29 +189,39 @@ export default function FeedbackPage() {
     const passedFromUrl = urlParams.get('passed')
     const examTypeFromUrl = urlParams.get('exam_type')
     
+    console.log('[Competition Button] URL Params - passed:', passedFromUrl, 'exam_type:', examTypeFromUrl)
+    
     if (passedFromUrl === 'true' && examTypeFromUrl === 'postcourse') {
       assessment = { passed: true, exam_type: 'postcourse' }
+      console.log('[Competition Button] ✅ Found in URL params')
     } else {
       // 2. Check navigation state (only if URL params not found)
+      console.log('[Competition Button] Checking navigation state:', location.state)
       if (location.state?.passed === true && location.state?.exam_type === 'postcourse') {
         assessment = { passed: true, exam_type: 'postcourse' }
+        console.log('[Competition Button] ✅ Found in navigation state')
       } else {
         // 3. Check course response (only if above not found)
+        console.log('[Competition Button] Checking course.assessment:', course?.assessment)
         if (course?.assessment?.passed === true && course?.assessment?.exam_type === 'postcourse') {
           assessment = course.assessment
+          console.log('[Competition Button] ✅ Found in course response')
         } else {
           // 4. Check localStorage (LAST fallback, only if above not found)
           const learnerId = userRole === 'learner' ? userProfile?.id : null
           if (learnerId) {
-            const stored = localStorage.getItem(`assessment_${actualCourseId}_${learnerId}`)
+            const storageKey = `assessment_${actualCourseId}_${learnerId}`
+            const stored = localStorage.getItem(storageKey)
+            console.log('[Competition Button] Checking localStorage key:', storageKey, 'value:', stored)
             if (stored) {
               try {
                 const parsed = JSON.parse(stored)
                 if (parsed.passed === true && parsed.exam_type === 'postcourse') {
                   assessment = parsed
+                  console.log('[Competition Button] ✅ Found in localStorage')
                 }
               } catch (e) {
-                // Invalid JSON, ignore
+                console.log('[Competition Button] ❌ Invalid JSON in localStorage:', e)
               }
             }
           }
@@ -211,9 +229,15 @@ export default function FeedbackPage() {
       }
     }
 
+    console.log('[Competition Button] Final assessment result:', assessment)
+    console.log('[Competition Button] Will show button?', assessment && assessment.passed === true && assessment.exam_type === 'postcourse')
+
     // Show popup only if assessment passed
     if (assessment && assessment.passed === true && assessment.exam_type === 'postcourse') {
+      console.log('[Competition Button] ✅ Showing popup')
       setShowPassedPopup(true)
+    } else {
+      console.log('[Competition Button] ❌ Not showing popup - no valid assessment data found')
     }
   }, [pageLoading, course, location, actualCourseId, userRole, userProfile?.id])
 
