@@ -109,6 +109,17 @@ export default function CourseDetailsPage() {
 
       setCourse(enrichedCourse)
       setHasFeedback(feedbackExists)
+
+      // Store assessment in localStorage if present (for persistence across page refreshes)
+      if (learnerId && enrichedCourse?.assessment) {
+        const storageKey = `assessment_${id}_${learnerId}`
+        try {
+          localStorage.setItem(storageKey, JSON.stringify(enrichedCourse.assessment))
+          console.log('[Course Details] Stored assessment in localStorage:', storageKey, enrichedCourse.assessment)
+        } catch (e) {
+          console.warn('[Course Details] Failed to store assessment in localStorage:', e)
+        }
+      }
     } catch (err) {
       const message = err.message || 'Failed to load course'
       setError(message)
