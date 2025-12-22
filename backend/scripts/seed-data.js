@@ -8,8 +8,8 @@ import { v4 as uuidv4 } from 'uuid';
 
 // User IDs (matching frontend AppContext)
 export const TRAINER_ID = '20000000-0000-0000-0000-000000000001'; // Tristan Trainer
-export const LEARNER_ID = '10000000-0000-0000-0000-000000000001'; // Alice Learner
-export const LEARNER_NAME = 'Alice Learner';
+export const LEARNER_ID = '50a630f4-826e-45aa-8f70-653e5e592fc3'; // Alice Learner
+export const LEARNER_NAME = 'Jasmine Mograby';
 export const LEARNER_COMPANY = 'Emerald Learning';
 
 /**

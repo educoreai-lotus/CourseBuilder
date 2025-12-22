@@ -18,8 +18,8 @@ const api = axios.create({
 
 const roleProfiles = {
   learner: {
-    id: '10000000-0000-0000-0000-000000000001',
-    name: 'Alice Learner'
+    id: '50a630f4-826e-45aa-8f70-653e5e592fc3',
+    name: 'Jasmine Mograby'
   },
   trainer: {
     id: '20000000-0000-0000-0000-000000000001',
