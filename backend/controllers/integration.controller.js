@@ -47,16 +47,7 @@ function inferSpecializedServiceFromPayload(payloadObject) {
     return null;
   }
   
-  // ContentStudio: has topics[] or learner_id + skills
-  if (payloadObject.topics || (payloadObject.learner_id && payloadObject.skills)) {
-    return 'ContentStudio';
-  }
-  
-  // LearnerAI: has user_id, company_id, skills, competency_name
-  if (payloadObject.user_id || payloadObject.competency_name) {
-    return 'LearnerAI';
-  }
-  
+  // ⚠️ CRITICAL: Check Assessment FIRST (before ContentStudio/LearnerAI) because Assessment requests are more specific
   // Assessment: has action "coverage map" (or "coverage_map" with underscore) or exam result fields
   // Note: requester_service is not in payloadObject, it's in envelope, so we check action and exam result fields
   const action = payloadObject.action ? payloadObject.action.toLowerCase().trim() : null;
@@ -69,15 +60,35 @@ function inferSpecializedServiceFromPayload(payloadObject) {
                                payloadObject.passed !== undefined ||
                                (payloadObject.exam_type && payloadObject.passing_grade !== undefined);
   
-  if (isCoverageMapAction || hasExamResultFields) {
+  // Also check for Assessment request pattern: course_id + learner_id (coverage map request pattern)
+  // This helps catch Assessment requests even if action is wrong (e.g., "generate_course_content")
+  const hasAssessmentPattern = payloadObject.course_id && 
+                                (payloadObject.learner_id || payloadObject.user_id) &&
+                                !payloadObject.topics && // Not ContentStudio (has topics)
+                                !payloadObject.skills && // Not ContentStudio (has skills)
+                                !payloadObject.competency_name && // Not LearnerAI
+                                !payloadObject.learning_path; // Not LearnerAI
+  
+  if (isCoverageMapAction || hasExamResultFields || hasAssessmentPattern) {
     console.log('[Integration Controller] 🎯 Assessment service detected:', {
       action,
       isCoverageMapAction,
       hasExamResultFields,
+      hasAssessmentPattern,
       course_id: payloadObject.course_id,
       learner_id: payloadObject.learner_id || payloadObject.user_id
     });
     return 'Assessment';
+  }
+  
+  // ContentStudio: has topics[] or learner_id + skills
+  if (payloadObject.topics || (payloadObject.learner_id && payloadObject.skills)) {
+    return 'ContentStudio';
+  }
+  
+  // LearnerAI: has user_id, company_id, skills, competency_name
+  if (payloadObject.user_id || payloadObject.competency_name) {
+    return 'LearnerAI';
   }
   
   // Directory: has feedback object
@@ -361,11 +372,22 @@ export async function handleFillContentMetrics(req, res) {
     // - If response template exists → Course Builder Handler (AI) - handles both Data and Action modes
     // - If response template is missing → Specialized handler based on payload structure
     console.log('[Integration Controller] 🔍 Determining target service...');
+    console.log('[Integration Controller] Requester Service:', requesterService);
     console.log('[Integration Controller] Action (from payload.action):', action);
     const responseMode = isActionMode(responseObject, action) ? 'Action/Command' : 
                         isDataFillingMode(responseObject) ? 'Data-Filling' : 'Empty/Missing';
     console.log('[Integration Controller] Response template mode:', responseMode);
-    const targetService = determineTargetService(payloadObject, responseObject);
+    
+    // ⚠️ CRITICAL: If requester_service is "assessment-service", route to Assessment handler immediately
+    // This prevents misrouting when Assessment sends requests with wrong action (e.g., "generate_course_content")
+    const normalizedRequester = requesterService ? requesterService.toLowerCase().trim() : '';
+    let targetService;
+    if (normalizedRequester === 'assessment-service') {
+      console.log('[Integration Controller] 🎯 Requester is assessment-service - routing to Assessment handler');
+      targetService = 'Assessment';
+    } else {
+      targetService = determineTargetService(payloadObject, responseObject);
+    }
     console.log('[Integration Controller] ✅ Target service determined:', targetService);
     
     if (!targetService) {
