@@ -39,6 +39,8 @@ export function buildSendPayload(course, learnerId, learnerName, lessons = [], i
   }
 
   const payload = {
+    action: 'create_assessment',
+    description: 'Create a new assessment session for a learner to take a course exam',
     learner_id: learnerId,
     learner_name: learnerName,
     course_id: course.id,

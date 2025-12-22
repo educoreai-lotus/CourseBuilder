@@ -33,11 +33,8 @@ export async function sendToAssessment(course, learnerId, learnerName) {
     });
 
     // Build payload using DTO (NO coverage_map for launch request)
+    // Note: action and description are now included in the DTO builder
     const sendPayload = assessmentDTO.buildSendPayload(course, learnerId, learnerName, [], false);
-    
-    // Add action and description fields for Coordinator routing
-    sendPayload.action = 'create_assessment';
-    sendPayload.description = 'Create a new assessment session for a learner to take a course exam';
 
     // Build response template - empty for launch (Assessment doesn't need to fill anything)
     const responseTemplate = {};
