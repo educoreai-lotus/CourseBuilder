@@ -931,7 +931,10 @@ export default function LessonContentView() {
         {/* Lesson Content by Format Order */}
         <div className="space-y-8">
           {formats.map((formatItem, index) => {
-            const displayType = formatItem.type === 'text_audio_combined' || formatItem.type === 'audio_text' 
+            // Normalize text-based formats to 'text' for display (icon/label lookup)
+            const displayType = formatItem.type === 'text_audio' || 
+                                formatItem.type === 'text_audio_combined' || 
+                                formatItem.type === 'audio_text' 
               ? 'text' 
               : formatItem.type;
             const displayLabel = formatLabels[displayType] || formatItem.type;

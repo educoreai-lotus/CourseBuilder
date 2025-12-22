@@ -14,7 +14,8 @@ import {
   Target,
   MessageSquare,
   XCircle,
-  Edit3
+  Edit3,
+  Trophy
 } from 'lucide-react'
 import Container from '../Container.jsx'
 import { isPersonalized, isMarketplace } from '../../utils/courseTypeUtils.js'
@@ -96,6 +97,9 @@ const getSampleTopics = (course) => {
   return []
 }
 
+// DevLab URL constant
+const DEVLAB_URL = 'https://dev-lab-frontend.vercel.app/'
+
 export default function CourseOverview({
   course,
   isEnrolled,
@@ -110,7 +114,8 @@ export default function CourseOverview({
   progressSummary,
   backLink,
   hasFeedback = false,
-  courseId = null
+  courseId = null,
+  assessmentPassed = false
 }) {
   if (!course) {
     return null
@@ -340,6 +345,19 @@ export default function CourseOverview({
               <div className="space-y-3">
                 {primaryCta}
                 {secondaryCta}
+                
+                {/* Competition Button - Show if assessment passed */}
+                {assessmentPassed && (
+                  <a
+                    href={DEVLAB_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="btn btn-primary flex items-center justify-center gap-2"
+                  >
+                    <Trophy size={18} />
+                    Competition
+                  </a>
+                )}
                 
                 {/* Cancel Enrollment Button - Only shown in STATE 2 and STATE 3 (enrolled) */}
                 {!personalized && isEnrolled && onCancelEnrollment && showStructureCta && (

@@ -1,5 +1,5 @@
 import { useMemo, useEffect, useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams, useLocation } from 'react-router-dom'
 import {
   ArrowLeft,
   Star,
@@ -8,7 +8,8 @@ import {
   Edit3,
   Trash2,
   Loader2,
-  Sparkles
+  Sparkles,
+  Trophy
 } from 'lucide-react'
 import Container from '../components/Container.jsx'
 import LoadingSpinner from '../components/LoadingSpinner.jsx'
@@ -54,16 +55,21 @@ const renderStars = (rating, onSelect, interactive = false) => {
   )
 }
 
+// DevLab URL constant
+const DEVLAB_URL = 'https://dev-lab-frontend.vercel.app/'
+
 export default function FeedbackPage() {
   const { courseId, id } = useParams()
   const actualCourseId = courseId || id
   const navigate = useNavigate()
+  const location = useLocation()
   const { showToast, userProfile, userRole } = useApp()
 
   const [course, setCourse] = useState(null)
   const [communityStats, setCommunityStats] = useState(null)
   const [existingFeedback, setExistingFeedback] = useState(null)
   const [isEditing, setIsEditing] = useState(false)
+  const [showPassedPopup, setShowPassedPopup] = useState(false)
 
   // Draft state for editing (only updated when user makes changes, not saved until "Save Changes" is clicked)
   const [draftFeedback, setDraftFeedback] = useState({
@@ -162,6 +168,54 @@ export default function FeedbackPage() {
       isMounted = false
     }
   }, [actualCourseId, showToast])
+
+  // Detect assessment passed status (strict priority order)
+  useEffect(() => {
+    if (pageLoading || !course) return
+
+    // Strict priority order - stop at first valid source
+    let assessment = null
+
+    // 1. Check URL query params FIRST (highest priority)
+    const urlParams = new URLSearchParams(window.location.search)
+    const passedFromUrl = urlParams.get('passed')
+    const examTypeFromUrl = urlParams.get('exam_type')
+    
+    if (passedFromUrl === 'true' && examTypeFromUrl === 'postcourse') {
+      assessment = { passed: true, exam_type: 'postcourse' }
+    } else {
+      // 2. Check navigation state (only if URL params not found)
+      if (location.state?.passed === true && location.state?.exam_type === 'postcourse') {
+        assessment = { passed: true, exam_type: 'postcourse' }
+      } else {
+        // 3. Check course response (only if above not found)
+        if (course?.assessment?.passed === true && course?.assessment?.exam_type === 'postcourse') {
+          assessment = course.assessment
+        } else {
+          // 4. Check localStorage (LAST fallback, only if above not found)
+          const learnerId = userRole === 'learner' ? userProfile?.id : null
+          if (learnerId) {
+            const stored = localStorage.getItem(`assessment_${actualCourseId}_${learnerId}`)
+            if (stored) {
+              try {
+                const parsed = JSON.parse(stored)
+                if (parsed.passed === true && parsed.exam_type === 'postcourse') {
+                  assessment = parsed
+                }
+              } catch (e) {
+                // Invalid JSON, ignore
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // Show popup only if assessment passed
+    if (assessment && assessment.passed === true && assessment.exam_type === 'postcourse') {
+      setShowPassedPopup(true)
+    }
+  }, [pageLoading, course, location, actualCourseId, userRole, userProfile?.id])
 
   const toggleTag = (tag) => {
     if (!isEditing) return
@@ -306,6 +360,40 @@ export default function FeedbackPage() {
 
   return (
     <div className="page-surface bg-[var(--bg-primary)] transition-colors">
+      {/* Assessment Passed Popup */}
+      {showPassedPopup && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="rounded-2xl bg-[var(--bg-card)] p-6 max-w-md shadow-xl mx-4">
+            <div className="text-center space-y-4">
+              <div className="text-4xl">🎉</div>
+              <h2 className="text-2xl font-bold text-[var(--text-primary)]">
+                You passed the assessment!
+              </h2>
+              <p className="text-sm text-[var(--text-secondary)]">
+                Congratulations on completing the course.
+              </p>
+              <div className="flex gap-3 pt-4">
+                <a
+                  href={DEVLAB_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn btn-primary flex-1 flex items-center justify-center gap-2"
+                >
+                  <Trophy size={18} />
+                  Competition
+                </a>
+                <button
+                  onClick={() => setShowPassedPopup(false)}
+                  className="btn btn-secondary"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <Container>
         <div className="mx-auto flex max-w-4xl flex-col gap-6 py-6">
           <div className="flex items-center justify-between gap-4">

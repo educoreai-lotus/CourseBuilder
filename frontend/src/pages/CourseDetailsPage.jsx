@@ -127,6 +127,51 @@ export default function CourseDetailsPage() {
 
   // Note: isEnrolled is now a state variable, set from backend response
 
+  // Detect assessment passed status (strict priority order)
+  const assessmentPassed = useMemo(() => {
+    if (!course) return false
+
+    // Strict priority order - stop at first valid source
+    let assessment = null
+
+    // 1. Check URL query params FIRST (highest priority)
+    const urlParams = new URLSearchParams(location.search)
+    const passedFromUrl = urlParams.get('passed')
+    const examTypeFromUrl = urlParams.get('exam_type')
+    
+    if (passedFromUrl === 'true' && examTypeFromUrl === 'postcourse') {
+      assessment = { passed: true, exam_type: 'postcourse' }
+    } else {
+      // 2. Check navigation state (only if URL params not found)
+      if (location.state?.passed === true && location.state?.exam_type === 'postcourse') {
+        assessment = { passed: true, exam_type: 'postcourse' }
+      } else {
+        // 3. Check course response (only if above not found)
+        if (course?.assessment?.passed === true && course?.assessment?.exam_type === 'postcourse') {
+          assessment = course.assessment
+        } else {
+          // 4. Check localStorage (LAST fallback, only if above not found)
+          if (learnerId) {
+            const stored = localStorage.getItem(`assessment_${id}_${learnerId}`)
+            if (stored) {
+              try {
+                const parsed = JSON.parse(stored)
+                if (parsed.passed === true && parsed.exam_type === 'postcourse') {
+                  assessment = parsed
+                }
+              } catch (e) {
+                // Invalid JSON, ignore
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // Return true only if assessment passed
+    return assessment && assessment.passed === true && assessment.exam_type === 'postcourse'
+  }, [course, location, id, learnerId])
+
   // Get first lesson ID for navigation - MUST be before any early returns
   const flattenedLessons = useMemo(() => {
     if (!course) return []
@@ -441,6 +486,7 @@ export default function CourseDetailsPage() {
                   backLink={isPersonalizedFlow ? '/learner/personalized' : '/learner/marketplace'}
                   hasFeedback={hasFeedback}
                   courseId={id}
+                  assessmentPassed={assessmentPassed}
                 />
               </div>
             </Container>

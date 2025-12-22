@@ -92,6 +92,13 @@ export default function LessonView({
       : `${lesson.duration} mins`
     : 'Approx. 12 mins'
 
+  // Normalize text-based formats to 'text' for display
+  const displayContentType = lesson?.content_type === 'text_audio' || 
+                              lesson?.content_type === 'text_audio_combined' || 
+                              lesson?.content_type === 'audio_text'
+    ? 'text'
+    : lesson?.content_type
+
   return (
     <div className="page-surface bg-[var(--bg-primary)] transition-colors">
       <Container>
@@ -153,7 +160,7 @@ export default function LessonView({
                 </span>
                 <span className="flex items-center gap-2">
                   <BookOpen size={16} />
-                  {lesson?.content_type || 'Interactive learning'}
+                  {displayContentType || 'Interactive learning'}
                 </span>
                 <span className="flex items-center gap-2">
                   <Sparkles size={16} />
