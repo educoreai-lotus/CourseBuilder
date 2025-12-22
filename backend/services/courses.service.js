@@ -5,6 +5,7 @@ import lessonRepository from '../repositories/LessonRepository.js';
 import moduleRepository from '../repositories/ModuleRepository.js';
 import topicRepository from '../repositories/TopicRepository.js';
 import versionRepository from '../repositories/VersionRepository.js';
+import assessmentRepository from '../repositories/AssessmentRepository.js';
 import { v4 as uuidv4 } from 'uuid';
 import { cache, cached } from './cache.service.js';
 
@@ -223,6 +224,7 @@ const _getCourseDetailsInternal = async (courseId, options = {}) => {
       : 0;
 
     let learnerProgress = null;
+    let assessment = null;
 
     if (learnerId) {
       // Normalize learner_id (trim whitespace, ensure proper UUID format)
@@ -288,6 +290,28 @@ const _getCourseDetailsInternal = async (courseId, options = {}) => {
           completed_lessons: []
         };
       }
+
+      // Get assessment result for this learner and course (if exists)
+      try {
+        console.log('[Course Service] Fetching assessment for learner:', normalizedLearnerId, 'course:', courseId);
+        const assessmentRecord = await assessmentRepository.findByLearnerAndCourse(normalizedLearnerId, courseId);
+        console.log('[Course Service] Assessment record found:', assessmentRecord ? 'YES' : 'NO', assessmentRecord);
+        if (assessmentRecord) {
+          assessment = {
+            id: assessmentRecord.id,
+            learner_id: assessmentRecord.learner_id,
+            course_id: assessmentRecord.course_id,
+            exam_type: assessmentRecord.exam_type,
+            passing_grade: assessmentRecord.passing_grade,
+            final_grade: assessmentRecord.final_grade,
+            passed: assessmentRecord.passed
+          };
+          console.log('[Course Service] Assessment data prepared:', assessment);
+        }
+      } catch (error) {
+        console.warn('[Course Service] Error fetching assessment:', error);
+        // Continue without assessment data
+      }
     }
 
     // Extract metadata from learning_path_designation
@@ -311,7 +335,7 @@ const _getCourseDetailsInternal = async (courseId, options = {}) => {
           ...learningPathDesignation
         }
 
-    return {
+    const courseResult = {
       id: course.id,
       title: course.course_name,
       course_name: course.course_name, // Keep for backward compatibility
@@ -349,8 +373,16 @@ const _getCourseDetailsInternal = async (courseId, options = {}) => {
       version: versionNumber.toString(),
       ai_assets: course.ai_assets || {}, // Include course-level AI assets
       metadata: metadata, // Include metadata with proper defaults
-      ...(learnerProgress && { learner_progress: learnerProgress })
+      ...(learnerProgress && { learner_progress: learnerProgress }),
+      ...(assessment && { assessment: assessment }) // Include assessment result if exists
     };
+    
+    // Log assessment inclusion for debugging
+    if (learnerId) {
+      console.log('[Course Service] Returning course with assessment:', courseResult.assessment ? 'YES' : 'NO', courseResult.assessment);
+    }
+    
+    return courseResult;
   } catch (error) {
     console.error('Error getting course details:', error);
     throw error;
