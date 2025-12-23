@@ -133,6 +133,88 @@ export default function CourseDetailsPage() {
     loadCourse()
   }, [id, loadCourse])
 
+  // Detect assessment completion and refresh course data automatically
+  useEffect(() => {
+    if (!learnerId || !id) return
+
+    // Check if assessment completion is indicated in URL params or navigation state
+    const urlParams = new URLSearchParams(location.search)
+    const passedFromUrl = urlParams.get('passed')
+    const examTypeFromUrl = urlParams.get('exam_type')
+    const hasUrlParams = passedFromUrl === 'true' && examTypeFromUrl === 'postcourse'
+    const hasNavigationState = location.state?.passed === true && location.state?.exam_type === 'postcourse'
+
+    // If assessment completion detected, refresh course data to get latest assessment from backend
+    if (hasUrlParams || hasNavigationState) {
+      console.log('[Course Details] Assessment completion detected, refreshing course data...')
+      
+      // Store assessment in localStorage immediately if from URL params
+      if (hasUrlParams) {
+        const assessment = {
+          passed: true,
+          exam_type: 'postcourse'
+        }
+        const storageKey = `assessment_${id}_${learnerId}`
+        try {
+          localStorage.setItem(storageKey, JSON.stringify(assessment))
+          console.log('[Course Details] Stored assessment from URL params in localStorage:', storageKey, assessment)
+        } catch (e) {
+          console.warn('[Course Details] Failed to store assessment in localStorage:', e)
+        }
+      }
+
+      // Store assessment in localStorage if from navigation state
+      if (hasNavigationState) {
+        const assessment = {
+          passed: true,
+          exam_type: 'postcourse',
+          ...location.state
+        }
+        const storageKey = `assessment_${id}_${learnerId}`
+        try {
+          localStorage.setItem(storageKey, JSON.stringify(assessment))
+          console.log('[Course Details] Stored assessment from navigation state in localStorage:', storageKey, assessment)
+        } catch (e) {
+          console.warn('[Course Details] Failed to store assessment in localStorage:', e)
+        }
+      }
+
+      // Refresh course data to get latest assessment from backend
+      // This ensures the Competition button appears immediately
+      loadCourse().catch((err) => {
+        console.warn('[Course Details] Failed to refresh course after assessment completion:', err)
+      })
+
+      // Clean up URL params after processing (optional - keeps URL clean)
+      if (hasUrlParams) {
+        const newUrl = window.location.pathname + window.location.hash
+        window.history.replaceState({ ...location.state }, '', newUrl)
+      }
+    }
+  }, [location.search, location.state, learnerId, id, loadCourse])
+
+  // Refresh course data when page becomes visible (e.g., user returns from Assessment service)
+  useEffect(() => {
+    if (!learnerId || !id) return
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        console.log('[Course Details] Page became visible, checking for assessment updates...')
+        // Small delay to ensure Assessment service has finished processing
+        setTimeout(() => {
+          loadCourse().catch((err) => {
+            console.warn('[Course Details] Failed to refresh course on visibility change:', err)
+          })
+        }, 500)
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
+  }, [learnerId, id, loadCourse])
+
   // Determine if course is personalized (declare once)
   const isPersonalizedCourse = isPersonalizedFlow || metadataPersonalized
 
