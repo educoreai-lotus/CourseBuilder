@@ -114,12 +114,16 @@ export default function CourseOverview({
   progressSummary,
   backLink,
   hasFeedback = false,
-  courseId = null,
-  assessmentPassed = false
+  courseId = null
 }) {
   if (!course) {
     return null
   }
+
+  // Show Competition button if assessment passed (single source of truth: course.assessment)
+  const shouldShowCompetitionButton = 
+    course?.assessment?.exam_type === 'postcourse' && 
+    course?.assessment?.passed === true
 
   // Avoid variable shadowing — rename properly
   const isPersonalizedCourse = isPersonalized(course)
@@ -347,7 +351,7 @@ export default function CourseOverview({
                 {secondaryCta}
                 
                 {/* Competition Button - Show if assessment passed */}
-                {assessmentPassed && (
+                {shouldShowCompetitionButton && (
                   <a
                     href={DEVLAB_URL}
                     target="_blank"

@@ -109,17 +109,6 @@ export default function CourseDetailsPage() {
 
       setCourse(enrichedCourse)
       setHasFeedback(feedbackExists)
-
-      // Store assessment in localStorage if present (for persistence across page refreshes)
-      if (learnerId && enrichedCourse?.assessment) {
-        const storageKey = `assessment_${id}_${learnerId}`
-        try {
-          localStorage.setItem(storageKey, JSON.stringify(enrichedCourse.assessment))
-          console.log('[Course Details] Stored assessment in localStorage:', storageKey, enrichedCourse.assessment)
-        } catch (e) {
-          console.warn('[Course Details] Failed to store assessment in localStorage:', e)
-        }
-      }
     } catch (err) {
       const message = err.message || 'Failed to load course'
       setError(message)
@@ -133,151 +122,10 @@ export default function CourseDetailsPage() {
     loadCourse()
   }, [id, loadCourse])
 
-  // Detect assessment completion and refresh course data automatically
-  useEffect(() => {
-    if (!learnerId || !id) return
-
-    // Check if assessment completion is indicated in URL params or navigation state
-    const urlParams = new URLSearchParams(location.search)
-    const passedFromUrl = urlParams.get('passed')
-    const examTypeFromUrl = urlParams.get('exam_type')
-    const hasUrlParams = passedFromUrl === 'true' && examTypeFromUrl === 'postcourse'
-    const hasNavigationState = location.state?.passed === true && location.state?.exam_type === 'postcourse'
-
-    // If assessment completion detected, refresh course data to get latest assessment from backend
-    if (hasUrlParams || hasNavigationState) {
-      console.log('[Course Details] Assessment completion detected, refreshing course data...')
-      
-      // Store assessment in localStorage immediately if from URL params
-      if (hasUrlParams) {
-        const assessment = {
-          passed: true,
-          exam_type: 'postcourse'
-        }
-        const storageKey = `assessment_${id}_${learnerId}`
-        try {
-          localStorage.setItem(storageKey, JSON.stringify(assessment))
-          console.log('[Course Details] Stored assessment from URL params in localStorage:', storageKey, assessment)
-        } catch (e) {
-          console.warn('[Course Details] Failed to store assessment in localStorage:', e)
-        }
-      }
-
-      // Store assessment in localStorage if from navigation state
-      if (hasNavigationState) {
-        const assessment = {
-          passed: true,
-          exam_type: 'postcourse',
-          ...location.state
-        }
-        const storageKey = `assessment_${id}_${learnerId}`
-        try {
-          localStorage.setItem(storageKey, JSON.stringify(assessment))
-          console.log('[Course Details] Stored assessment from navigation state in localStorage:', storageKey, assessment)
-        } catch (e) {
-          console.warn('[Course Details] Failed to store assessment in localStorage:', e)
-        }
-      }
-
-      // Refresh course data to get latest assessment from backend
-      // This ensures the Competition button appears immediately
-      loadCourse().catch((err) => {
-        console.warn('[Course Details] Failed to refresh course after assessment completion:', err)
-      })
-
-      // Clean up URL params after processing (optional - keeps URL clean)
-      if (hasUrlParams) {
-        const newUrl = window.location.pathname + window.location.hash
-        window.history.replaceState({ ...location.state }, '', newUrl)
-      }
-    }
-  }, [location.search, location.state, learnerId, id, loadCourse])
-
-  // Refresh course data when page becomes visible (e.g., user returns from Assessment service)
-  useEffect(() => {
-    if (!learnerId || !id) return
-
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        console.log('[Course Details] Page became visible, checking for assessment updates...')
-        // Small delay to ensure Assessment service has finished processing
-        setTimeout(() => {
-          loadCourse().catch((err) => {
-            console.warn('[Course Details] Failed to refresh course on visibility change:', err)
-          })
-        }, 500)
-      }
-    }
-
-    document.addEventListener('visibilitychange', handleVisibilityChange)
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange)
-    }
-  }, [learnerId, id, loadCourse])
-
   // Determine if course is personalized (declare once)
   const isPersonalizedCourse = isPersonalizedFlow || metadataPersonalized
 
   // Note: isEnrolled is now a state variable, set from backend response
-
-  // Detect assessment passed status (strict priority order)
-  const assessmentPassed = useMemo(() => {
-    if (!course) {
-      console.log('[Competition Button] Course Overview - No course data yet')
-      return false
-    }
-
-    // Strict priority order - stop at first valid source
-    let assessment = null
-
-    // 1. Check URL query params FIRST (highest priority)
-    const urlParams = new URLSearchParams(location.search)
-    const passedFromUrl = urlParams.get('passed')
-    const examTypeFromUrl = urlParams.get('exam_type')
-    
-    console.log('[Competition Button] Course Overview - URL params:', { passed: passedFromUrl, exam_type: examTypeFromUrl })
-    
-    if (passedFromUrl === 'true' && examTypeFromUrl === 'postcourse') {
-      assessment = { passed: true, exam_type: 'postcourse' }
-      console.log('[Competition Button] Course Overview - ✅ Found in URL params')
-    } else {
-      // 2. Check navigation state (only if URL params not found)
-      console.log('[Competition Button] Course Overview - Navigation state:', location.state)
-      if (location.state?.passed === true && location.state?.exam_type === 'postcourse') {
-        assessment = { passed: true, exam_type: 'postcourse' }
-        console.log('[Competition Button] Course Overview - ✅ Found in navigation state')
-      } else {
-        // 3. Check course response (only if above not found)
-        console.log('[Competition Button] Course Overview - Course assessment:', course?.assessment)
-        if (course?.assessment?.passed === true && course?.assessment?.exam_type === 'postcourse') {
-          assessment = course.assessment
-          console.log('[Competition Button] Course Overview - ✅ Found in course response')
-        } else {
-          // 4. Check localStorage (LAST fallback, only if above not found)
-          if (learnerId) {
-            const storageKey = `assessment_${id}_${learnerId}`
-            const stored = localStorage.getItem(storageKey)
-            console.log('[Competition Button] Course Overview - localStorage key:', storageKey, 'value:', stored)
-            if (stored) {
-              try {
-                const parsed = JSON.parse(stored)
-                if (parsed.passed === true && parsed.exam_type === 'postcourse') {
-                  assessment = parsed
-                  console.log('[Competition Button] Course Overview - ✅ Found in localStorage')
-                }
-              } catch (e) {
-                console.log('[Competition Button] Course Overview - ❌ Invalid JSON in localStorage:', e)
-              }
-            }
-          }
-        }
-      }
-    }
-
-    const result = assessment && assessment.passed === true && assessment.exam_type === 'postcourse'
-    console.log('[Competition Button] Course Overview - Final result:', result, 'assessment:', assessment)
-    return result
-  }, [course, location, id, learnerId])
 
   // Get first lesson ID for navigation - MUST be before any early returns
   const flattenedLessons = useMemo(() => {
@@ -593,7 +441,6 @@ export default function CourseDetailsPage() {
                   backLink={isPersonalizedFlow ? '/learner/personalized' : '/learner/marketplace'}
                   hasFeedback={hasFeedback}
                   courseId={id}
-                  assessmentPassed={assessmentPassed}
                 />
               </div>
             </Container>
