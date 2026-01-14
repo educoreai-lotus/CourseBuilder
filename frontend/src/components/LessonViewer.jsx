@@ -33,7 +33,7 @@ const getTextDirection = (item) => {
 const renderContent = (lesson) => {
   // Handle content_data - can be array, object, or JSON string
   let contentData = lesson?.content_data
-  console.log('🔥 LESSON VIEW RENDERED 🔥..');
+  console.log('🔥 LESSON VIEW RENDERED 🔥..THE FINAL VIEW ');
 
   // Parse if it's a JSON string
   if (typeof contentData === 'string') {
