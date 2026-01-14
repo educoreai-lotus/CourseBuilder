@@ -1,0 +1,16 @@
+{
+  "requester_service": "course_builder",
+  "payload": {
+    "course_id": "aded18ed-49ed-4ec8-a262-e2071e03da79",
+    "learner_id": "50a630f4-826e-45aa-8f70-653e5e592fc3",
+    "learner_name": "Jasmine Mograby",
+    "course_name": "python",
+    "action": "notify_learner_course_completion",
+    "description": "Notify that a learner has successfully completed a course and passed the final assessment, enabling access to development environment for hands-on coding practice and project work"
+  },
+  "response": {
+    "answer": ""
+  }
+}
+
+

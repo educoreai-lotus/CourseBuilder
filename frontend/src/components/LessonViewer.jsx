@@ -15,6 +15,21 @@ import {
 import Button from './Button.jsx'
 import { MindMapViewer } from './MindMapViewer.jsx'
 
+// Detect if text likely belongs to an RTL language (Hebrew, Arabic, etc.)
+const isRTLText = (value) => {
+  if (!value || typeof value !== 'string') return false
+  // Unicode ranges covering Hebrew, Arabic, Arabic Supplement/Extended
+  const rtlRegex = /[\u0590-\u05FF\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF]/
+  return rtlRegex.test(value)
+}
+
+// Decide text direction based on available textual content
+const getTextDirection = (item) => {
+  const textContent = item?.text || ''
+  const htmlContent = typeof item?.html === 'string' ? item.html : ''
+  return isRTLText(textContent) || isRTLText(htmlContent) ? 'rtl' : 'ltr'
+}
+
 const renderContent = (lesson) => {
   // Handle content_data - can be array, object, or JSON string
   let contentData = lesson?.content_data
@@ -91,14 +106,21 @@ const renderContent = (lesson) => {
           
           // Handle different Content Studio content types
           if (contentType === 'text_audio' || contentType === 'text') {
+            const textDirection = getTextDirection(item)
             return (
               <div key={idx} className="space-y-4">
                 {item.text && (
-                  <p className="text-base leading-7 text-[var(--text-secondary)] whitespace-pre-wrap">{item.text}</p>
+                  <p
+                    className="text-base leading-7 text-[var(--text-secondary)] whitespace-pre-wrap"
+                    dir={textDirection}
+                  >
+                    {item.text}
+                  </p>
                 )}
                 {item.html && (
                   <div
                     className="prose prose-slate max-w-none text-[var(--text-secondary)]"
+                    dir={textDirection}
                     dangerouslySetInnerHTML={{ __html: item.html }}
                   />
                 )}
@@ -211,8 +233,13 @@ const renderContent = (lesson) => {
           }
           
           if (contentType === 'paragraph') {
+            const textDirection = getTextDirection(item)
             return (
-              <p key={idx} className="text-base leading-7 text-[var(--text-secondary)] whitespace-pre-wrap">
+              <p
+                key={idx}
+                className="text-base leading-7 text-[var(--text-secondary)] whitespace-pre-wrap"
+                dir={textDirection}
+              >
                 {item.content || item.text}
               </p>
             )
@@ -249,8 +276,16 @@ const renderContent = (lesson) => {
           return (
             <div key={idx} className="rounded-2xl border border-[rgba(148,163,184,0.14)] bg-[var(--bg-card)]/90 p-4 text-sm text-[var(--text-secondary)]">
               <p className="mb-2 font-semibold text-[var(--text-primary)]">Content ({contentType || 'unknown'})</p>
-              {item.content && <p className="whitespace-pre-wrap">{item.content}</p>}
-              {item.text && <p className="whitespace-pre-wrap">{item.text}</p>}
+              {item.content && (
+                <p className="whitespace-pre-wrap" dir={getTextDirection(item)}>
+                  {item.content}
+                </p>
+              )}
+              {item.text && (
+                <p className="whitespace-pre-wrap" dir={getTextDirection(item)}>
+                  {item.text}
+                </p>
+              )}
               {item.html && (
                 <div 
                   className="prose prose-slate max-w-none text-[var(--text-secondary)]"
