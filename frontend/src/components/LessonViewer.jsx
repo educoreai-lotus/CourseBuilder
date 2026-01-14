@@ -41,10 +41,16 @@ const renderContent = (lesson) => {
       contentData = JSON.parse(contentData)
     } catch (e) {
       console.warn('[LessonViewer] Failed to parse content_data as JSON:', e)
-      // If parsing fails, treat as plain text
+      // If parsing fails, treat as plain text with automatic direction
+      const textDirection = isRTLText(contentData) ? 'rtl' : 'ltr'
       return (
         <div className="space-y-6">
-          <p className="text-base leading-7 text-[var(--text-secondary)] whitespace-pre-wrap">{contentData}</p>
+          <p
+            className="text-base leading-7 text-[var(--text-secondary)] whitespace-pre-wrap"
+            dir={textDirection}
+          >
+            {contentData}
+          </p>
         </div>
       )
     }
