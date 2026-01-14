@@ -41,12 +41,13 @@ const renderContent = (lesson) => {
       contentData = JSON.parse(contentData)
     } catch (e) {
       console.warn('[LessonViewer] Failed to parse content_data as JSON:', e)
-      // If parsing fails, treat as plain text with automatic direction
+      // If parsing fails, treat as plain text with automatic direction and alignment
       const textDirection = isRTLText(contentData) ? 'rtl' : 'ltr'
+      const alignClass = textDirection === 'rtl' ? 'text-right' : 'text-left'
       return (
         <div className="space-y-6">
           <p
-            className="text-base leading-7 text-[var(--text-secondary)] whitespace-pre-wrap"
+            className={`text-base leading-7 text-[var(--text-secondary)] whitespace-pre-wrap ${alignClass}`}
             dir={textDirection}
           >
             {contentData}
@@ -113,11 +114,12 @@ const renderContent = (lesson) => {
           // Handle different Content Studio content types
           if (contentType === 'text_audio' || contentType === 'text') {
             const textDirection = getTextDirection(item)
+            const alignClass = textDirection === 'rtl' ? 'text-right' : 'text-left'
             return (
               <div key={idx} className="space-y-4">
                 {item.text && (
                   <p
-                    className="text-base leading-7 text-[var(--text-secondary)] whitespace-pre-wrap"
+                    className={`text-base leading-7 text-[var(--text-secondary)] whitespace-pre-wrap ${alignClass}`}
                     dir={textDirection}
                   >
                     {item.text}
@@ -125,7 +127,7 @@ const renderContent = (lesson) => {
                 )}
                 {item.html && (
                   <div
-                    className="prose prose-slate max-w-none text-[var(--text-secondary)]"
+                    className={`prose prose-slate max-w-none text-[var(--text-secondary)] ${alignClass}`}
                     dir={textDirection}
                     dangerouslySetInnerHTML={{ __html: item.html }}
                   />
@@ -169,6 +171,8 @@ const renderContent = (lesson) => {
           }
           
           if (contentType === 'presentation') {
+            const textDirection = getTextDirection(item)
+            const alignClass = textDirection === 'rtl' ? 'text-right' : 'text-left'
             return (
               <div key={idx} className="rounded-2xl border border-[rgba(148,163,184,0.14)] bg-[var(--bg-card)]/90 p-4">
                 <p className="mb-2 text-sm font-semibold text-[var(--text-primary)]">Presentation</p>
@@ -197,8 +201,8 @@ const renderContent = (lesson) => {
                 )}
                 {item.content && (
                   <p
-                    className="mt-4 text-base leading-7 text-[var(--text-secondary)]"
-                    dir={getTextDirection(item)}
+                    className={`mt-4 text-base leading-7 text-[var(--text-secondary)] ${alignClass}`}
+                    dir={textDirection}
                   >
                     {item.content}
                   </p>
@@ -245,10 +249,11 @@ const renderContent = (lesson) => {
           
           if (contentType === 'paragraph') {
             const textDirection = getTextDirection(item)
+            const alignClass = textDirection === 'rtl' ? 'text-right' : 'text-left'
             return (
               <p
                 key={idx}
-                className="text-base leading-7 text-[var(--text-secondary)] whitespace-pre-wrap"
+                className={`text-base leading-7 text-[var(--text-secondary)] whitespace-pre-wrap ${alignClass}`}
                 dir={textDirection}
               >
                 {item.content || item.text}
@@ -263,10 +268,11 @@ const renderContent = (lesson) => {
                 ? item.items.join(' ')
                 : (typeof item.content === 'string' ? item.content : '')
             })
+            const alignClass = textDirection === 'rtl' ? 'text-right' : 'text-left'
             return (
               <ListTag
                 key={idx}
-                className="ml-6 list-disc space-y-2 text-[var(--text-secondary)]"
+                className={`ml-6 list-disc space-y-2 text-[var(--text-secondary)] ${alignClass}`}
                 dir={textDirection}
               >
                 {(item.items || item.content || []).map((listItem, listIdx) => (
@@ -301,18 +307,24 @@ const renderContent = (lesson) => {
             <div key={idx} className="rounded-2xl border border-[rgba(148,163,184,0.14)] bg-[var(--bg-card)]/90 p-4 text-sm text-[var(--text-secondary)]">
               <p className="mb-2 font-semibold text-[var(--text-primary)]">Content ({contentType || 'unknown'})</p>
               {item.content && (
-                <p className="whitespace-pre-wrap" dir={getTextDirection(item)}>
+                <p
+                  className={`whitespace-pre-wrap ${getTextDirection(item) === 'rtl' ? 'text-right' : 'text-left'}`}
+                  dir={getTextDirection(item)}
+                >
                   {item.content}
                 </p>
               )}
               {item.text && (
-                <p className="whitespace-pre-wrap" dir={getTextDirection(item)}>
+                <p
+                  className={`whitespace-pre-wrap ${getTextDirection(item) === 'rtl' ? 'text-right' : 'text-left'}`}
+                  dir={getTextDirection(item)}
+                >
                   {item.text}
                 </p>
               )}
               {item.html && (
                 <div 
-                  className="prose prose-slate max-w-none text-[var(--text-secondary)]"
+                  className={`prose prose-slate max-w-none text-[var(--text-secondary)] ${getTextDirection(item) === 'rtl' ? 'text-right' : 'text-left'}`}
                   dir={getTextDirection(item)}
                   dangerouslySetInnerHTML={{ __html: item.html }}
                 />
