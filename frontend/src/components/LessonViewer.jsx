@@ -190,7 +190,12 @@ const renderContent = (lesson) => {
                   </div>
                 )}
                 {item.content && (
-                  <p className="mt-4 text-base leading-7 text-[var(--text-secondary)]">{item.content}</p>
+                  <p
+                    className="mt-4 text-base leading-7 text-[var(--text-secondary)]"
+                    dir={getTextDirection(item)}
+                  >
+                    {item.content}
+                  </p>
                 )}
               </div>
             )
@@ -247,10 +252,23 @@ const renderContent = (lesson) => {
           
           if (contentType === 'list' || contentType === 'ul' || contentType === 'ol') {
             const ListTag = item.ordered ? 'ol' : 'ul'
+            const textDirection = getTextDirection({
+              text: Array.isArray(item.items)
+                ? item.items.join(' ')
+                : (typeof item.content === 'string' ? item.content : '')
+            })
             return (
-              <ListTag key={idx} className="ml-6 list-disc space-y-2 text-[var(--text-secondary)]">
+              <ListTag
+                key={idx}
+                className="ml-6 list-disc space-y-2 text-[var(--text-secondary)]"
+                dir={textDirection}
+              >
                 {(item.items || item.content || []).map((listItem, listIdx) => (
-                  <li key={listIdx}>{typeof listItem === 'string' ? listItem : listItem.content || JSON.stringify(listItem)}</li>
+                  <li key={listIdx}>
+                    {typeof listItem === 'string'
+                      ? listItem
+                      : listItem.content || JSON.stringify(listItem)}
+                  </li>
                 ))}
               </ListTag>
             )
@@ -289,6 +307,7 @@ const renderContent = (lesson) => {
               {item.html && (
                 <div 
                   className="prose prose-slate max-w-none text-[var(--text-secondary)]"
+                  dir={getTextDirection(item)}
                   dangerouslySetInnerHTML={{ __html: item.html }}
                 />
               )}
