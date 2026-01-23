@@ -99,15 +99,18 @@ export default function LessonPage() {
 
   useEffect(() => {
     // Redirect unenrolled learners to course overview (except personalized courses - auto-enrolled)
-    if (!loading && userRole === 'learner') {
+    // Only redirect if we have confirmed that the learner is NOT enrolled
+    // Don't redirect if learnerProgress is still loading (null) - give it time to load
+    if (!loading && userRole === 'learner' && course) {
       const courseIsPersonalized = isPersonalized(course)
       if (!courseIsPersonalized) {
-        if (learnerProgress && !learnerProgress.is_enrolled) {
-          navigate(`/course/${courseId}/overview`, { replace: true })
-        } else if (!learnerProgress && course) {
-          // If no progress data but course exists, also redirect to overview
+        // Only redirect if we have explicit confirmation that user is NOT enrolled
+        // If learnerProgress is null/undefined, it might still be loading, so don't redirect yet
+        if (learnerProgress && learnerProgress.is_enrolled === false) {
           navigate(`/course/${courseId}/overview`, { replace: true })
         }
+        // Removed the redirect for null learnerProgress - allow navigation to proceed
+        // The enrollment check will happen on the overview page if needed
       }
     }
   }, [courseId, learnerProgress, loading, navigate, userRole, course])
