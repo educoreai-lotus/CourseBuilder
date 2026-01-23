@@ -212,7 +212,7 @@ const renderContent = (lesson) => {
           }
           
           if (contentType === 'avatar_video') {
-            const videoUrl = item.videoUrl || item.fileUrl
+            const videoUrl = item.fileUrl
             
             return (
               <div key={idx} className="rounded-2xl border border-[rgba(148,163,184,0.14)] bg-[var(--bg-card)]/90 p-4">
