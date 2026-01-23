@@ -4,6 +4,17 @@
  */
 
 /**
+ * Helper function to check if a string is a valid UUID
+ * @param {string} str - String to check
+ * @returns {boolean} True if valid UUID
+ */
+function isValidUUID(str) {
+  if (!str || typeof str !== 'string') return false;
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  return uuidRegex.test(str);
+}
+
+/**
  * Build payload to SEND to Content Studio
  * @param {Object} learnerData - Learner information
  * @param {Array} skills - Skills array
@@ -49,8 +60,8 @@ export function buildFromTrainerCourse(data) {
       : (data.devlab_exercises === "" || !data.devlab_exercises) 
         ? [] 
         : [data.devlab_exercises],
-    // Trainer IDs from Content Studio
-    trainer_ids: data.trainer_id ? [data.trainer_id] : [],
+    // Trainer IDs from Content Studio - filter out invalid UUIDs (e.g., "system-auto")
+    trainer_ids: data.trainer_id && isValidUUID(data.trainer_id) ? [data.trainer_id] : [],
     content_type: data.content_type || null,
     format_order: data.format_order || []
   };
@@ -87,8 +98,8 @@ export function buildFromLearnerCourse(data) {
       : (data.devlab_exercises === "" || !data.devlab_exercises) 
         ? [] 
         : [data.devlab_exercises],
-    // Trainer IDs from Content Studio
-    trainer_ids: data.trainer_id ? [data.trainer_id] : [],
+    // Trainer IDs from Content Studio - filter out invalid UUIDs (e.g., "system-auto")
+    trainer_ids: data.trainer_id && isValidUUID(data.trainer_id) ? [data.trainer_id] : [],
     content_type: data.content_type || null,
     format_order: data.format_order || []
   };

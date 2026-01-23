@@ -19,8 +19,17 @@ import { getFallbackData, shouldUseFallback } from '../fallbackData.js';
  */
 export async function handleContentStudioIntegration(payloadObject, responseTemplate) {
   try {
+    console.log('[ContentStudio Handler] Normalizing payload...');
+    console.log('[ContentStudio Handler] Payload keys:', Object.keys(payloadObject));
+    console.log('[ContentStudio Handler] Topics count:', payloadObject.topics?.length || 0);
+    
     // Normalize Content Studio payload (topics[] → lessons[])
     const normalized = normalizeContentStudioPayload(payloadObject);
+    
+    console.log('[ContentStudio Handler] Normalized lessons count:', normalized.lessons?.length || 0);
+    if (normalized.lessons && normalized.lessons.length > 0) {
+      console.log('[ContentStudio Handler] First lesson keys:', Object.keys(normalized.lessons[0]));
+    }
 
     // Determine if trainer or learner course
     const isTrainerCourse = !!normalized.trainer_id;
@@ -38,17 +47,29 @@ export async function handleContentStudioIntegration(payloadObject, responseTemp
       console.log('[ContentStudio Handler] ⚠️ Ignoring course_id from Content Studio response:', normalized.course_id, '- using our own:', courseIdToUse);
     }
     
+    // Helper function to check if a string is a valid UUID
+    const isValidUUID = (str) => {
+      if (!str || typeof str !== 'string') return false;
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      return uuidRegex.test(str);
+    };
+
     // Create or update course
     let course = courseIdToUse ? await courseRepository.findById(courseIdToUse) : null;
     if (!course && isTrainerCourse) {
       // Create new trainer course
+      // If trainer_id is not a valid UUID (e.g., "system-auto"), set created_by_user_id to null
+      const createdByUserId = isValidUUID(normalized.trainer_id) ? normalized.trainer_id : null;
+      
+      // For marketplace courses, set status to 'active' so they appear in the marketplace
+      // Draft status is only for courses still being edited
       course = await courseRepository.create({
         id: normalized.course_id,
         course_name: normalized.course_name,
         course_description: normalized.course_description,
         course_type: 'trainer',
-        status: 'draft',
-        created_by_user_id: normalized.trainer_id
+        status: 'active', // Changed from 'draft' to 'active' so courses appear in marketplace
+        created_by_user_id: createdByUserId
       });
     } else if (!course && !isTrainerCourse) {
       // Create learner-specific course
@@ -119,22 +140,37 @@ export async function handleContentStudioIntegration(payloadObject, responseTemp
 
     // Create lessons from Content Studio topics[] array (normalized via Content Studio normalizer)
     // Each normalized lesson already has content_data, devlab_exercises, skills, trainer_ids, format_order
+    console.log('[ContentStudio Handler] Creating lessons from normalized data...');
+    console.log('[ContentStudio Handler] Lessons to create:', normalized.lessons?.length || 0);
+    
     const createdLessons = [];
-    for (const lessonData of normalized.lessons) {
-      const lesson = await lessonRepository.create({
-        module_id: module.id,
-        topic_id: topic.id,
-        lesson_name: lessonData.lesson_name,
-        lesson_description: lessonData.lesson_description,
-        skills: lessonData.skills,
-        trainer_ids: lessonData.trainer_ids,
-        content_type: lessonData.content_type,
-        content_data: lessonData.content_data,
-        devlab_exercises: lessonData.devlab_exercises,
-        format_order: lessonData.format_order
-      });
-      createdLessons.push(lesson);
+    for (let i = 0; i < normalized.lessons.length; i++) {
+      const lessonData = normalized.lessons[i];
+      console.log(`[ContentStudio Handler] Creating lesson ${i + 1}/${normalized.lessons.length}: ${lessonData.lesson_name || 'unnamed'}`);
+      
+      try {
+        const lesson = await lessonRepository.create({
+          module_id: module.id,
+          topic_id: topic.id,
+          lesson_name: lessonData.lesson_name,
+          lesson_description: lessonData.lesson_description,
+          skills: lessonData.skills,
+          trainer_ids: lessonData.trainer_ids,
+          content_type: lessonData.content_type,
+          content_data: lessonData.content_data,
+          devlab_exercises: lessonData.devlab_exercises,
+          format_order: lessonData.format_order
+        });
+        createdLessons.push(lesson);
+        console.log(`[ContentStudio Handler] ✅ Created lesson: ${lesson.id}`);
+      } catch (lessonError) {
+        console.error(`[ContentStudio Handler] ❌ Failed to create lesson ${i + 1}:`, lessonError.message);
+        console.error(`[ContentStudio Handler] Lesson data:`, JSON.stringify(lessonData, null, 2).substring(0, 500));
+        throw lessonError;
+      }
     }
+    
+    console.log(`[ContentStudio Handler] ✅ Created ${createdLessons.length} lessons total`);
 
     // If trainer course: return empty response (one-way communication)
     // Content Studio sends trainer course → Course Builder processes it → No response needed

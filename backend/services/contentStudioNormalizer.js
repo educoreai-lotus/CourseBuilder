@@ -48,12 +48,23 @@ export function normalizeLessonData(lessonData) {
     skills = [lessonData.skills];
   }
 
-  // Normalize trainer_ids - must ALWAYS be an array
+  // Helper function to check if a string is a valid UUID
+  const isValidUUID = (str) => {
+    if (!str || typeof str !== 'string') return false;
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    return uuidRegex.test(str);
+  };
+
+  // Normalize trainer_ids - must ALWAYS be an array of valid UUIDs
   let trainer_ids = [];
   if (Array.isArray(lessonData.trainer_ids)) {
-    trainer_ids = lessonData.trainer_ids;
+    // Filter out invalid UUIDs (e.g., "system-auto")
+    trainer_ids = lessonData.trainer_ids.filter(id => isValidUUID(id));
   } else if (lessonData.trainer_id) {
-    trainer_ids = [lessonData.trainer_id];
+    // Only add if it's a valid UUID
+    if (isValidUUID(lessonData.trainer_id)) {
+      trainer_ids = [lessonData.trainer_id];
+    }
   }
 
   // Normalize format_order - must ALWAYS be an array (matches personalized flow)
