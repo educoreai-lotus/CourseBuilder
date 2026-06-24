@@ -1,8 +1,4 @@
 import { coursesService } from '../services/courses.service.js';
-import {
-  getAuthenticatedLearnerId,
-  sendAuthIdentityError
-} from '../utils/authHelpers.js';
 
 /**
  * Browse courses with optional filters
@@ -540,33 +536,19 @@ export const getLessonDetails = async (req, res, next) => {
 /**
  * Get learner progress for enrolled courses
  * GET /api/v1/courses/learners/:learnerId/progress
- *
- * Phase 2A-safe: path learnerId is ignored for lookup; only directoryUserId is used.
  */
 export const getLearnerProgress = async (req, res, next) => {
   try {
-    const { learnerId: requestedLearnerId } = req.params;
+    const { learnerId } = req.params;
 
-    let authenticatedLearnerId;
-    try {
-      authenticatedLearnerId = getAuthenticatedLearnerId(req);
-    } catch (error) {
-      if (sendAuthIdentityError(res, error)) {
-        return;
-      }
-      throw error;
+    if (!learnerId) {
+      return res.status(400).json({
+        error: 'Bad Request',
+        message: 'Learner ID is required'
+      });
     }
 
-    if (
-      requestedLearnerId &&
-      String(requestedLearnerId).trim() !== authenticatedLearnerId
-    ) {
-      console.warn(
-        '[learner-progress] Ignoring path learnerId mismatch; using authenticated Directory user id'
-      );
-    }
-
-    const progress = await coursesService.getLearnerProgress(authenticatedLearnerId);
+    const progress = await coursesService.getLearnerProgress(learnerId);
     res.status(200).json(progress);
   } catch (error) {
     next(error);
