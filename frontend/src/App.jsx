@@ -25,7 +25,7 @@ import TrainerCourses from './pages/TrainerCourses.jsx'
 import SignInRequired from './pages/SignInRequired.jsx'
 import { useRole } from './hooks/useRole.js'
 import { useAuth } from './auth/AuthContext.jsx'
-import { getAuthToken } from './auth/tokenStorage.js'
+import { initializeEducoreBotIfAuthenticated } from './auth/initializeEducoreBotIfAuthenticated.js'
 
 function LegacyCourseRedirect() {
   const { id } = useParams()
@@ -43,32 +43,23 @@ function AppShell() {
   const isLearner = userRole === 'learner'
 
   useEffect(() => {
-    if (!userProfile || !userProfile.id) return
+    if (!userProfile?.id || !isAuthenticated) return
 
-    const authToken = getAuthToken()
-
-    const initializeBot = () => {
-      if (window.initializeEducoreBot) {
-        window.initializeEducoreBot({
-          microservice: 'COURSE_BUILDER',
-          userId: userProfile.id,
-          token: authToken || userProfile.id,
-          tenantId: 'default'
-        })
-      }
+    const tryInitializeBot = () => {
+      initializeEducoreBotIfAuthenticated(userProfile.id)
     }
 
-    if (window.initializeEducoreBot) {
-      initializeBot()
+    if (typeof window.initializeEducoreBot === 'function') {
+      tryInitializeBot()
     } else {
-      window.addEventListener('load', initializeBot)
-      const timeoutId = setTimeout(initializeBot, 1000)
+      window.addEventListener('load', tryInitializeBot)
+      const timeoutId = setTimeout(tryInitializeBot, 1000)
       return () => {
-        window.removeEventListener('load', initializeBot)
+        window.removeEventListener('load', tryInitializeBot)
         clearTimeout(timeoutId)
       }
     }
-  }, [userProfile])
+  }, [userProfile, isAuthenticated])
 
   const defaultDashboard = isLearner ? '/learner/dashboard' : '/trainer/dashboard'
 

@@ -36,6 +36,11 @@ describe('tokenStorage', () => {
     expect(localStorage.getItem('token')).toBeNull()
   })
 
+  test('getAuthToken ignores legacy token key', () => {
+    localStorage.setItem('token', '50a630f4-826e-45aa-8f70-653e5e592fc3')
+    expect(getAuthToken()).toBeNull()
+  })
+
   test('applyRotatedTokenFromHeaders persists rotated token', () => {
     applyRotatedTokenFromHeaders({ 'X-New-Access-Token': 'rotated-jwt' })
     expect(getAuthToken()).toBe('rotated-jwt')

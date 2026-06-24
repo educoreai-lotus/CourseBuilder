@@ -11,6 +11,10 @@ export function AuthProvider({ children }) {
   }, [])
 
   useEffect(() => {
+    syncToken()
+  }, [syncToken])
+
+  useEffect(() => {
     const onStorage = (event) => {
       if (event.key === 'auth_token' || event.key === null) {
         syncToken()
