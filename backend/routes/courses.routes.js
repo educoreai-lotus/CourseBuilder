@@ -15,6 +15,12 @@ const router = express.Router();
 router.get('/filters', coursesController.getCourseFilters);
 
 /**
+ * GET /api/v1/courses/me/progress
+ * Authenticated learner's enrolled courses progress (JWT identity only)
+ */
+router.get('/me/progress', coursesController.getMyLearnerProgress);
+
+/**
  * GET /api/v1/courses/learners/:learnerId/progress
  * Get learner progress for enrolled courses
  * Must be before /:id route

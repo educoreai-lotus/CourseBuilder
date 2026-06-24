@@ -8,11 +8,21 @@ import versionRepository from '../repositories/VersionRepository.js';
 import assessmentRepository from '../repositories/AssessmentRepository.js';
 import { v4 as uuidv4 } from 'uuid';
 import { cache, cached } from './cache.service.js';
+import { isPersonalizedLearnerCourse } from '../utils/authHelpers.js';
 
 /**
  * Browse courses with filters (internal, no cache)
  */
-const _browseCoursesInternal = async ({ search, category, level, sort, page, limit, role }) => {
+const _browseCoursesInternal = async ({
+  search,
+  category,
+  level,
+  sort,
+  page,
+  limit,
+  role,
+  viewerLearnerId
+}) => {
   try {
     const normalizedRole = typeof role === 'string' ? role.toLowerCase() : null;
     const isPrivilegedViewer = normalizedRole === 'trainer' || normalizedRole === 'admin';
@@ -22,6 +32,23 @@ const _browseCoursesInternal = async ({ search, category, level, sort, page, lim
 
     if (!isPrivilegedViewer) {
       filters.push(`c.status = 'active'`);
+    }
+
+    if (viewerLearnerId && !isPrivilegedViewer) {
+      params.push(viewerLearnerId);
+      const learnerIdx = params.length;
+      filters.push(`(
+        (
+          c.course_type != 'learner_specific'
+          AND COALESCE(c.learning_path_designation->>'personalized', 'false') != 'true'
+          AND COALESCE(c.learning_path_designation->>'source', '') != 'learner_ai'
+        )
+        OR c.created_by_user_id = $${learnerIdx}::uuid
+        OR EXISTS (
+          SELECT 1 FROM registrations r
+          WHERE r.course_id = c.id AND r.learner_id = $${learnerIdx}::uuid
+        )
+      )`);
     }
 
     if (search) {
@@ -154,6 +181,20 @@ const _getCourseDetailsInternal = async (courseId, options = {}) => {
 
     if (!isPrivilegedViewer && course.status !== 'active') {
       return null;
+    }
+
+    if (!isPrivilegedViewer && learnerId && isPersonalizedLearnerCourse(course)) {
+      const ownerId = course.created_by_user_id;
+      const isOwner = ownerId && String(ownerId) === String(learnerId);
+      if (!isOwner) {
+        const registration = await registrationRepository.findByLearnerAndCourse(
+          learnerId,
+          courseId
+        );
+        if (!registration) {
+          return null;
+        }
+      }
     }
 
     // Get topics with modules and lessons
@@ -1155,8 +1196,8 @@ export const browseCourses = cached(
   {
     keyPrefix: 'courses',
     ttl: 300, // 5 minutes cache
-    keyGenerator: ({ search, category, level, sort, page, limit, role }) => {
-      return `courses:browse:${JSON.stringify({ search, category, level, sort, page, limit, role })}`;
+    keyGenerator: ({ search, category, level, sort, page, limit, role, viewerLearnerId }) => {
+      return `courses:browse:${JSON.stringify({ search, category, level, sort, page, limit, role, viewerLearnerId })}`;
     }
   }
 );

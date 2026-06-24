@@ -91,17 +91,15 @@ export function getCourses(params = {}) {
 }
 
 export function getCourseById(id, params = {}) {
-  return api.get(`/courses/${id}`, { params }).then((r) => r.data)
+  const token = getAuthToken()
+  const { learner_id: _ignored, ...rest } = params
+  const queryParams = token ? rest : params
+  return api.get(`/courses/${id}`, { params: queryParams }).then((r) => r.data)
 }
 
-export async function fetchEnrollmentStatus(courseId, learnerId) {
-  if (!learnerId) {
-    return { enrolled: false, progress: 0, completedLessons: 0 }
-  }
-
+export async function fetchEnrollmentStatus(courseId, _learnerId) {
   try {
-    const params = { learner_id: learnerId }
-    const response = await api.get(`/courses/${courseId}/enrollment-status`, { params })
+    const response = await api.get(`/courses/${courseId}/enrollment-status`)
     return response.data
   } catch (error) {
     console.error('Error fetching enrollment status:', error)
@@ -113,12 +111,14 @@ export function registerLearner(courseId, body) {
   return api.post(`/courses/${courseId}/register`, body).then((r) => r.data)
 }
 
-export function cancelEnrollment(courseId, body) {
-  return api.delete(`/courses/${courseId}/enrollment`, { data: body }).then((r) => r.data)
+export function cancelEnrollment(courseId, body = {}) {
+  const { learner_id: _ignored, ...payload } = body
+  return api.delete(`/courses/${courseId}/enrollment`, { data: payload }).then((r) => r.data)
 }
 
 export function submitFeedback(courseId, body) {
-  return api.post(`/courses/${courseId}/feedback`, body).then((r) => r.data)
+  const { learner_id: _ignored, ...payload } = body || {}
+  return api.post(`/courses/${courseId}/feedback`, payload).then((r) => r.data)
 }
 
 export function getFeedback(courseId) {
@@ -226,16 +226,18 @@ export function getLessonExercises(lessonId) {
   })
 }
 
-export function getLearnerProgress(learnerId) {
-  return api.get(`/courses/learners/${learnerId}/progress`).then((r) => r.data)
+export function getLearnerProgress(_learnerId) {
+  return api.get('/courses/me/progress').then((r) => r.data)
 }
 
 export function updateCourseProgress(courseId, body) {
-  return api.patch(`/courses/${courseId}/progress`, body).then((r) => r.data)
+  const { learner_id: _ignored, ...payload } = body || {}
+  return api.patch(`/courses/${courseId}/progress`, payload).then((r) => r.data)
 }
 
 export function startAssessment(courseId, body = {}) {
-  return api.post(`/courses/${courseId}/assessment/start`, body).then((r) => r.data)
+  const { learner_id: _ignored, ...payload } = body
+  return api.post(`/courses/${courseId}/assessment/start`, payload).then((r) => r.data)
 }
 
 export const fetchEnrichmentAssets = (payload) => enrichAssetsRequest(payload)
