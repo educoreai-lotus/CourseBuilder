@@ -33,7 +33,11 @@ const normalizeOrigin = (origin) => {
   return origin.replace(/\/+$/, ''); // Remove trailing slashes
 };
 
-const rawAllowedOrigins = process.env.CORS_ORIGIN || process.env.FRONTEND_URL || '*';
+const rawAllowedOrigins =
+  process.env.ALLOWED_ORIGINS ||
+  process.env.CORS_ORIGIN ||
+  process.env.FRONTEND_URL ||
+  '*';
 const allowedOrigins = rawAllowedOrigins
   .split(',')
   .map((value) => normalizeOrigin(value.trim()))
@@ -97,7 +101,20 @@ const corsOptions = {
   credentials: true,
   optionsSuccessStatus: 200,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-User-Id', 'X-User-Role', 'X-User-Name', 'X-Service-Name', 'X-Signature', 'x-user-role', 'x-service-id', 'x-api-key']
+  allowedHeaders: [
+    'Content-Type',
+    'Authorization',
+    'X-New-Access-Token',
+    'X-User-Id',
+    'X-User-Role',
+    'X-User-Name',
+    'X-Service-Name',
+    'X-Signature',
+    'x-user-role',
+    'x-service-id',
+    'x-api-key'
+  ],
+  exposedHeaders: ['X-New-Access-Token']
 };
 app.use(cors(corsOptions));
 app.use(express.json());

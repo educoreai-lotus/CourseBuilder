@@ -1,6 +1,8 @@
 import { Routes, Route, Navigate, useParams } from 'react-router-dom'
 import { useEffect } from 'react'
 import { AppProvider, useApp } from './context/AppContext.jsx'
+import { AuthProvider } from './auth/AuthContext.jsx'
+import ProtectedRoute from './auth/ProtectedRoute.jsx'
 import Header from './components/Header.jsx'
 import AccessibilityControls from './components/AccessibilityControls.jsx'
 import Toast from './components/Toast.jsx'
@@ -20,7 +22,10 @@ import TrainerCourseValidation from './pages/TrainerCourseValidation.jsx'
 import TrainerPublish from './pages/TrainerPublish.jsx'
 import TrainerFeedbackAnalytics from './pages/TrainerFeedbackAnalytics.jsx'
 import TrainerCourses from './pages/TrainerCourses.jsx'
+import SignInRequired from './pages/SignInRequired.jsx'
 import { useRole } from './hooks/useRole.js'
+import { useAuth } from './auth/AuthContext.jsx'
+import { getAuthToken } from './auth/tokenStorage.js'
 
 function LegacyCourseRedirect() {
   const { id } = useParams()
@@ -34,31 +39,29 @@ function LegacyLessonRedirect() {
 function AppShell() {
   const { userRole } = useRole()
   const { userProfile } = useApp()
+  const { isAuthenticated } = useAuth()
   const isLearner = userRole === 'learner'
 
-  // Initialize Educore Bot when user profile is available
   useEffect(() => {
     if (!userProfile || !userProfile.id) return
 
-    // Wait for bot script to load
+    const authToken = getAuthToken()
+
     const initializeBot = () => {
       if (window.initializeEducoreBot) {
         window.initializeEducoreBot({
           microservice: 'COURSE_BUILDER',
           userId: userProfile.id,
-          token: userProfile.id, // Using user ID as token since we don't have JWT tokens
+          token: authToken || userProfile.id,
           tenantId: 'default'
         })
       }
     }
 
-    // Check if script is already loaded
     if (window.initializeEducoreBot) {
       initializeBot()
     } else {
-      // Wait for script to load
       window.addEventListener('load', initializeBot)
-      // Also try after a short delay in case load event already fired
       const timeoutId = setTimeout(initializeBot, 1000)
       return () => {
         window.removeEventListener('load', initializeBot)
@@ -66,6 +69,8 @@ function AppShell() {
       }
     }
   }, [userProfile])
+
+  const defaultDashboard = isLearner ? '/learner/dashboard' : '/trainer/dashboard'
 
   return (
     <div className="min-h-screen" data-testid="app-root">
@@ -77,49 +82,52 @@ function AppShell() {
 
       <main id="main">
         <Routes>
-          <Route
-            path="/"
-            element={<Navigate to={isLearner ? '/learner/dashboard' : '/trainer/dashboard'} replace />}
-          />
+          <Route path="/sign-in-required" element={<SignInRequired />} />
 
-          {/* Shared */}
-          <Route path="/course/:id/overview" element={<CourseDetailsPage />} />
-          <Route path="/course/:id/lesson/:lessonId" element={<LessonPage />} />
-          <Route path="/course/:id/lesson/:lessonId/exercises" element={<LessonExercisesPage />} />
-          <Route path="/courses/:id" element={<LegacyCourseRedirect />} />
-          <Route path="/lessons/:id" element={<LegacyLessonRedirect />} />
-          <Route path="/course/:id/assessment" element={<AssessmentPage />} />
-          <Route path="/feedback/:courseId" element={<FeedbackPage />} />
-          <Route path="/course/:id/feedback" element={<FeedbackPage />} />
+          <Route element={<ProtectedRoute />}>
+            <Route
+              path="/"
+              element={
+                <Navigate
+                  to={isAuthenticated ? '/learner/dashboard' : defaultDashboard}
+                  replace
+                />
+              }
+            />
 
-          {/* Learner Routes */}
-          {isLearner && (
-            <>
-              <Route path="/learner/dashboard" element={<LearnerDashboard />} />
-              <Route path="/learner/marketplace" element={<LearnerMarketplace />} />
-              <Route path="/learner/personalized" element={<LearnerForYou />} />
-              <Route path="/learner/enrolled" element={<LearnerLibrary />} />
-              <Route path="/learner/for-you" element={<Navigate to="/learner/personalized" replace />} />
-              <Route path="/learner/library" element={<Navigate to="/learner/enrolled" replace />} />
-              <Route path="/courses" element={<CoursesPage />} />
-            </>
-          )}
+            <Route path="/course/:id/overview" element={<CourseDetailsPage />} />
+            <Route path="/course/:id/lesson/:lessonId" element={<LessonPage />} />
+            <Route path="/course/:id/lesson/:lessonId/exercises" element={<LessonExercisesPage />} />
+            <Route path="/courses/:id" element={<LegacyCourseRedirect />} />
+            <Route path="/lessons/:id" element={<LegacyLessonRedirect />} />
+            <Route path="/course/:id/assessment" element={<AssessmentPage />} />
+            <Route path="/feedback/:courseId" element={<FeedbackPage />} />
+            <Route path="/course/:id/feedback" element={<FeedbackPage />} />
 
-          {/* Trainer Routes */}
-          {!isLearner && (
-            <>
-              <Route path="/trainer/dashboard" element={<TrainerDashboard />} />
-              <Route path="/trainer/courses" element={<TrainerCourses />} />
-              <Route path="/trainer/course/:id" element={<TrainerCourseValidation />} />
-              <Route path="/trainer/publish/:id" element={<TrainerPublish />} />
-              <Route path="/trainer/feedback/:id" element={<TrainerFeedbackAnalytics />} />
-            </>
-          )}
+            {isLearner && (
+              <>
+                <Route path="/learner/dashboard" element={<LearnerDashboard />} />
+                <Route path="/learner/marketplace" element={<LearnerMarketplace />} />
+                <Route path="/learner/personalized" element={<LearnerForYou />} />
+                <Route path="/learner/enrolled" element={<LearnerLibrary />} />
+                <Route path="/learner/for-you" element={<Navigate to="/learner/personalized" replace />} />
+                <Route path="/learner/library" element={<Navigate to="/learner/enrolled" replace />} />
+                <Route path="/courses" element={<CoursesPage />} />
+              </>
+            )}
 
-          <Route
-            path="*"
-            element={<Navigate to={isLearner ? '/learner/dashboard' : '/trainer/dashboard'} replace />}
-          />
+            {!isLearner && (
+              <>
+                <Route path="/trainer/dashboard" element={<TrainerDashboard />} />
+                <Route path="/trainer/courses" element={<TrainerCourses />} />
+                <Route path="/trainer/course/:id" element={<TrainerCourseValidation />} />
+                <Route path="/trainer/publish/:id" element={<TrainerPublish />} />
+                <Route path="/trainer/feedback/:id" element={<TrainerFeedbackAnalytics />} />
+              </>
+            )}
+
+            <Route path="*" element={<Navigate to="/learner/dashboard" replace />} />
+          </Route>
         </Routes>
       </main>
 
@@ -132,9 +140,11 @@ function AppShell() {
 export default function App() {
   return (
     <ErrorBoundary>
-      <AppProvider>
-        <AppShell />
-      </AppProvider>
+      <AuthProvider>
+        <AppProvider>
+          <AppShell />
+        </AppProvider>
+      </AuthProvider>
     </ErrorBoundary>
   )
 }

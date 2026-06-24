@@ -1,6 +1,13 @@
+import {
+  getAuthToken,
+  applyRotatedTokenFromHeaders,
+  clearAuthToken
+} from '../../../auth/tokenStorage.js'
+import { getApiUrl, getNauthFrontendUrl } from '../../../config/env.js'
+
 const resolveEndpoint = () => {
   const defaultPath = '/api/enrichment/assets'
-  const raw = import.meta.env.VITE_API_URL
+  const raw = getApiUrl()
 
   if (!raw) {
     return defaultPath
@@ -15,41 +22,49 @@ const resolveEndpoint = () => {
     url.pathname = nextPath.startsWith('/') ? nextPath : `/${nextPath}`
     return url.toString()
   } catch (error) {
-    console.warn('Failed to resolve enrichment endpoint from VITE_API_URL, falling back to relative path.', error)
+    console.warn('Failed to resolve enrichment endpoint from API URL, falling back to relative path.', error)
     return defaultPath
   }
 }
 
 const ENRICHMENT_ENDPOINT = resolveEndpoint()
 
+const redirectToSignIn = () => {
+  if (typeof window === 'undefined' || window.location.pathname === '/sign-in-required') {
+    return
+  }
+  const loginUrl = getNauthFrontendUrl()
+  if (loginUrl) {
+    window.location.href = `${loginUrl.replace(/\/+$/, '')}/login`
+    return
+  }
+  window.location.href = '/sign-in-required'
+}
+
 export const enrichAssets = async (assetData = {}) => {
   try {
-    // Get user role from localStorage for trainer headers
-    const getStoredRole = () => {
-      if (typeof window === 'undefined') return 'learner'
-      const stored = window.localStorage.getItem('coursebuilder:userRole')
-      return stored && ['learner', 'trainer'].includes(stored) ? stored : 'learner'
-    }
-    
-    const role = getStoredRole()
     const headers = {
       'Content-Type': 'application/json'
     }
-    
-    // Add trainer headers if role is trainer
-    if (role === 'trainer') {
-      headers['x-user-role'] = 'trainer'
-      headers['x-service-id'] = 'CourseBuilder'
-      if (import.meta.env.VITE_SERVICE_API_KEY) {
-        headers['x-api-key'] = import.meta.env.VITE_SERVICE_API_KEY
-      }
+
+    const token = getAuthToken()
+    if (token) {
+      headers.Authorization = `Bearer ${token}`
     }
-    
+
     const response = await fetch(ENRICHMENT_ENDPOINT, {
       method: 'POST',
       headers,
       body: JSON.stringify(assetData)
     })
+
+    applyRotatedTokenFromHeaders(response.headers)
+
+    if (response.status === 401) {
+      clearAuthToken()
+      redirectToSignIn()
+      throw new Error('Unauthorized')
+    }
 
     if (!response.ok) {
       let errorMessage = 'Failed to enrich assets'
@@ -77,4 +92,3 @@ export const enrichAssets = async (assetData = {}) => {
 export default {
   enrichAssets
 }
-

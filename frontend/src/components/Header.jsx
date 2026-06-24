@@ -4,6 +4,8 @@ import { useApp } from '../context/AppContext'
 import logoLight from '../assets/logo-light.png'
 import logoDark from '../assets/logo-dark.png'
 import { useRole } from '../hooks/useRole.js'
+import { useAuth } from '../auth/AuthContext.jsx'
+import { logout } from '../auth/logout.js'
 
 const learnerLinks = [
   { to: '/learner/dashboard', label: 'Dashboard', icon: 'fa-solid fa-house' },
@@ -22,7 +24,9 @@ export default function Header() {
   const location = useLocation()
   const { theme, toggleTheme } = useApp()
   const { userRole, switchRole, isLearner, availableRoles } = useRole()
+  const { isAuthenticated } = useAuth()
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const [isLoggingOut, setIsLoggingOut] = useState(false)
 
   useEffect(() => {
     setIsMobileMenuOpen(false)
@@ -34,6 +38,16 @@ export default function Header() {
     switchRole(role)
     navigate(role === 'trainer' ? '/trainer/dashboard' : '/learner/dashboard', { replace: true })
     setIsMobileMenuOpen(false)
+  }
+
+  const handleLogout = async () => {
+    if (isLoggingOut) return
+    setIsLoggingOut(true)
+    try {
+      await logout()
+    } finally {
+      setIsLoggingOut(false)
+    }
   }
 
   const renderNavLink = (item) => (
@@ -89,6 +103,17 @@ export default function Header() {
             ))}
           </select>
 
+          {isAuthenticated && (
+            <button
+              type="button"
+              onClick={handleLogout}
+              disabled={isLoggingOut}
+              className="hidden md:inline-flex items-center justify-center rounded-button px-3 py-2 text-sm font-semibold text-neutral-700 hover:text-brand-primary dark:text-neutral-200 disabled:opacity-50"
+            >
+              {isLoggingOut ? 'Logging out...' : 'Logout'}
+            </button>
+          )}
+
           <button
             type="button"
             onClick={toggleTheme}
@@ -138,6 +163,17 @@ export default function Header() {
                   </option>
                 ))}
               </select>
+
+              {isAuthenticated && (
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  disabled={isLoggingOut}
+                  className="flex items-center justify-center px-4 py-3 rounded-lg text-neutral-900 dark:text-neutral-50 hover:bg-neutral-100 dark:hover:bg-neutral-700 disabled:opacity-50"
+                >
+                  {isLoggingOut ? 'Logging out...' : 'Logout'}
+                </button>
+              )}
             </div>
           </nav>
         </div>
