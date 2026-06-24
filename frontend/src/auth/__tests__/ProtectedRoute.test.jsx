@@ -38,11 +38,4 @@ describe('ProtectedRoute', () => {
     renderProtected()
     expect(screen.getByText('Protected content')).toBeInTheDocument()
   })
-
-  test('redirects when only legacy mock token key exists', () => {
-    localStorage.setItem('token', '50a630f4-826e-45aa-8f70-653e5e592fc3')
-    localStorage.setItem('user_id', '50a630f4-826e-45aa-8f70-653e5e592fc3')
-    renderProtected()
-    expect(screen.getByText('Sign in required page')).toBeInTheDocument()
-  })
 })

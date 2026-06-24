@@ -1,9 +1,4 @@
 import { coursesService } from '../services/courses.service.js';
-import {
-  assertLearnerMatchesAuthenticatedUser,
-  getAuthenticatedLearnerId,
-  sendAuthIdentityError
-} from '../utils/authHelpers.js';
 
 /**
  * Browse courses with optional filters
@@ -29,18 +24,6 @@ export const browseCourses = async (req, res, next) => {
       req.headers['x-role'] ||
       null;
 
-    let viewerLearnerId = null;
-    if (requesterRole === 'learner') {
-      try {
-        viewerLearnerId = getAuthenticatedLearnerId(req);
-      } catch (error) {
-        if (sendAuthIdentityError(res, error)) {
-          return;
-        }
-        throw error;
-      }
-    }
-
     const result = await coursesService.browseCourses({
       search,
       category,
@@ -48,8 +31,7 @@ export const browseCourses = async (req, res, next) => {
       sort,
       page: parseInt(page, 10),
       limit: parseInt(limit, 10),
-      role: requesterRole,
-      viewerLearnerId
+      role: requesterRole
     });
 
     res.status(200).json(result);
@@ -65,16 +47,14 @@ export const browseCourses = async (req, res, next) => {
 export const getEnrollmentStatus = async (req, res, next) => {
   try {
     const { id: courseId } = req.params;
+    const { learner_id: learnerId } = req.query;
 
-    let learnerId;
-    try {
-      assertLearnerMatchesAuthenticatedUser(req, req.query?.learner_id);
-      learnerId = getAuthenticatedLearnerId(req);
-    } catch (error) {
-      if (sendAuthIdentityError(res, error)) {
-        return;
-      }
-      throw error;
+    if (!learnerId) {
+      return res.status(200).json({
+        enrolled: false,
+        progress: 0,
+        completedLessons: 0
+      });
     }
 
     const status = await coursesService.getEnrollmentStatus(courseId, learnerId);
@@ -91,24 +71,12 @@ export const getEnrollmentStatus = async (req, res, next) => {
 export const getCourseDetails = async (req, res, next) => {
   try {
     const { id } = req.params;
+    const { learner_id: learnerId } = req.query;
     const requesterRole =
       req.user?.role ||
       req.headers['x-user-role'] ||
       req.headers['x-role'] ||
       null;
-
-    let learnerId = null;
-    if (requesterRole === 'learner') {
-      try {
-        assertLearnerMatchesAuthenticatedUser(req, req.query?.learner_id);
-        learnerId = getAuthenticatedLearnerId(req);
-      } catch (error) {
-        if (sendAuthIdentityError(res, error)) {
-          return;
-        }
-        throw error;
-      }
-    }
     
     if (!id) {
       return res.status(400).json({
@@ -142,16 +110,13 @@ export const getCourseDetails = async (req, res, next) => {
 export const registerForCourse = async (req, res, next) => {
   try {
     const { id: courseId } = req.params;
-    const { learner_name, learner_company, company_id } = req.body;
+    const { learner_id, learner_name, learner_company, company_id } = req.body;
 
-    let learner_id;
-    try {
-      learner_id = getAuthenticatedLearnerId(req);
-    } catch (error) {
-      if (sendAuthIdentityError(res, error)) {
-        return;
-      }
-      throw error;
+    if (!learner_id) {
+      return res.status(400).json({
+        error: 'Bad Request',
+        message: 'learner_id is required'
+      });
     }
 
     if (!courseId) {
@@ -187,15 +152,13 @@ export const registerForCourse = async (req, res, next) => {
 export const cancelEnrollment = async (req, res, next) => {
   try {
     const { id: courseId } = req.params;
+    const { learner_id } = req.body;
 
-    let learner_id;
-    try {
-      learner_id = getAuthenticatedLearnerId(req);
-    } catch (error) {
-      if (sendAuthIdentityError(res, error)) {
-        return;
-      }
-      throw error;
+    if (!learner_id) {
+      return res.status(400).json({
+        error: 'Bad Request',
+        message: 'learner_id is required'
+      });
     }
 
     if (!courseId) {
@@ -228,22 +191,19 @@ export const cancelEnrollment = async (req, res, next) => {
 export const updateCourseProgress = async (req, res, next) => {
   try {
     const { id: courseId } = req.params;
-    const { lesson_id: lessonId, completed = true } = req.body;
-
-    let learnerId;
-    try {
-      learnerId = getAuthenticatedLearnerId(req);
-    } catch (error) {
-      if (sendAuthIdentityError(res, error)) {
-        return;
-      }
-      throw error;
-    }
+    const { learner_id: learnerId, lesson_id: lessonId, completed = true } = req.body;
 
     if (!courseId) {
       return res.status(400).json({
         error: 'Bad Request',
         message: 'Course ID is required'
+      });
+    }
+
+    if (!learnerId) {
+      return res.status(400).json({
+        error: 'Bad Request',
+        message: 'learner_id is required'
       });
     }
 
@@ -579,39 +539,13 @@ export const getLessonDetails = async (req, res, next) => {
  */
 export const getLearnerProgress = async (req, res, next) => {
   try {
-    const { learnerId: requestedLearnerId } = req.params;
+    const { learnerId } = req.params;
 
-    let learnerId;
-    try {
-      learnerId = assertLearnerMatchesAuthenticatedUser(req, requestedLearnerId);
-    } catch (error) {
-      if (sendAuthIdentityError(res, error)) {
-        return;
-      }
-      throw error;
-    }
-
-    const progress = await coursesService.getLearnerProgress(learnerId);
-    res.status(200).json(progress);
-  } catch (error) {
-    next(error);
-  }
-};
-
-/**
- * Get authenticated learner's progress (no path learner id required)
- * GET /api/v1/courses/me/progress
- */
-export const getMyLearnerProgress = async (req, res, next) => {
-  try {
-    let learnerId;
-    try {
-      learnerId = getAuthenticatedLearnerId(req);
-    } catch (error) {
-      if (sendAuthIdentityError(res, error)) {
-        return;
-      }
-      throw error;
+    if (!learnerId) {
+      return res.status(400).json({
+        error: 'Bad Request',
+        message: 'Learner ID is required'
+      });
     }
 
     const progress = await coursesService.getLearnerProgress(learnerId);
@@ -638,8 +572,7 @@ export const coursesController = {
   getCourseFilters,
   getLessonDetails,
   getLessonExercises,
-  getLearnerProgress,
-  getMyLearnerProgress
+  getLearnerProgress
 };
 
 

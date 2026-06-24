@@ -5,37 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="Course Builder - AI-powered course creation and management platform" />
     <title>Course Builder | Educore AI</title>
-    <!-- Persist Directory JWT before any third-party body scripts run -->
-    <script>
-      (function () {
-        var hash = window.location.hash
-        if (!hash || hash.length < 2) return
-        try {
-          var raw = hash.charAt(0) === '#' ? hash.slice(1) : hash
-          var token = null
-          var prefix = 'access_token='
-          var i = raw.indexOf(prefix)
-          if (i !== -1) {
-            var rest = raw.slice(i + prefix.length)
-            var amp = rest.indexOf('&')
-            token = (amp === -1 ? rest : rest.slice(0, amp)).trim()
-            if (token) {
-              try {
-                token = decodeURIComponent(token)
-              } catch (e) {}
-            }
-          }
-          if (!token) {
-            token = new URLSearchParams(raw).get('access_token')
-            if (token) token = token.trim()
-          }
-          if (token) {
-            localStorage.setItem('auth_token', token)
-            history.replaceState({}, document.title, location.pathname + location.search)
-          }
-        } catch (e) {}
-      })()
-    </script>
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
   </head>
@@ -48,8 +17,8 @@
     
     <script type="module" src="/src/main.jsx"></script>
     
-    <!-- ✅ BOT SCRIPT (deferred so app bootstrap ingests #access_token first) -->
-    <script defer src="https://rag-production-3a4c.up.railway.app/embed/bot.js"></script>
+    <!-- ✅ BOT SCRIPT -->
+    <script src="https://rag-production-3a4c.up.railway.app/embed/bot.js"></script>
     <!-- ✅ END BOT SCRIPT -->
   </body>
 </html>

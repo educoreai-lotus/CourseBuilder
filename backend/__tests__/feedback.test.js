@@ -3,14 +3,15 @@ import app from '../server.js';
 
 describe('Feedback API', () => {
   describe('POST /api/v1/courses/:id/feedback', () => {
-    it('does not require learner_id in body when mock auth is enabled', async () => {
+    it('should return 400 if learner_id is missing', async () => {
       const fakeId = '00000000-0000-0000-0000-000000000000';
       const response = await request(app)
         .post(`/api/v1/courses/${fakeId}/feedback`)
-        .send({ rating: 5 });
+        .send({ rating: 5 })
+        .expect(400);
 
-      expect(response.body.message).not.toBe('learner_id is required');
-      expect([201, 404, 409, 500]).toContain(response.status);
+      expect(response.body).toHaveProperty('error');
+      expect(response.body.message).toBe('learner_id is required');
     });
 
     it('should return 400 if rating is missing', async () => {

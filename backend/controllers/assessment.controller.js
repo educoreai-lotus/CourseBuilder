@@ -5,10 +5,6 @@
 
 import { sendToAssessment } from '../services/gateways/assessmentGateway.js';
 import courseRepository from '../repositories/CourseRepository.js';
-import {
-  getAuthenticatedLearnerId,
-  sendAuthIdentityError
-} from '../utils/authHelpers.js';
 
 /**
  * Start assessment for a learner
@@ -30,16 +26,8 @@ import {
 export const startAssessment = async (req, res, next) => {
   try {
     const courseId = req.params.id;
-    let learnerId;
-    try {
-      learnerId = getAuthenticatedLearnerId(req);
-    } catch (error) {
-      if (sendAuthIdentityError(res, error)) {
-        return;
-      }
-      throw error;
-    }
-    const learnerName = req.body.learner_name || 'Learner';
+    const learnerId = req.body.learner_id || req.headers['x-user-id'] || req.headers['X-User-Id'];
+    const learnerName = req.body.learner_name || req.headers['x-user-name'] || req.headers['X-User-Name'];
 
     // Validate required fields
     if (!courseId) {
@@ -50,9 +38,9 @@ export const startAssessment = async (req, res, next) => {
     }
 
     if (!learnerId) {
-      return res.status(401).json({
-        error: 'unauthorized',
-        message: 'Authenticated learner identity is missing'
+      return res.status(400).json({
+        error: 'Bad Request',
+        message: 'Learner ID is required (provide in body or X-User-Id header)'
       });
     }
 

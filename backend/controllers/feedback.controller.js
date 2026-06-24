@@ -1,11 +1,11 @@
 import { feedbackService } from '../services/feedback.service.js';
-import {
-  assertLearnerMatchesAuthenticatedUser,
-  getAuthenticatedLearnerId,
-  sendAuthIdentityError
-} from '../utils/authHelpers.js';
 
-const resolveLearnerId = (req) => getAuthenticatedLearnerId(req);
+const resolveLearnerId = (req) =>
+  req.body?.learner_id ||
+  req.user?.id ||
+  req.headers['x-user-id'] ||
+  req.query?.learner_id ||
+  null;
 
 const sendKnownError = (res, error) => {
   if (!error?.status) {
@@ -30,21 +30,13 @@ export const submitFeedback = async (req, res, next) => {
   try {
     const { id: courseId } = req.params;
     const { rating, tags, comment } = req.body;
-    let learnerId;
-    try {
-      learnerId = resolveLearnerId(req);
-    } catch (error) {
-      if (sendAuthIdentityError(res, error)) {
-        return;
-      }
-      throw error;
-    }
+    const learnerId = resolveLearnerId(req);
 
     // Validation
     if (!learnerId) {
-      return res.status(401).json({
-        error: 'unauthorized',
-        message: 'Authenticated learner identity is missing'
+      return res.status(400).json({
+        error: 'Bad Request',
+        message: 'learner_id is required'
       });
     }
 
@@ -149,16 +141,7 @@ export const feedbackController = {
   getLearnerFeedback: async (req, res, next) => {
     try {
       const { id: courseId } = req.params;
-      let learnerId;
-      try {
-        assertLearnerMatchesAuthenticatedUser(req, req.query?.learner_id);
-        learnerId = resolveLearnerId(req);
-      } catch (error) {
-        if (sendAuthIdentityError(res, error)) {
-          return;
-        }
-        throw error;
-      }
+      const learnerId = resolveLearnerId(req);
 
       if (!courseId) {
         return res.status(400).json({
@@ -168,9 +151,9 @@ export const feedbackController = {
       }
 
       if (!learnerId) {
-        return res.status(401).json({
-          error: 'unauthorized',
-          message: 'Authenticated learner identity is missing'
+        return res.status(400).json({
+          error: 'Bad Request',
+          message: 'Learner ID is required'
         });
       }
 
@@ -194,15 +177,7 @@ export const feedbackController = {
   updateFeedback: async (req, res, next) => {
     try {
       const { id: courseId } = req.params;
-      let learnerId;
-      try {
-        learnerId = resolveLearnerId(req);
-      } catch (error) {
-        if (sendAuthIdentityError(res, error)) {
-          return;
-        }
-        throw error;
-      }
+      const learnerId = resolveLearnerId(req);
       const { rating, tags, comment } = req.body;
 
       if (!courseId) {
@@ -213,9 +188,9 @@ export const feedbackController = {
       }
 
       if (!learnerId) {
-        return res.status(401).json({
-          error: 'unauthorized',
-          message: 'Authenticated learner identity is missing'
+        return res.status(400).json({
+          error: 'Bad Request',
+          message: 'Learner ID is required'
         });
       }
 
@@ -236,15 +211,7 @@ export const feedbackController = {
   deleteFeedback: async (req, res, next) => {
     try {
       const { id: courseId } = req.params;
-      let learnerId;
-      try {
-        learnerId = resolveLearnerId(req);
-      } catch (error) {
-        if (sendAuthIdentityError(res, error)) {
-          return;
-        }
-        throw error;
-      }
+      const learnerId = resolveLearnerId(req);
 
       if (!courseId) {
         return res.status(400).json({
@@ -254,9 +221,9 @@ export const feedbackController = {
       }
 
       if (!learnerId) {
-        return res.status(401).json({
-          error: 'unauthorized',
-          message: 'Authenticated learner identity is missing'
+        return res.status(400).json({
+          error: 'Bad Request',
+          message: 'Learner ID is required'
         });
       }
 
