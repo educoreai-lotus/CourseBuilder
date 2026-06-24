@@ -68,7 +68,7 @@ describe('Coordinator auth validation (unit)', () => {
     jest.resetModules();
     global.fetch = jest.fn();
     process.env.COORDINATOR_URL = 'https://coordinator.test';
-    process.env.AUTH_REQUESTER_SERVICE = 'course-builder';
+    process.env.AUTH_REQUESTER_SERVICE = 'course-builder-service';
   });
 
   it('builds req.user from Coordinator validation response', async () => {
@@ -98,6 +98,8 @@ describe('Coordinator auth validation (unit)', () => {
     );
 
     expect(result.user.directoryUserId).toBe('dir-user-123');
+    expect(result.user.userId).toBe('dir-user-123');
+    expect(result.user.id).toBe('dir-user-123');
     expect(result.user.role).toBe('learner');
     expect(result.user.source).toBe('coordinator-nauth');
     expect(result.newAccessToken).toBe('rotated-token');
@@ -105,7 +107,7 @@ describe('Coordinator auth validation (unit)', () => {
     const [url, options] = global.fetch.mock.calls[0];
     expect(url).toBe('https://coordinator.test/request');
     const body = JSON.parse(options.body);
-    expect(body.requester_service).toBe('course-builder');
+    expect(body.requester_service).toBe('course-builder-service');
   });
 
   it('maps trainer/admin compatibility roles', async () => {

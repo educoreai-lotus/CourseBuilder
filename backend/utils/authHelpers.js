@@ -1,5 +1,8 @@
+/** Registered with Coordinator (registerWithCoordinator.js). */
+export const REGISTERED_REQUESTER_SERVICE = 'course-builder-service';
+
 export const AUTH_REQUESTER_SERVICE =
-  process.env.AUTH_REQUESTER_SERVICE || process.env.SERVICE_NAME || 'course-builder';
+  process.env.AUTH_REQUESTER_SERVICE || REGISTERED_REQUESTER_SERVICE;
 
 export const PUBLIC_ROUTES = [
   { method: 'GET', pattern: /^\/health$/ },
@@ -60,18 +63,17 @@ export const buildUserFromValidation = (validation = {}) => {
   const primaryRole = validation.primary_role || validation.primaryRole || '';
   const isSystemAdmin = Boolean(validation.is_system_admin ?? validation.isSystemAdmin);
   const isTrainer = Boolean(validation.is_trainer ?? validation.isTrainer);
-  const userId = directoryUserId || validation.user_id || validation.userId || '';
   const role = mapCompatibilityRole({ isSystemAdmin, isTrainer, primaryRole });
 
   return {
     directoryUserId,
-    userId,
+    userId: directoryUserId,
     organizationId,
     primaryRole,
     isSystemAdmin,
     isTrainer,
     role,
-    id: userId,
+    id: directoryUserId,
     source: 'coordinator-nauth'
   };
 };
@@ -91,9 +93,18 @@ export const getMockUser = () => ({
 export const getCoordinatorUrl = () =>
   process.env.COORDINATOR_API_URL || process.env.COORDINATOR_URL || null;
 
+export const getCoordinatorRequestUrl = () => {
+  const coordinatorUrl = getCoordinatorUrl();
+  if (!coordinatorUrl) {
+    return null;
+  }
+  const cleanCoordinatorUrl = String(coordinatorUrl).replace(/\/+$/, '');
+  return `${cleanCoordinatorUrl}/request`;
+};
+
 export const getAuthValidationTimeoutMs = () => {
-  const parsed = parseInt(process.env.AUTH_VALIDATION_TIMEOUT_MS || '10000', 10);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : 10000;
+  const parsed = parseInt(process.env.AUTH_VALIDATION_TIMEOUT_MS || '30000', 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 30000;
 };
 
 export const extractValidationPayload = (data) => {
@@ -102,6 +113,12 @@ export const extractValidationPayload = (data) => {
   }
   if (data.response && typeof data.response === 'object') {
     return data.response;
+  }
+  if (data.data?.response && typeof data.data.response === 'object') {
+    return data.data.response;
+  }
+  if (data.data && typeof data.data === 'object' && data.data.valid !== undefined) {
+    return data.data;
   }
   if (data.valid !== undefined) {
     return data;

@@ -3,47 +3,60 @@ import {
   buildUserFromValidation,
   extractValidationPayload,
   getAuthValidationTimeoutMs,
-  getCoordinatorUrl
+  getCoordinatorRequestUrl
 } from '../utils/authHelpers.js';
 
-const buildValidationEnvelope = (accessToken, route, method) => ({
-  requester_service: AUTH_REQUESTER_SERVICE,
-  payload: {
-    action:
-      'Route this request to nAuth service only for access token validation and session continuity decision.',
-    access_token: accessToken,
-    route,
-    method
-  },
-  response: {
-    valid: false,
-    reason: '',
-    auth_state: '',
-    directory_user_id: '',
-    organization_id: '',
-    primary_role: '',
-    is_system_admin: false,
-    is_trainer: false,
-    new_access_token: ''
-  }
-});
+/** Must match Content Studio / Coordinator nAuth routing contract. */
+export const NAUTH_VALIDATION_ACTION =
+  'Route this request to nAuth service only for access token validation and session continuity decision.';
+
+const AUTH_VALIDATION_RESPONSE_TEMPLATE = {
+  valid: false,
+  reason: '',
+  auth_state: '',
+  directory_user_id: '',
+  organization_id: '',
+  primary_role: '',
+  is_system_admin: false,
+  is_trainer: false,
+  new_access_token: ''
+};
+
+/**
+ * Build Coordinator validation envelope (Content Studio contract).
+ */
+export function buildAuthValidationEnvelope(accessToken, route, method) {
+  return {
+    requester_service: AUTH_REQUESTER_SERVICE,
+    payload: {
+      action: NAUTH_VALIDATION_ACTION,
+      access_token: accessToken,
+      route,
+      method
+    },
+    response: { ...AUTH_VALIDATION_RESPONSE_TEMPLATE }
+  };
+}
 
 /**
  * Validate access token through Coordinator → nAuth.
  * @returns {Promise<{ user: object, newAccessToken: string|null }>}
  */
 export async function validateAccessTokenWithCoordinator(accessToken, route, method) {
-  const coordinatorUrl = getCoordinatorUrl();
-  if (!coordinatorUrl) {
-    throw new Error('COORDINATOR_URL_NOT_CONFIGURED');
+  const url = getCoordinatorRequestUrl();
+  if (!url) {
+    const error = new Error('COORDINATOR_URL_NOT_CONFIGURED');
+    error.status = 503;
+    throw error;
   }
 
-  const base = String(coordinatorUrl).replace(/\/+$/, '');
-  const url = `${base}/request`;
-  const envelope = buildValidationEnvelope(accessToken, route, method);
+  const envelope = buildAuthValidationEnvelope(accessToken, route, method);
   const timeoutMs = getAuthValidationTimeoutMs();
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+  console.info('[CourseBuilder Auth] Coordinator auth validation start:', { route, method });
+  console.info('[CourseBuilder Auth] requester_service:', AUTH_REQUESTER_SERVICE);
 
   try {
     const response = await fetch(url, {
@@ -56,14 +69,26 @@ export async function validateAccessTokenWithCoordinator(accessToken, route, met
     const data = await response.json().catch(() => ({}));
 
     if (!response.ok) {
+      console.warn('[CourseBuilder Auth] Coordinator HTTP error:', {
+        route,
+        status: response.status
+      });
       const error = new Error(data.message || data.error || 'Coordinator auth validation failed');
-      error.status = response.status;
+      error.status = response.status >= 500 ? 503 : 401;
       throw error;
     }
 
     const validation = extractValidationPayload(data);
-    if (!validation || validation.valid !== true) {
-      const error = new Error(validation?.reason || 'Invalid or expired access token');
+    const isValid = validation?.valid === true;
+    console.info('[CourseBuilder Auth] Coordinator validation received:', {
+      route,
+      valid: isValid
+    });
+
+    if (!isValid) {
+      const reason = validation?.reason || 'Invalid or expired access token';
+      console.warn('[CourseBuilder Auth] Token validation failed:', { route, reason });
+      const error = new Error(reason);
       error.status = 401;
       throw error;
     }
@@ -77,9 +102,17 @@ export async function validateAccessTokenWithCoordinator(accessToken, route, met
     };
   } catch (error) {
     if (error.name === 'AbortError') {
+      console.warn('[CourseBuilder Auth] Coordinator validation timed out:', { route });
       const timeoutError = new Error('Authentication validation timed out');
       timeoutError.status = 503;
       throw timeoutError;
+    }
+    if (!error.status) {
+      console.warn('[CourseBuilder Auth] Coordinator validation network error:', {
+        route,
+        message: error.message
+      });
+      error.status = 503;
     }
     throw error;
   } finally {
@@ -88,5 +121,6 @@ export async function validateAccessTokenWithCoordinator(accessToken, route, met
 }
 
 export default {
+  buildAuthValidationEnvelope,
   validateAccessTokenWithCoordinator
 };
