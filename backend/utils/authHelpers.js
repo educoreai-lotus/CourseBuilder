@@ -108,3 +108,28 @@ export const extractValidationPayload = (data) => {
   }
   return null;
 };
+
+/**
+ * Trusted learner identity for learner-owned data (Phase 2A-safe).
+ * Uses req.user.directoryUserId only — never body/query/header/path IDs.
+ */
+export function getAuthenticatedLearnerId(req) {
+  const id = req.user?.directoryUserId;
+  if (!id || String(id).trim() === '') {
+    const error = new Error('Authenticated learner identity is missing');
+    error.status = 401;
+    throw error;
+  }
+  return String(id).trim();
+}
+
+export function sendAuthIdentityError(res, error) {
+  if (!error?.status || error.status !== 401) {
+    return false;
+  }
+  res.status(error.status).json({
+    error: 'unauthorized',
+    message: error.message
+  });
+  return true;
+}
