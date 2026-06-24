@@ -63,6 +63,7 @@
       ]
     },
     "moduleNameMapper": {
+      "^(.*/)?config/env\\.js$": "<rootDir>/src/config/env.jest.js",
       "\\.(css|less|scss)$": "identity-obj-proxy",
       "\\.(png|jpg|jpeg|gif|svg)$": "<rootDir>/src/__mocks__/fileMock.js"
     }
