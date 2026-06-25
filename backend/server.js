@@ -204,7 +204,10 @@ if (process.env.NODE_ENV !== 'test') {
       console.log(`🚀 Course Builder API server running on port ${PORT}`);
       console.log(`📝 Environment: ${process.env.NODE_ENV || 'development'}`);
       console.log(`🔗 Health check: http://localhost:${PORT}/health`);
-      
+      console.log(
+        '[CB_AUTH_TRACE_20260625_A] Course Builder backend auth trace build is running'
+      );
+
       // Start GRPC server
       try {
         await grpcServer.start();
@@ -213,7 +216,7 @@ if (process.env.NODE_ENV !== 'test') {
         console.error('Failed to start GRPC server:', error);
         // Continue without GRPC if it fails
       }
-      
+
       // Start scheduled publishing job (will handle missing tables gracefully)
       scheduledJobCleanup = startScheduledPublishingJob();
     });
@@ -224,6 +227,9 @@ if (process.env.NODE_ENV !== 'test') {
       console.log(`🚀 Course Builder API server running on port ${PORT}`);
       console.log(`📝 Environment: ${process.env.NODE_ENV || 'development'}`);
       console.log(`🔗 Health check: http://localhost:${PORT}/health`);
+      console.log(
+        '[CB_AUTH_TRACE_20260625_A] Course Builder backend auth trace build is running'
+      );
       
       // Start GRPC server
       try {

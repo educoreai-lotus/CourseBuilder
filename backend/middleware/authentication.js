@@ -7,11 +7,26 @@ import {
 } from '../utils/authHelpers.js';
 import { validateAccessTokenWithCoordinator } from '../services/coordinatorRequestAuth.js';
 
+const AUTH_TRACE = '[CB_AUTH_TRACE_20260625_A]';
+
 export const authenticate = async (req, res, next) => {
+  console.log(`${AUTH_TRACE} auth middleware entered`, {
+    method: req.method,
+    path: req.originalUrl || req.path,
+    hasAuthorizationHeader: Boolean(req.headers?.authorization),
+    authorizationStartsWithBearer:
+      typeof req.headers?.authorization === 'string' &&
+      req.headers.authorization.startsWith('Bearer ')
+  });
+
   const route = req.originalUrl || req.path;
 
   try {
     if (isPublicRoute(req)) {
+      console.log(`${AUTH_TRACE} auth public route bypass`, {
+        method: req.method,
+        path: req.originalUrl || req.path
+      });
       return next();
     }
 
@@ -19,10 +34,28 @@ export const authenticate = async (req, res, next) => {
     console.info('[CourseBuilder Auth] Bearer token present:', Boolean(accessToken));
 
     if (!accessToken) {
+      console.log(`${AUTH_TRACE} auth missing bearer branch`, {
+        method: req.method,
+        path: req.originalUrl || req.path
+      });
+
       if (isMockAuthEnabled()) {
+        console.log(`${AUTH_TRACE} auth mock branch used`, {
+          method: req.method,
+          path: req.originalUrl || req.path,
+          nodeEnv: process.env.NODE_ENV || '',
+          enableMockAuth: process.env.ENABLE_MOCK_AUTH || ''
+        });
         req.user = getMockUser();
         return next();
       }
+
+      console.log(`${AUTH_TRACE} auth failed before controller`, {
+        method: req.method,
+        path: req.originalUrl || req.path,
+        status: 401,
+        reason: 'Missing or invalid authorization header'
+      });
 
       return res.status(401).json({
         error: 'unauthorized',
@@ -39,9 +72,22 @@ export const authenticate = async (req, res, next) => {
         route
       );
       if (isMockAuthEnabled()) {
+        console.log(`${AUTH_TRACE} auth mock branch used`, {
+          method: req.method,
+          path: req.originalUrl || req.path,
+          nodeEnv: process.env.NODE_ENV || '',
+          enableMockAuth: process.env.ENABLE_MOCK_AUTH || ''
+        });
         req.user = getMockUser();
         return next();
       }
+
+      console.log(`${AUTH_TRACE} auth failed before controller`, {
+        method: req.method,
+        path: req.originalUrl || req.path,
+        status: 503,
+        reason: 'Authentication service is not configured'
+      });
 
       return res.status(503).json({
         error: 'service_unavailable',
@@ -49,13 +95,38 @@ export const authenticate = async (req, res, next) => {
       });
     }
 
-    const { user, newAccessToken } = await validateAccessTokenWithCoordinator(
+    console.log(`${AUTH_TRACE} auth about to validate with Coordinator`, {
+      method: req.method,
+      path: req.originalUrl || req.path
+    });
+
+    const { user, newAccessToken, validation } = await validateAccessTokenWithCoordinator(
       accessToken,
       route,
       req.method
     );
 
+    console.log(`${AUTH_TRACE} auth Coordinator validation returned`, {
+      method: req.method,
+      path: req.originalUrl || req.path,
+      valid: validation?.valid === true,
+      hasDirectoryUserIdSnake: Boolean(validation?.directory_user_id),
+      hasDirectoryUserIdCamel: Boolean(validation?.directoryUserId),
+      authState: validation?.auth_state || validation?.authState || ''
+    });
+
     req.user = user;
+
+    console.log(`${AUTH_TRACE} auth assigned req.user`, {
+      method: req.method,
+      path: req.originalUrl || req.path,
+      hasReqUser: Boolean(req.user),
+      hasDirectoryUserId: Boolean(req.user?.directoryUserId),
+      hasUserId: Boolean(req.user?.userId),
+      hasId: Boolean(req.user?.id),
+      role: req.user?.role || '',
+      primaryRole: req.user?.primaryRole || ''
+    });
 
     console.info('[CourseBuilder Auth Debug] assigned req.user identity:', {
       hasDirectoryUserId: Boolean(req.user?.directoryUserId),
@@ -75,6 +146,14 @@ export const authenticate = async (req, res, next) => {
     return next();
   } catch (error) {
     const status = error.status || 401;
+
+    console.log(`${AUTH_TRACE} auth failed before controller`, {
+      method: req.method,
+      path: req.originalUrl || req.path,
+      status,
+      reason: error.message || ''
+    });
+
     if (status === 401) {
       console.warn('[CourseBuilder Auth] Token validation failed:', {
         route,

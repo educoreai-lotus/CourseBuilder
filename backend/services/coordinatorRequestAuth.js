@@ -58,6 +58,14 @@ export async function validateAccessTokenWithCoordinator(accessToken, route, met
   console.info('[CourseBuilder Auth] Coordinator auth validation start:', { route, method });
   console.info('[CourseBuilder Auth] requester_service:', AUTH_REQUESTER_SERVICE);
 
+  console.log('[CB_AUTH_TRACE_20260625_A] Coordinator client dispatch', {
+    hasCoordinatorUrl: Boolean(url),
+    endpointPath: '/request',
+    requesterService: AUTH_REQUESTER_SERVICE || '',
+    route,
+    method
+  });
+
   try {
     const response = await fetch(url, {
       method: 'POST',
@@ -67,6 +75,14 @@ export async function validateAccessTokenWithCoordinator(accessToken, route, met
     });
 
     const data = await response.json().catch(() => ({}));
+
+    console.log('[CB_AUTH_TRACE_20260625_A] Coordinator client response parsed', {
+      httpStatus: response?.status,
+      hasTopLevelResponse: Boolean(data?.response),
+      hasDataResponse: Boolean(data?.data?.response),
+      hasTopLevelValid: typeof data?.valid !== 'undefined',
+      topLevelKeys: data && typeof data === 'object' ? Object.keys(data) : []
+    });
 
     console.info('[CourseBuilder Auth Debug] coordinator raw shape:', {
       hasTopLevelResponse: Boolean(data?.response),
@@ -131,7 +147,8 @@ export async function validateAccessTokenWithCoordinator(accessToken, route, met
 
     return {
       user,
-      newAccessToken: newAccessToken || null
+      newAccessToken: newAccessToken || null,
+      validation
     };
   } catch (error) {
     if (error.name === 'AbortError') {
