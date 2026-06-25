@@ -1,11 +1,8 @@
 import { feedbackService } from '../services/feedback.service.js';
-
-const resolveLearnerId = (req) =>
-  req.body?.learner_id ||
-  req.user?.id ||
-  req.headers['x-user-id'] ||
-  req.query?.learner_id ||
-  null;
+import {
+  getAuthenticatedLearnerId,
+  sendAuthIdentityError
+} from '../utils/authHelpers.js';
 
 const sendKnownError = (res, error) => {
   if (!error?.status) {
@@ -30,15 +27,7 @@ export const submitFeedback = async (req, res, next) => {
   try {
     const { id: courseId } = req.params;
     const { rating, tags, comment } = req.body;
-    const learnerId = resolveLearnerId(req);
-
-    // Validation
-    if (!learnerId) {
-      return res.status(400).json({
-        error: 'Bad Request',
-        message: 'learner_id is required'
-      });
-    }
+    const learnerId = getAuthenticatedLearnerId(req);
 
     if (!rating || rating < 1 || rating > 5) {
       return res.status(400).json({
@@ -63,6 +52,9 @@ export const submitFeedback = async (req, res, next) => {
 
     res.status(201).json(result);
   } catch (error) {
+    if (sendAuthIdentityError(res, error)) {
+      return;
+    }
     if (error.code === '23505') { // PostgreSQL unique violation (duplicate feedback)
       return res.status(409).json({
         error: 'Conflict',
@@ -141,19 +133,12 @@ export const feedbackController = {
   getLearnerFeedback: async (req, res, next) => {
     try {
       const { id: courseId } = req.params;
-      const learnerId = resolveLearnerId(req);
+      const learnerId = getAuthenticatedLearnerId(req);
 
       if (!courseId) {
         return res.status(400).json({
           error: 'Bad Request',
           message: 'Course ID is required'
-        });
-      }
-
-      if (!learnerId) {
-        return res.status(400).json({
-          error: 'Bad Request',
-          message: 'Learner ID is required'
         });
       }
 
@@ -168,6 +153,9 @@ export const feedbackController = {
 
       return res.status(200).json(feedback);
     } catch (error) {
+      if (sendAuthIdentityError(res, error)) {
+        return;
+      }
       if (sendKnownError(res, error)) {
         return;
       }
@@ -177,20 +165,13 @@ export const feedbackController = {
   updateFeedback: async (req, res, next) => {
     try {
       const { id: courseId } = req.params;
-      const learnerId = resolveLearnerId(req);
+      const learnerId = getAuthenticatedLearnerId(req);
       const { rating, tags, comment } = req.body;
 
       if (!courseId) {
         return res.status(400).json({
           error: 'Bad Request',
           message: 'Course ID is required'
-        });
-      }
-
-      if (!learnerId) {
-        return res.status(400).json({
-          error: 'Bad Request',
-          message: 'Learner ID is required'
         });
       }
 
@@ -202,6 +183,9 @@ export const feedbackController = {
 
       return res.status(200).json(result);
     } catch (error) {
+      if (sendAuthIdentityError(res, error)) {
+        return;
+      }
       if (sendKnownError(res, error)) {
         return;
       }
@@ -211,7 +195,7 @@ export const feedbackController = {
   deleteFeedback: async (req, res, next) => {
     try {
       const { id: courseId } = req.params;
-      const learnerId = resolveLearnerId(req);
+      const learnerId = getAuthenticatedLearnerId(req);
 
       if (!courseId) {
         return res.status(400).json({
@@ -220,17 +204,13 @@ export const feedbackController = {
         });
       }
 
-      if (!learnerId) {
-        return res.status(400).json({
-          error: 'Bad Request',
-          message: 'Learner ID is required'
-        });
-      }
-
       await feedbackService.deleteFeedback(courseId, learnerId);
 
       return res.status(204).send();
     } catch (error) {
+      if (sendAuthIdentityError(res, error)) {
+        return;
+      }
       if (sendKnownError(res, error)) {
         return;
       }

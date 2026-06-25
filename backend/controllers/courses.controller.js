@@ -51,19 +51,14 @@ export const browseCourses = async (req, res, next) => {
 export const getEnrollmentStatus = async (req, res, next) => {
   try {
     const { id: courseId } = req.params;
-    const { learner_id: learnerId } = req.query;
-
-    if (!learnerId) {
-      return res.status(200).json({
-        enrolled: false,
-        progress: 0,
-        completedLessons: 0
-      });
-    }
+    const learnerId = getAuthenticatedLearnerId(req);
 
     const status = await coursesService.getEnrollmentStatus(courseId, learnerId);
     res.status(200).json(status);
   } catch (error) {
+    if (sendAuthIdentityError(res, error)) {
+      return;
+    }
     next(error);
   }
 };
@@ -75,7 +70,7 @@ export const getEnrollmentStatus = async (req, res, next) => {
 export const getCourseDetails = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { learner_id: learnerId } = req.query;
+    const learnerId = getAuthenticatedLearnerId(req);
     const requesterRole =
       req.user?.role ||
       req.headers['x-user-role'] ||
@@ -103,6 +98,9 @@ export const getCourseDetails = async (req, res, next) => {
 
     res.status(200).json(course);
   } catch (error) {
+    if (sendAuthIdentityError(res, error)) {
+      return;
+    }
     next(error);
   }
 };
@@ -114,14 +112,8 @@ export const getCourseDetails = async (req, res, next) => {
 export const registerForCourse = async (req, res, next) => {
   try {
     const { id: courseId } = req.params;
-    const { learner_id, learner_name, learner_company, company_id } = req.body;
-
-    if (!learner_id) {
-      return res.status(400).json({
-        error: 'Bad Request',
-        message: 'learner_id is required'
-      });
-    }
+    const learnerId = getAuthenticatedLearnerId(req);
+    const { learner_name, learner_company, company_id } = req.body;
 
     if (!courseId) {
       return res.status(400).json({
@@ -131,7 +123,7 @@ export const registerForCourse = async (req, res, next) => {
     }
 
     const result = await coursesService.registerLearner(courseId, {
-      learner_id,
+      learner_id: learnerId,
       learner_name,
       learner_company,
       company_id
@@ -139,6 +131,9 @@ export const registerForCourse = async (req, res, next) => {
 
     res.status(201).json(result);
   } catch (error) {
+    if (sendAuthIdentityError(res, error)) {
+      return;
+    }
     if (error.code === '23505') { // PostgreSQL unique violation
       return res.status(409).json({
         error: 'Conflict',
@@ -156,14 +151,7 @@ export const registerForCourse = async (req, res, next) => {
 export const cancelEnrollment = async (req, res, next) => {
   try {
     const { id: courseId } = req.params;
-    const { learner_id } = req.body;
-
-    if (!learner_id) {
-      return res.status(400).json({
-        error: 'Bad Request',
-        message: 'learner_id is required'
-      });
-    }
+    const learnerId = getAuthenticatedLearnerId(req);
 
     if (!courseId) {
       return res.status(400).json({
@@ -173,11 +161,14 @@ export const cancelEnrollment = async (req, res, next) => {
     }
 
     const result = await coursesService.cancelEnrollment(courseId, {
-      learner_id
+      learner_id: learnerId
     });
 
     res.status(200).json(result);
   } catch (error) {
+    if (sendAuthIdentityError(res, error)) {
+      return;
+    }
     if (error.status === 404) {
       return res.status(404).json({
         error: 'Not Found',
@@ -195,19 +186,13 @@ export const cancelEnrollment = async (req, res, next) => {
 export const updateCourseProgress = async (req, res, next) => {
   try {
     const { id: courseId } = req.params;
-    const { learner_id: learnerId, lesson_id: lessonId, completed = true } = req.body;
+    const learnerId = getAuthenticatedLearnerId(req);
+    const { lesson_id: lessonId, completed = true } = req.body;
 
     if (!courseId) {
       return res.status(400).json({
         error: 'Bad Request',
         message: 'Course ID is required'
-      });
-    }
-
-    if (!learnerId) {
-      return res.status(400).json({
-        error: 'Bad Request',
-        message: 'learner_id is required'
       });
     }
 
@@ -226,6 +211,9 @@ export const updateCourseProgress = async (req, res, next) => {
 
     res.status(200).json(result);
   } catch (error) {
+    if (sendAuthIdentityError(res, error)) {
+      return;
+    }
     if (error.status === 404) {
       return res.status(404).json({
         error: 'Not Found',

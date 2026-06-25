@@ -3,16 +3,19 @@
  * Handles assessment creation requests from frontend
  */
 
-import { sendToAssessment } from '../services/gateways/assessmentGateway.js';
+import assessmentGateway from '../services/gateways/assessmentGateway.js';
 import courseRepository from '../repositories/CourseRepository.js';
+import {
+  getAuthenticatedLearnerId,
+  sendAuthIdentityError
+} from '../utils/authHelpers.js';
 
 /**
  * Start assessment for a learner
  * POST /api/v1/courses/:id/assessment/start
  * 
- * Request body (optional - uses headers if not provided):
+ * Request body (optional):
  * {
- *   "learner_id": "uuid" (optional, from X-User-Id header),
  *   "learner_name": "string" (optional, from X-User-Name header)
  * }
  * 
@@ -26,7 +29,7 @@ import courseRepository from '../repositories/CourseRepository.js';
 export const startAssessment = async (req, res, next) => {
   try {
     const courseId = req.params.id;
-    const learnerId = req.body.learner_id || req.headers['x-user-id'] || req.headers['X-User-Id'];
+    const learnerId = getAuthenticatedLearnerId(req);
     const learnerName = req.body.learner_name || req.headers['x-user-name'] || req.headers['X-User-Name'];
 
     // Validate required fields
@@ -34,13 +37,6 @@ export const startAssessment = async (req, res, next) => {
       return res.status(400).json({
         error: 'Bad Request',
         message: 'Course ID is required'
-      });
-    }
-
-    if (!learnerId) {
-      return res.status(400).json({
-        error: 'Bad Request',
-        message: 'Learner ID is required (provide in body or X-User-Id header)'
       });
     }
 
@@ -63,7 +59,7 @@ export const startAssessment = async (req, res, next) => {
     // Send request to Assessment service via Coordinator
     // Flow: Course Builder → Coordinator → Assessment Service
     console.log('[Assessment Controller] Routing request through Coordinator to Assessment service...');
-    const assessmentResponse = await sendToAssessment(
+    const assessmentResponse = await assessmentGateway.sendToAssessment(
       course,
       learnerId,
       learnerName || 'Learner'
@@ -84,6 +80,9 @@ export const startAssessment = async (req, res, next) => {
       expires_in: assessmentResponse?.expires_in || 900
     });
   } catch (error) {
+    if (sendAuthIdentityError(res, error)) {
+      return;
+    }
     console.error('[Assessment Controller] Error:', error);
     return res.status(500).json({
       error: 'Internal Server Error',
