@@ -8,7 +8,8 @@ export default {
   testEnvironment: 'node',
   testMatch: [
     '**/__tests__/learnerProgressIsolation.test.js',
-    '**/__tests__/coordinatorRequestAuth.test.js'
+    '**/__tests__/coordinatorRequestAuth.test.js',
+    '**/__tests__/publicRoutes.test.js'
   ],
   setupFilesAfterEnv: [path.join(__dirname, 'jest.setup.js')],
   transform: {}

@@ -6,7 +6,6 @@ export const AUTH_REQUESTER_SERVICE =
 
 export const PUBLIC_ROUTES = [
   { method: 'GET', pattern: /^\/health$/ },
-  { method: 'OPTIONS', pattern: /.*/ },
   { method: 'POST', pattern: /^\/api\/fill-content-metrics\/?$/ },
   { method: 'POST', pattern: /^\/api\/v1\/courses\/input\/?$/ },
   { method: 'POST', pattern: /^\/api\/v1\/directory\/trigger-learning-path\/?$/ }
@@ -18,10 +17,13 @@ export const isMockAuthEnabled = () =>
   process.env.ENABLE_MOCK_AUTH === 'true' && !isProduction();
 
 export const isPublicRoute = (req) => {
+  if (req.method === 'OPTIONS') {
+    return true;
+  }
+
   const path = req.path || req.originalUrl?.split('?')[0] || '';
   return PUBLIC_ROUTES.some(
-    ({ method, pattern }) =>
-      (method === req.method || method === 'OPTIONS') && pattern.test(path)
+    ({ method, pattern }) => method === req.method && pattern.test(path)
   );
 };
 
