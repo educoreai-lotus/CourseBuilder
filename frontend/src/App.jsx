@@ -26,6 +26,7 @@ import SignInRequired from './pages/SignInRequired.jsx'
 import { useRole } from './hooks/useRole.js'
 import { useAuth } from './auth/AuthContext.jsx'
 import { initializeEducoreBotIfAuthenticated } from './auth/initializeEducoreBotIfAuthenticated.js'
+import { AuthIdentityLoader } from './auth/AuthIdentityLoader.jsx'
 
 function LegacyCourseRedirect() {
   const { id } = useParams()
@@ -133,7 +134,9 @@ export default function App() {
     <ErrorBoundary>
       <AuthProvider>
         <AppProvider>
-          <AppShell />
+          <AuthIdentityLoader>
+            <AppShell />
+          </AuthIdentityLoader>
         </AppProvider>
       </AuthProvider>
     </ErrorBoundary>

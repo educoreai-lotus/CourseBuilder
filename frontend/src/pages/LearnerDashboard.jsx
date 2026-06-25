@@ -12,7 +12,7 @@ import { filterPersonalizedCourses, filterMarketplaceCourses } from '../utils/co
 dayjs.extend(relativeTime)
 
 export default function LearnerDashboard() {
-  const { showToast, userProfile } = useApp()
+  const { showToast, userProfile, identityReady } = useApp()
   const [recommended, setRecommended] = useState([])
   const [personalizedCoursesList, setPersonalizedCoursesList] = useState([])
   const [marketplaceCoursesList, setMarketplaceCoursesList] = useState([])
@@ -21,8 +21,11 @@ export default function LearnerDashboard() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    if (!identityReady) {
+      return
+    }
     loadDashboard()
-  }, [userProfile?.id])
+  }, [userProfile?.id, identityReady])
 
   const loadDashboard = async () => {
     setLoading(true)
@@ -121,7 +124,7 @@ export default function LearnerDashboard() {
           <section className="hero-spotlight text-center">
             <p className="text-sm font-semibold uppercase tracking-[0.4em] text-[var(--primary-cyan)]">Learner HQ</p>
             <h1 className="text-4xl font-bold text-[var(--text-primary)]">
-              Welcome back, {userProfile?.name || 'Learner'}!
+              Welcome back{userProfile?.name ? `, ${userProfile.name}` : ''}!
             </h1>
             <p className="mx-auto mt-1 max-w-2xl text-base leading-7 text-[var(--text-secondary)]">
               Continue your learning journey and discover new skills curated just for you.

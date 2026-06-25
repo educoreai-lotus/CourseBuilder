@@ -20,11 +20,11 @@ const api = axios.create({
 const roleProfiles = {
   learner: {
     id: '50a630f4-826e-45aa-8f70-653e5e592fc3',
-    name: 'Jasmine Mograby'
+    name: 'Dev Learner'
   },
   trainer: {
     id: '20000000-0000-0000-0000-000000000001',
-    name: 'Tristan Trainer'
+    name: 'Dev Trainer'
   }
 }
 
@@ -89,6 +89,10 @@ api.interceptors.response.use(
 
 export function getCourses(params = {}) {
   return api.get('/courses', { params }).then((r) => r.data)
+}
+
+export function fetchAuthContext() {
+  return api.get('/auth/context').then((r) => r.data)
 }
 
 export function getCourseById(id, params = {}) {
@@ -243,6 +247,7 @@ export const fetchEnrichmentAssets = (payload) => enrichAssetsRequest(payload)
 
 export default {
   getCourses,
+  fetchAuthContext,
   getCourseById,
   registerLearner,
   submitFeedback,

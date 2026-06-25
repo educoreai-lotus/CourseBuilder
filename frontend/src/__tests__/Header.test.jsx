@@ -8,6 +8,15 @@ jest.mock('../../src/auth/logout.js', () => ({
   logout: jest.fn()
 }))
 
+jest.mock('../../src/services/apiService.js', () => ({
+  fetchAuthContext: jest.fn(() =>
+    Promise.resolve({
+      success: true,
+      data: { directoryUserId: 'dev-learner-id', role: 'learner', authenticated: true }
+    })
+  )
+}))
+
 test('renders header and navigation', () => {
   render(
     <AuthProvider>

@@ -4,8 +4,7 @@ import React, {
   useMemo,
   useState,
   useEffect,
-  useCallback,
-  useRef
+  useCallback
 } from 'react'
 
 const AppContext = createContext(null)
@@ -13,21 +12,18 @@ const AppContext = createContext(null)
 const ROLE_STORAGE_KEY = 'coursebuilder:userRole'
 const allowedRoles = ['learner', 'trainer']
 
-const roleProfiles = {
-  learner: {
-    id: '50a630f4-826e-45aa-8f70-653e5e592fc3',
-    name: 'Jasmine Mograby',
-    email: 'jasmine.mograby@example.com',
-    company: 'Emerald Learning',
-    avatar: 'JM'
-  },
-  trainer: {
-    id: '20000000-0000-0000-0000-000000000001',
-    name: 'Tristan Trainer',
-    email: 'tristan.trainer@example.com',
-    company: 'Emerald Learning',
-    avatar: 'TT'
-  }
+const EMPTY_PROFILE = {
+  id: null,
+  directoryUserId: null,
+  userId: null,
+  name: null,
+  email: null,
+  company: null,
+  avatar: null,
+  primaryRole: '',
+  isTrainer: false,
+  isSystemAdmin: false,
+  authenticated: false
 }
 
 const getStoredRole = () => {
@@ -38,18 +34,16 @@ const getStoredRole = () => {
   return storedRole && allowedRoles.includes(storedRole) ? storedRole : 'learner'
 }
 
-const getProfileForRole = (role) => roleProfiles[role] || roleProfiles.learner
-
 export function AppProvider({ children }) {
-  const [theme, setTheme] = useState('day-mode') // 'day-mode' or 'night-mode'
+  const [theme, setTheme] = useState('day-mode')
   const [userRole, setUserRoleState] = useState(getStoredRole)
-  const [userProfile, setUserProfileState] = useState(() => getProfileForRole(getStoredRole()))
+  const [userProfile, setUserProfileState] = useState(EMPTY_PROFILE)
+  const [identityReady, setIdentityReady] = useState(false)
+  const [identityLoading, setIdentityLoading] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
-  const [toast, setToast] = useState(null) // { message, type: 'success' | 'error' | 'info' }
-  const pendingUserIdRef = useRef(null) // Store userId from URL to apply after role is set
-  
-  // Accessibility features
+  const [toast, setToast] = useState(null)
+
   const [accessibility, setAccessibility] = useState({
     colorblind: false,
     highContrast: false,
@@ -60,20 +54,19 @@ export function AppProvider({ children }) {
     const root = document.documentElement
     root.className = theme
     root.setAttribute('data-theme', theme === 'day-mode' ? 'light' : 'dark')
-    
-    // Apply accessibility classes
+
     if (accessibility.colorblind) {
       root.classList.add('colorblind-friendly')
     } else {
       root.classList.remove('colorblind-friendly')
     }
-    
+
     if (accessibility.highContrast) {
       root.classList.add('high-contrast')
     } else {
       root.classList.remove('high-contrast')
     }
-    
+
     if (accessibility.largeFont) {
       root.classList.add('large-font')
     } else {
@@ -92,67 +85,16 @@ export function AppProvider({ children }) {
   const setUserRole = useCallback((role) => {
     const normalizedRole = allowedRoles.includes(role) ? role : 'learner'
     setUserRoleState(normalizedRole)
-    setUserProfileState(roleProfiles[normalizedRole])
     if (typeof window !== 'undefined') {
       window.localStorage.setItem(ROLE_STORAGE_KEY, normalizedRole)
     }
   }, [])
 
   useEffect(() => {
-    // Normalize any legacy roles to supported ones
     if (!allowedRoles.includes(userRole)) {
       setUserRole('learner')
     }
   }, [userRole, setUserRole])
-
-  useEffect(() => {
-    const fallbackRole = allowedRoles.includes(userRole) ? userRole : 'learner'
-    setUserProfileState(getProfileForRole(fallbackRole))
-  }, [userRole])
-
-  // Handle userId from URL query parameters
-  // Always use Jasmine Mograby's ID (from apiService.js) regardless of URL parameter
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-
-    const urlParams = new URLSearchParams(window.location.search)
-    const userIdFromUrl = urlParams.get('userId')
-
-    // Always use Jasmine Mograby's ID as the learner ID
-    const jasmineLearnerId = '50a630f4-826e-45aa-8f70-653e5e592fc3'
-    
-    if (userIdFromUrl) {
-      // Set role to learner if userId is provided (since it's typically for learner dashboard)
-      const currentRole = getStoredRole()
-      if (currentRole !== 'learner') {
-        setUserRole('learner')
-      } else {
-        // If role is already learner, apply Jasmine's ID immediately (override URL userId)
-        setUserProfileState(prev => ({
-          ...prev,
-          id: jasmineLearnerId
-        }))
-        pendingUserIdRef.current = null
-      }
-
-      // Clean up URL by removing userId parameter (optional - keeps URL clean)
-      const newUrl = new URL(window.location.href)
-      newUrl.searchParams.delete('userId')
-      window.history.replaceState({}, '', newUrl.toString())
-    }
-  }, [setUserRole, setUserProfileState]) // Run once on mount
-
-  // Apply Jasmine's ID after role is set to learner
-  useEffect(() => {
-    if (pendingUserIdRef.current && userRole === 'learner') {
-      const jasmineLearnerId = '50a630f4-826e-45aa-8f70-653e5e592fc3'
-      setUserProfileState(prev => ({
-        ...prev,
-        id: jasmineLearnerId
-      }))
-      pendingUserIdRef.current = null
-    }
-  }, [userRole, setUserProfileState])
 
   const showToast = (message, type = 'success') => {
     setToast({ message, type })
@@ -177,9 +119,25 @@ export function AppProvider({ children }) {
     showToast,
     userProfile,
     setUserProfile,
+    identityReady,
+    setIdentityReady,
+    identityLoading,
+    setIdentityLoading,
     accessibility,
     updateAccessibility
-  }), [theme, userRole, loading, error, toast, userProfile, accessibility, setUserProfile])
+  }), [
+    theme,
+    userRole,
+    loading,
+    error,
+    toast,
+    userProfile,
+    identityReady,
+    identityLoading,
+    accessibility,
+    setUserProfile,
+    setUserRole
+  ])
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>
 }

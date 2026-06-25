@@ -9,6 +9,7 @@ import integrationRoutes from './routes/integration.routes.js';
 // Old integration routes removed - using unified endpoint only
 import enrichmentRoutes from './routes/enrichmentRoutes.js';
 import enrichmentAssetsRoutes from './routes/enrichmentAssetsRoutes.js';
+import authRoutes from './routes/auth.routes.js';
 import { authenticateRequest } from './middleware/auth.middleware.js';
 import { apiLimiter } from './middleware/rateLimiter.middleware.js';
 import { startScheduledPublishingJob } from './services/scheduledPublishing.service.js';
@@ -146,6 +147,7 @@ app.get('/health', (req, res) => {
 // /api/v1/courses/input must be registered before /api/v1/courses/:id
 // Note: /input route is also defined in coursesRoutes, but inputRoutes takes precedence
 app.use('/api/v1', inputRoutes);
+app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/courses', coursesRoutes);
 app.use('/api/v1', feedbackRoutes);
 app.use('/api/v1/lessons', lessonsRoutes);

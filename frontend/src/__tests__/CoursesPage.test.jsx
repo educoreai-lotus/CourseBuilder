@@ -17,10 +17,20 @@ jest.mock('../../src/services/apiService.js', () => ({
           description: 'Introduction to AI fundamentals',
           level: 'beginner',
           rating: 4.5,
-          course_type: 'trainer', // Required for marketplace course filter
+          course_type: 'trainer',
           created_by_user_id: '20000000-0000-0000-0000-000000000001'
         }
       ]
+    })
+  ),
+  fetchAuthContext: jest.fn(() =>
+    Promise.resolve({
+      success: true,
+      data: {
+        directoryUserId: 'dev-learner-id',
+        role: 'learner',
+        authenticated: true
+      }
     })
   )
 }))

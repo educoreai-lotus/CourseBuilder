@@ -8,11 +8,14 @@ import CourseCard from '../components/CourseCard.jsx'
 import { isMarketplace } from '../utils/courseTypeUtils.js'
 
 export default function LearnerLibrary() {
-  const { showToast, userProfile, userRole } = useApp()
+  const { showToast, userProfile, userRole, identityReady } = useApp()
   const [courses, setCourses] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    if (!identityReady) {
+      return
+    }
     if (userRole !== 'learner') {
       setCourses([])
       setLoading(false)
@@ -21,7 +24,7 @@ export default function LearnerLibrary() {
     if (userProfile?.id) {
       loadProgress(userProfile.id)
     }
-  }, [userProfile?.id, userRole])
+  }, [userProfile?.id, userRole, identityReady])
 
   const loadProgress = async (learnerId = userProfile?.id) => {
     if (!learnerId) {
