@@ -68,6 +68,13 @@ export async function validateAccessTokenWithCoordinator(accessToken, route, met
 
     const data = await response.json().catch(() => ({}));
 
+    console.info('[CourseBuilder Auth Debug] coordinator raw shape:', {
+      hasTopLevelResponse: Boolean(data?.response),
+      hasDataResponse: Boolean(data?.data?.response),
+      hasTopLevelValid: typeof data?.valid !== 'undefined',
+      topLevelKeys: data && typeof data === 'object' ? Object.keys(data) : []
+    });
+
     if (!response.ok) {
       console.warn('[CourseBuilder Auth] Coordinator HTTP error:', {
         route,
@@ -79,6 +86,19 @@ export async function validateAccessTokenWithCoordinator(accessToken, route, met
     }
 
     const validation = extractValidationPayload(data);
+
+    console.info('[CourseBuilder Auth Debug] extracted validation:', {
+      valid: validation?.valid === true,
+      authState: validation?.auth_state || validation?.authState || '',
+      hasDirectoryUserIdSnake: Boolean(validation?.directory_user_id),
+      hasDirectoryUserIdCamel: Boolean(validation?.directoryUserId),
+      hasOrganizationIdSnake: Boolean(validation?.organization_id),
+      hasPrimaryRoleSnake: Boolean(validation?.primary_role),
+      hasNewAccessToken: Boolean(validation?.new_access_token || validation?.newAccessToken),
+      validationKeys:
+        validation && typeof validation === 'object' ? Object.keys(validation) : []
+    });
+
     const isValid = validation?.valid === true;
     console.info('[CourseBuilder Auth] Coordinator validation received:', {
       route,
@@ -96,8 +116,21 @@ export async function validateAccessTokenWithCoordinator(accessToken, route, met
     const newAccessToken =
       validation.new_access_token || validation.newAccessToken || data.new_access_token || null;
 
+    const user = buildUserFromValidation(validation);
+
+    console.info('[CourseBuilder Auth Debug] built req.user identity:', {
+      hasDirectoryUserId: Boolean(user?.directoryUserId),
+      hasUserId: Boolean(user?.userId),
+      hasId: Boolean(user?.id),
+      hasOrganizationId: Boolean(user?.organizationId),
+      primaryRole: user?.primaryRole || '',
+      role: user?.role || '',
+      isTrainer: user?.isTrainer === true,
+      isSystemAdmin: user?.isSystemAdmin === true
+    });
+
     return {
-      user: buildUserFromValidation(validation),
+      user,
       newAccessToken: newAccessToken || null
     };
   } catch (error) {

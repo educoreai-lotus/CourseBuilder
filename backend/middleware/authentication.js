@@ -57,6 +57,17 @@ export const authenticate = async (req, res, next) => {
 
     req.user = user;
 
+    console.info('[CourseBuilder Auth Debug] assigned req.user identity:', {
+      hasDirectoryUserId: Boolean(req.user?.directoryUserId),
+      hasUserId: Boolean(req.user?.userId),
+      hasId: Boolean(req.user?.id),
+      hasOrganizationId: Boolean(req.user?.organizationId),
+      primaryRole: req.user?.primaryRole || '',
+      role: req.user?.role || '',
+      isTrainer: req.user?.isTrainer === true,
+      isSystemAdmin: req.user?.isSystemAdmin === true
+    });
+
     if (newAccessToken) {
       res.setHeader('X-New-Access-Token', newAccessToken);
     }
