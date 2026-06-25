@@ -3,31 +3,33 @@ import { feedbackController } from '../controllers/feedback.controller.js';
 import { authorizeRoles } from '../middleware/auth.middleware.js';
 import { feedbackLimiter } from '../middleware/rateLimiter.middleware.js';
 
+const LEARNER_FLOW_ROLES = ['learner', 'trainer', 'admin'];
+
 const router = express.Router();
 
 /**
  * POST /api/v1/courses/:id/feedback
  * Submit feedback for a course
  */
-router.post('/courses/:id/feedback', feedbackLimiter, authorizeRoles('learner'), feedbackController.submitFeedback);
+router.post('/courses/:id/feedback', feedbackLimiter, authorizeRoles(...LEARNER_FLOW_ROLES), feedbackController.submitFeedback);
 
 /**
  * GET /api/v1/courses/:id/feedback/self
  * Retrieve the authenticated learner's feedback for a course
  */
-router.get('/courses/:id/feedback/self', authorizeRoles('learner'), feedbackController.getLearnerFeedback);
+router.get('/courses/:id/feedback/self', authorizeRoles(...LEARNER_FLOW_ROLES), feedbackController.getLearnerFeedback);
 
 /**
  * PUT /api/v1/courses/:id/feedback
  * Update existing feedback for a course
  */
-router.put('/courses/:id/feedback', authorizeRoles('learner'), feedbackController.updateFeedback);
+router.put('/courses/:id/feedback', authorizeRoles(...LEARNER_FLOW_ROLES), feedbackController.updateFeedback);
 
 /**
  * DELETE /api/v1/courses/:id/feedback
  * Remove learner feedback for a course
  */
-router.delete('/courses/:id/feedback', authorizeRoles('learner'), feedbackController.deleteFeedback);
+router.delete('/courses/:id/feedback', authorizeRoles(...LEARNER_FLOW_ROLES), feedbackController.deleteFeedback);
 
 /**
  * GET /api/v1/feedback/:courseId

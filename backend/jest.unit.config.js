@@ -9,6 +9,7 @@ export default {
   testMatch: [
     '**/__tests__/learnerProgressIsolation.test.js',
     '**/__tests__/learnerDataIsolation.test.js',
+    '**/__tests__/learnerFlowAuthorization.test.js',
     '**/__tests__/assessmentLearnerIsolation.test.js',
     '**/__tests__/coordinatorRequestAuth.test.js',
     '**/__tests__/publicRoutes.test.js',

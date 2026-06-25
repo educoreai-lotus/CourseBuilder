@@ -5,6 +5,9 @@ import { assessmentController } from '../controllers/assessment.controller.js';
 import { authorizeRoles } from '../middleware/auth.middleware.js';
 import { courseCreationLimiter } from '../middleware/rateLimiter.middleware.js';
 
+/** Roles allowed on learner-facing flows (Course Builder is learner-only for all authenticated users). */
+const LEARNER_FLOW_ROLES = ['learner', 'trainer', 'admin'];
+
 const router = express.Router();
 
 /**
@@ -37,7 +40,6 @@ router.get('/', coursesController.browseCourses);
 /**
  * GET /api/v1/courses/:id/enrollment-status
  * Get enrollment status for a learner in a course
- * Query param: learner_id
  * Must be before /:id route
  */
 router.get('/:id/enrollment-status', coursesController.getEnrollmentStatus);
@@ -47,7 +49,7 @@ router.get('/:id/enrollment-status', coursesController.getEnrollmentStatus);
  * Retrieve the authenticated learner's feedback for a course
  * Must be before /:id route to avoid conflicts
  */
-router.get('/:id/feedback/self', authorizeRoles('learner'), feedbackController.getLearnerFeedback);
+router.get('/:id/feedback/self', authorizeRoles(...LEARNER_FLOW_ROLES), feedbackController.getLearnerFeedback);
 
 /**
  * GET /api/v1/courses/:id/feedback/analytics
@@ -72,19 +74,19 @@ router.put('/:id', authorizeRoles('trainer', 'admin'), coursesController.updateC
  * POST /api/v1/courses/:id/register
  * Register a learner for a course
  */
-router.post('/:id/register', authorizeRoles('learner'), coursesController.registerForCourse);
+router.post('/:id/register', authorizeRoles(...LEARNER_FLOW_ROLES), coursesController.registerForCourse);
 
 /**
  * DELETE /api/v1/courses/:id/enrollment
  * Cancel enrollment for a course
  */
-router.delete('/:id/enrollment', authorizeRoles('learner'), cancelEnrollment);
+router.delete('/:id/enrollment', authorizeRoles(...LEARNER_FLOW_ROLES), cancelEnrollment);
 
 /**
  * PATCH /api/v1/courses/:id/progress
  * Update learner lesson completion progress
  */
-router.patch('/:id/progress', authorizeRoles('learner'), coursesController.updateCourseProgress);
+router.patch('/:id/progress', authorizeRoles(...LEARNER_FLOW_ROLES), coursesController.updateCourseProgress);
 
 /**
  * POST /api/v1/courses/:id/validate
@@ -120,8 +122,6 @@ router.get('/:id/versions', coursesController.getCourseVersions);
  * POST /api/v1/courses/:id/assessment/start
  * Start assessment for a learner
  */
-router.post('/:id/assessment/start', authorizeRoles('learner'), assessmentController.startAssessment);
+router.post('/:id/assessment/start', authorizeRoles(...LEARNER_FLOW_ROLES), assessmentController.startAssessment);
 
 export default router;
-
-

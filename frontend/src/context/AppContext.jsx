@@ -10,7 +10,18 @@ import React, {
 const AppContext = createContext(null)
 
 const ROLE_STORAGE_KEY = 'coursebuilder:userRole'
-const allowedRoles = ['learner', 'trainer']
+const LEARNER_UI_ROLE = 'learner'
+
+const normalizeStoredRole = () => {
+  if (typeof window === 'undefined') {
+    return LEARNER_UI_ROLE
+  }
+  const storedRole = window.localStorage.getItem(ROLE_STORAGE_KEY)
+  if (storedRole !== LEARNER_UI_ROLE) {
+    window.localStorage.setItem(ROLE_STORAGE_KEY, LEARNER_UI_ROLE)
+  }
+  return LEARNER_UI_ROLE
+}
 
 const EMPTY_PROFILE = {
   id: null,
@@ -26,17 +37,9 @@ const EMPTY_PROFILE = {
   authenticated: false
 }
 
-const getStoredRole = () => {
-  if (typeof window === 'undefined') {
-    return 'learner'
-  }
-  const storedRole = window.localStorage.getItem(ROLE_STORAGE_KEY)
-  return storedRole && allowedRoles.includes(storedRole) ? storedRole : 'learner'
-}
-
 export function AppProvider({ children }) {
   const [theme, setTheme] = useState('day-mode')
-  const [userRole, setUserRoleState] = useState(getStoredRole)
+  const [userRole, setUserRoleState] = useState(normalizeStoredRole)
   const [userProfile, setUserProfileState] = useState(EMPTY_PROFILE)
   const [identityReady, setIdentityReady] = useState(false)
   const [identityLoading, setIdentityLoading] = useState(false)
@@ -82,17 +85,16 @@ export function AppProvider({ children }) {
     setUserProfileState(profile)
   }, [])
 
-  const setUserRole = useCallback((role) => {
-    const normalizedRole = allowedRoles.includes(role) ? role : 'learner'
-    setUserRoleState(normalizedRole)
+  const setUserRole = useCallback((_role) => {
+    setUserRoleState(LEARNER_UI_ROLE)
     if (typeof window !== 'undefined') {
-      window.localStorage.setItem(ROLE_STORAGE_KEY, normalizedRole)
+      window.localStorage.setItem(ROLE_STORAGE_KEY, LEARNER_UI_ROLE)
     }
   }, [])
 
   useEffect(() => {
-    if (!allowedRoles.includes(userRole)) {
-      setUserRole('learner')
+    if (userRole !== LEARNER_UI_ROLE) {
+      setUserRole(LEARNER_UI_ROLE)
     }
   }, [userRole, setUserRole])
 

@@ -1,32 +1,27 @@
 import { useMemo } from 'react'
 import { useApp } from '../context/AppContext.jsx'
 
+const LEARNER_UI_ROLE = 'learner'
+
 export function useRole() {
-  const { userRole, setUserRole } = useApp()
+  const { setUserRole } = useApp()
 
-  const helpers = useMemo(() => {
-    const isLearner = userRole === 'learner'
-    const isTrainer = userRole === 'trainer'
+  const helpers = useMemo(
+    () => ({
+      isLearner: true,
+      isTrainer: false,
+      availableRoles: [{ value: LEARNER_UI_ROLE, label: 'Learner' }]
+    }),
+    []
+  )
 
-    return {
-      isLearner,
-      isTrainer,
-      availableRoles: [
-        { value: 'learner', label: 'Learner' },
-        { value: 'trainer', label: 'Trainer' }
-      ]
-    }
-  }, [userRole])
-
-  const switchRole = (role) => {
-    setUserRole(role)
+  const switchRole = (_role) => {
+    setUserRole(LEARNER_UI_ROLE)
   }
 
   return {
-    userRole,
+    userRole: LEARNER_UI_ROLE,
     switchRole,
     ...helpers
   }
 }
-
-

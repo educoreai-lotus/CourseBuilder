@@ -1,5 +1,3 @@
-const ALLOWED_UI_ROLES = ['learner', 'trainer'];
-
 /**
  * Map GET /auth/context response to AppContext userProfile fields.
  * Does not invent display names.
@@ -20,13 +18,7 @@ export function mapAuthContextToProfile(data = {}) {
   };
 }
 
-export function mapAuthContextToUiRole(data = {}) {
-  const role = data.role || 'learner';
-  if (ALLOWED_UI_ROLES.includes(role)) {
-    return role;
-  }
-  if (role === 'admin' || data.isSystemAdmin === true || data.isTrainer === true) {
-    return 'trainer';
-  }
+/** Course Builder is learner-only: JWT trainer/admin flags do not change UI role. */
+export function mapAuthContextToUiRole(_data = {}) {
   return 'learner';
 }

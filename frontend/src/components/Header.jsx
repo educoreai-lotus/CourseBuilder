@@ -1,9 +1,8 @@
 import { useState, useEffect } from 'react'
-import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
+import { Link, NavLink, useLocation } from 'react-router-dom'
 import { useApp } from '../context/AppContext'
 import logoLight from '../assets/logo-light.png'
 import logoDark from '../assets/logo-dark.png'
-import { useRole } from '../hooks/useRole.js'
 import { useAuth } from '../auth/AuthContext.jsx'
 import { logout } from '../auth/logout.js'
 
@@ -14,16 +13,9 @@ const learnerLinks = [
   { to: '/learner/enrolled', label: 'My Library', icon: 'fa-solid fa-book-open-reader' }
 ]
 
-const trainerLinks = [
-  { to: '/trainer/dashboard', label: 'Dashboard', icon: 'fa-solid fa-chalkboard-user' },
-  { to: '/trainer/courses', label: 'Courses', icon: 'fa-solid fa-layer-group' }
-]
-
 export default function Header() {
-  const navigate = useNavigate()
   const location = useLocation()
   const { theme, toggleTheme } = useApp()
-  const { userRole, switchRole, isLearner, availableRoles } = useRole()
   const { isAuthenticated } = useAuth()
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [isLoggingOut, setIsLoggingOut] = useState(false)
@@ -31,14 +23,6 @@ export default function Header() {
   useEffect(() => {
     setIsMobileMenuOpen(false)
   }, [location.pathname])
-
-  const navItems = isLearner ? learnerLinks : trainerLinks
-
-  const handleRoleChange = (role) => {
-    switchRole(role)
-    navigate(role === 'trainer' ? '/trainer/dashboard' : '/learner/dashboard', { replace: true })
-    setIsMobileMenuOpen(false)
-  }
 
   const handleLogout = async () => {
     if (isLoggingOut) return
@@ -74,7 +58,7 @@ export default function Header() {
     <header className="sticky top-0 z-[1030] h-16 md:h-[64px] bg-white/95 dark:bg-[#0f172a]/95 backdrop-blur border-b border-neutral-200 dark:border-neutral-700 shadow-sm">
       <div className="container mx-auto px-4 md:px-6 h-full flex items-center justify-between">
         <Link
-          to={isLearner ? '/learner/dashboard' : '/trainer/dashboard'}
+          to="/learner/dashboard"
           className="flex items-center gap-3"
           onClick={() => setIsMobileMenuOpen(false)}
         >
@@ -86,23 +70,10 @@ export default function Header() {
         </Link>
 
         <nav className="hidden md:flex">
-          <ul className="flex items-center gap-2">{navItems.map(renderNavLink)}</ul>
+          <ul className="flex items-center gap-2">{learnerLinks.map(renderNavLink)}</ul>
         </nav>
 
         <div className="flex items-center gap-2">
-          <select
-            value={userRole}
-            onChange={(event) => handleRoleChange(event.target.value)}
-            className="hidden md:block rounded-input border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-surface-dark text-sm px-3 py-2 text-neutral-900 dark:text-neutral-50"
-            aria-label="Switch workspace role"
-          >
-            {availableRoles.map((role) => (
-              <option key={role.value} value={role.value}>
-                {role.label}
-              </option>
-            ))}
-          </select>
-
           {isAuthenticated && (
             <button
               type="button"
@@ -139,7 +110,7 @@ export default function Header() {
         <div className="md:hidden bg-white dark:bg-surface-dark border-t border-neutral-200 dark:border-neutral-700">
           <nav className="container mx-auto px-4 py-4">
             <div className="flex flex-col gap-3">
-              {navItems.map((item) => (
+              {learnerLinks.map((item) => (
                 <NavLink
                   key={item.to}
                   to={item.to}
@@ -150,19 +121,6 @@ export default function Header() {
                   <span>{item.label}</span>
                 </NavLink>
               ))}
-
-              <select
-                value={userRole}
-                onChange={(event) => handleRoleChange(event.target.value)}
-                className="rounded-input border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-surface-dark text-sm px-3 py-2 text-neutral-900 dark:text-neutral-50"
-                aria-label="Switch workspace role"
-              >
-                {availableRoles.map((role) => (
-                  <option key={role.value} value={role.value}>
-                    {role.label}
-                  </option>
-                ))}
-              </select>
 
               {isAuthenticated && (
                 <button

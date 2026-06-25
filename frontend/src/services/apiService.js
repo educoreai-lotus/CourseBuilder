@@ -21,20 +21,10 @@ const roleProfiles = {
   learner: {
     id: '50a630f4-826e-45aa-8f70-653e5e592fc3',
     name: 'Dev Learner'
-  },
-  trainer: {
-    id: '20000000-0000-0000-0000-000000000001',
-    name: 'Dev Trainer'
   }
 }
 
-const getStoredRole = () => {
-  if (typeof window === 'undefined') {
-    return 'learner'
-  }
-  const stored = window.localStorage.getItem('coursebuilder:userRole')
-  return stored && Object.keys(roleProfiles).includes(stored) ? stored : 'learner'
-}
+const getStoredRole = () => 'learner'
 
 const isDevMockMode = () => isDev() && !getAuthToken()
 

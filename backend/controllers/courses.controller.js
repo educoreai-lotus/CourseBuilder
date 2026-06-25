@@ -22,12 +22,6 @@ export const browseCourses = async (req, res, next) => {
       limit = 10
     } = req.query;
 
-    const requesterRole =
-      req.user?.role ||
-      req.headers['x-user-role'] ||
-      req.headers['x-role'] ||
-      null;
-
     const result = await coursesService.browseCourses({
       search,
       category,
@@ -35,7 +29,7 @@ export const browseCourses = async (req, res, next) => {
       sort,
       page: parseInt(page, 10),
       limit: parseInt(limit, 10),
-      role: requesterRole
+      role: 'learner'
     });
 
     res.status(200).json(result);
@@ -71,12 +65,7 @@ export const getCourseDetails = async (req, res, next) => {
   try {
     const { id } = req.params;
     const learnerId = getAuthenticatedLearnerId(req);
-    const requesterRole =
-      req.user?.role ||
-      req.headers['x-user-role'] ||
-      req.headers['x-role'] ||
-      null;
-    
+
     if (!id) {
       return res.status(400).json({
         error: 'Bad Request',
@@ -86,7 +75,7 @@ export const getCourseDetails = async (req, res, next) => {
 
     const course = await coursesService.getCourseDetails(id, {
       learnerId,
-      role: requesterRole
+      role: 'learner'
     });
 
     if (!course) {
