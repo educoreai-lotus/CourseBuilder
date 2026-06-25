@@ -1,4 +1,8 @@
 import { coursesService } from '../services/courses.service.js';
+import {
+  getAuthenticatedLearnerId,
+  sendAuthIdentityError
+} from '../utils/authHelpers.js';
 
 /**
  * Browse courses with optional filters
@@ -539,18 +543,13 @@ export const getLessonDetails = async (req, res, next) => {
  */
 export const getLearnerProgress = async (req, res, next) => {
   try {
-    const { learnerId } = req.params;
-
-    if (!learnerId) {
-      return res.status(400).json({
-        error: 'Bad Request',
-        message: 'Learner ID is required'
-      });
-    }
-
+    const learnerId = getAuthenticatedLearnerId(req);
     const progress = await coursesService.getLearnerProgress(learnerId);
     res.status(200).json(progress);
   } catch (error) {
+    if (sendAuthIdentityError(res, error)) {
+      return;
+    }
     next(error);
   }
 };
