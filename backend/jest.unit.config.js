@@ -13,7 +13,8 @@ export default {
     '**/__tests__/assessmentLearnerIsolation.test.js',
     '**/__tests__/coordinatorRequestAuth.test.js',
     '**/__tests__/publicRoutes.test.js',
-    '**/__tests__/authContext.test.js'
+    '**/__tests__/authContext.test.js',
+    '**/__tests__/postcourseCompletion.test.js'
   ],
   setupFilesAfterEnv: [path.join(__dirname, 'jest.setup.js')],
   transform: {}

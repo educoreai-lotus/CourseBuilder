@@ -228,6 +228,30 @@ Expected: assessment-service
 - final_grade: ${assessment.final_grade !== null ? assessment.final_grade : 'N/A'}
 - passed: ${assessment.passed !== null ? assessment.passed : 'N/A'}
 `);
+
+  if (assessment.exam_type === 'postcourse' && assessment.passed === true) {
+    const registration = await registrationRepository.findByLearnerAndCourse(
+      data.learner_id,
+      data.course_id
+    );
+
+    if (registration) {
+      await registrationRepository.update(registration.id, {
+        status: 'completed',
+        completed_date: new Date()
+      });
+      console.log('[Assessment Handler] Registration marked completed after postcourse pass:', {
+        registration_id: registration.id,
+        learner_id: data.learner_id,
+        course_id: data.course_id
+      });
+    } else {
+      console.warn(
+        '[Assessment Handler] Postcourse assessment passed but no registration found:',
+        { learner_id: data.learner_id, course_id: data.course_id }
+      );
+    }
+  }
   
   // If learner passed the exam, trigger DevLab request
   if (assessment.passed === true) {

@@ -8,6 +8,7 @@ import versionRepository from '../repositories/VersionRepository.js';
 import assessmentRepository from '../repositories/AssessmentRepository.js';
 import { v4 as uuidv4 } from 'uuid';
 import { cache, cached } from './cache.service.js';
+import { resolveLearnerCourseProgress } from '../utils/postcourseCompletion.js';
 
 /**
  * Browse courses with filters (internal, no cache)
@@ -272,30 +273,33 @@ const _getCourseDetailsInternal = async (courseId, options = {}) => {
           ? (completedLessons.length / totalLessons.total) * 100 
           : 0;
 
+        const registrationStatus =
+          registration?.status || enrollmentFromDict?.status || 'in_progress';
+
+        let assessmentRecord = null;
+        try {
+          assessmentRecord = await assessmentRepository.findByLearnerAndCourse(
+            normalizedLearnerId,
+            courseId
+          );
+        } catch (error) {
+          console.warn('[Course Service] Error fetching assessment:', error);
+        }
+
+        const resolvedProgress = resolveLearnerCourseProgress({
+          registrationStatus,
+          assessment: assessmentRecord,
+          lessonBasedProgress: progress
+        });
+
         learnerProgress = {
           is_enrolled: true,
           registration_id: registration?.id || null,
-          progress: Number(progress.toFixed(2)),
-          status: registration?.status || enrollmentFromDict?.status || 'in_progress',
+          progress: resolvedProgress.progress,
+          status: resolvedProgress.status,
           completed_lessons: completedLessons
         };
 
-        // Log if enrollment found via fallback (indicates potential issue)
-        if (!registration && enrollmentFromDict) {
-          console.warn(`[Enrollment] Registration not found in table but found in studentsIDDictionary for learner ${normalizedLearnerId} in course ${courseId}`);
-        }
-      } else {
-        learnerProgress = {
-          is_enrolled: false,
-          completed_lessons: []
-        };
-      }
-
-      // Get assessment result for this learner and course (if exists)
-      try {
-        console.log('[Course Service] Fetching assessment for learner:', normalizedLearnerId, 'course:', courseId);
-        const assessmentRecord = await assessmentRepository.findByLearnerAndCourse(normalizedLearnerId, courseId);
-        console.log('[Course Service] Assessment record found:', assessmentRecord ? 'YES' : 'NO', assessmentRecord);
         if (assessmentRecord) {
           assessment = {
             id: assessmentRecord.id,
@@ -306,11 +310,17 @@ const _getCourseDetailsInternal = async (courseId, options = {}) => {
             final_grade: assessmentRecord.final_grade,
             passed: assessmentRecord.passed
           };
-          console.log('[Course Service] Assessment data prepared:', assessment);
         }
-      } catch (error) {
-        console.warn('[Course Service] Error fetching assessment:', error);
-        // Continue without assessment data
+
+        // Log if enrollment found via fallback (indicates potential issue)
+        if (!registration && enrollmentFromDict) {
+          console.warn(`[Enrollment] Registration not found in table but found in studentsIDDictionary for learner ${normalizedLearnerId} in course ${courseId}`);
+        }
+      } else {
+        learnerProgress = {
+          is_enrolled: false,
+          completed_lessons: []
+        };
       }
     }
 
@@ -535,13 +545,24 @@ export const getEnrollmentStatus = async (courseId, learnerId) => {
       [courseId]
     );
 
-    const progress = totalLessons.total > 0 
-      ? (completedLessons.length / totalLessons.total) * 100 
+    const lessonBasedProgress = totalLessons.total > 0
+      ? (completedLessons.length / totalLessons.total) * 100
       : 0;
+
+    const assessment = await assessmentRepository.findByLearnerAndCourse(
+      normalizedLearnerId,
+      courseId
+    );
+    const resolvedProgress = resolveLearnerCourseProgress({
+      registrationStatus: registration.status,
+      assessment,
+      lessonBasedProgress
+    });
 
     return {
       enrolled: true,
-      progress: Number(progress.toFixed(2)),
+      progress: resolvedProgress.progress,
+      status: resolvedProgress.status,
       completedLessons: completedLessons.length
     };
   } catch (error) {
@@ -1122,16 +1143,26 @@ export const getLearnerProgress = async (learnerId) => {
         const completedLessons = Object.values(completionDict).filter(
           lessonData => lessonData[learnerId] && lessonData[learnerId].status === 'completed'
         ).length;
-        const progress = lessonsCount.total > 0 
-          ? (completedLessons / lessonsCount.total) * 100 
+        const lessonBasedProgress = lessonsCount.total > 0
+          ? (completedLessons / lessonsCount.total) * 100
           : 0;
+
+        const assessment = await assessmentRepository.findByLearnerAndCourse(
+          learnerId,
+          reg.course_id
+        );
+        const resolvedProgress = resolveLearnerCourseProgress({
+          registrationStatus: reg.status,
+          assessment,
+          lessonBasedProgress
+        });
 
         return {
           course_id: reg.course_id,
           id: reg.course_id,
           title: course.course_name,
-          progress: Number(progress.toFixed(2)),
-          status: reg.status,
+          progress: resolvedProgress.progress,
+          status: resolvedProgress.status,
           enrolled_at: reg.enrolled_date?.toISOString() || null,
           level: course.level,
           rating: parseFloat(ratingResult?.avg) || 0,
