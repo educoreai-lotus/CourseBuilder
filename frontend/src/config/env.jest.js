@@ -25,6 +25,10 @@ export function getNauthFrontendUrl() {
   return getEnv('VITE_NAUTH_FRONTEND_URL')
 }
 
+export function getAssessmentFrontendUrl() {
+  return getEnv('VITE_ASSESSMENT_FRONTEND_URL')
+}
+
 export function isDev() {
   return process.env.NODE_ENV !== 'production'
 }

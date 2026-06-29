@@ -12,6 +12,8 @@ function readViteEnv(key) {
       return import.meta.env.VITE_NAUTH_BASE_URL
     case 'VITE_NAUTH_FRONTEND_URL':
       return import.meta.env.VITE_NAUTH_FRONTEND_URL
+    case 'VITE_ASSESSMENT_FRONTEND_URL':
+      return import.meta.env.VITE_ASSESSMENT_FRONTEND_URL
     default:
       return undefined
   }
@@ -45,6 +47,10 @@ export function getNauthBaseUrl() {
 
 export function getNauthFrontendUrl() {
   return getEnv('VITE_NAUTH_FRONTEND_URL')
+}
+
+export function getAssessmentFrontendUrl() {
+  return getEnv('VITE_ASSESSMENT_FRONTEND_URL')
 }
 
 export function isDev() {
