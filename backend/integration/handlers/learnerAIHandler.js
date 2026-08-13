@@ -13,16 +13,19 @@
  */
 
 import learnerAIDTO from '../../dtoBuilders/learnerAIDTO.js';
-import { sendToContentStudio } from '../../services/gateways/contentStudioGateway.js';
-import { handleContentStudioIntegration } from './contentStudioHandler.js';
-import { getFallbackData, shouldUseFallback } from '../fallbackData.js';
+import contentStudioGateway from '../../services/gateways/contentStudioGateway.js';
+import { normalizeLessonData } from '../../services/contentStudioNormalizer.js';
+import {
+  extractSinglePathTopics,
+  sliceTopicsByModuleSteps
+} from '../../utils/personalizedLessonPlacement.js';
 import courseRepository from '../../repositories/CourseRepository.js';
 import topicRepository from '../../repositories/TopicRepository.js';
 import moduleRepository from '../../repositories/ModuleRepository.js';
 import lessonRepository from '../../repositories/LessonRepository.js';
 import versionRepository from '../../repositories/VersionRepository.js';
 import db from '../../config/database.js';
-import { generateAIStructure } from '../../services/AIStructureGenerator.js';
+import aiStructureGenerator from '../../services/AIStructureGenerator.js';
 
 /**
  * TEMPORARY: Delete existing failed course before rebuild
@@ -203,6 +206,7 @@ ${JSON.stringify(payloadObject, null, 2)}
     let course = null;
     let createdTopics = [];
     let createdModules = [];
+    let createdModulesByOriginalIndex = [];
     
     if (data.learning_path) {
       console.log('[LearnerAI Handler] Step 1: Creating course structure from learning path...');
@@ -230,10 +234,16 @@ ${JSON.stringify(payloadObject, null, 2)}
       
       // Create topics using AI and modules from learning_path structure
       if (data.learning_path.learning_modules && Array.isArray(data.learning_path.learning_modules)) {
-        // Sort modules by module_order
-        const sortedModules = [...data.learning_path.learning_modules].sort(
-          (a, b) => (a.module_order || 0) - (b.module_order || 0)
+        const originalLearningModules = data.learning_path.learning_modules;
+        const modulesWithOriginalIndex = originalLearningModules.map((moduleData, originalIndex) => ({
+          moduleData,
+          originalIndex
+        }));
+        // Persist/display order may still follow module_order; CS flatten uses raw array order.
+        const sortedEntries = [...modulesWithOriginalIndex].sort(
+          (a, b) => (a.moduleData.module_order || 0) - (b.moduleData.module_order || 0)
         );
+        const sortedModules = sortedEntries.map((entry) => entry.moduleData);
         
         // Step 1: Prepare AI input - convert learning modules to synthetic lessons for AI
         const learningPathForAI = [
@@ -286,7 +296,7 @@ ${JSON.stringify(payloadObject, null, 2)}
         
         // Step 2: Generate topic structure using AI
         console.log('[LearnerAI Handler] Generating topic structure using AI...');
-        const aiStructureResult = await generateAIStructure({
+        const aiStructureResult = await aiStructureGenerator.generateAIStructure({
           learningPath: learningPathForAI,
           skills: skillsForAI,
           allLessons: allLessonsForAI
@@ -340,9 +350,9 @@ ${JSON.stringify(payloadObject, null, 2)}
           });
         }
         
-        // Create modules from learning_modules array
-        for (let i = 0; i < sortedModules.length; i++) {
-          const moduleData = sortedModules[i];
+        // Create modules from learning_modules array (module_order for storage; keep original-index map)
+        for (let i = 0; i < sortedEntries.length; i++) {
+          const { moduleData, originalIndex } = sortedEntries[i];
           const moduleOrder = moduleData.module_order || (i + 1);
           
           // Find which topic this module belongs to (from AI grouping)
@@ -368,11 +378,14 @@ ${JSON.stringify(payloadObject, null, 2)}
             module_name: moduleData.module_title || `Module ${createdModules.length + 1}`,
             module_description: moduleData.module_description || null
           });
-          createdModules.push({
+          const createdModule = {
             ...module,
             module_order: moduleOrder,
-            topic_id: assignedTopic.id
-          });
+            topic_id: assignedTopic.id,
+            originalIndex
+          };
+          createdModules.push(createdModule);
+          createdModulesByOriginalIndex[originalIndex] = createdModule;
           
           console.log('[LearnerAI Handler] ✅ Created module:', module.module_name, 'in topic:', assignedTopic.topic_name);
         }
@@ -409,91 +422,90 @@ ${JSON.stringify(contentStudioPayload, null, 2)}
 
     let contentStudioResponse;
     try {
-      contentStudioResponse = await sendToContentStudio(contentStudioPayload);
-      
-      // Log response structure to debug
+      contentStudioResponse = await contentStudioGateway.sendToContentStudio(contentStudioPayload);
+
       console.log('[LearnerAI Handler] Content Studio response received:');
-      console.log('- Has course:', !!contentStudioResponse.course);
-      if (contentStudioResponse.course) {
+      console.log('- Has course:', !!contentStudioResponse?.course);
+      if (contentStudioResponse?.course) {
         console.log('- Course array length:', Array.isArray(contentStudioResponse.course) ? contentStudioResponse.course.length : 'NOT ARRAY');
       }
     } catch (contentStudioError) {
       console.error('[LearnerAI Handler] Content Studio call failed:', contentStudioError.message);
-      
-      // If Content Studio fails, use fallback data
-      if (shouldUseFallback(contentStudioError, 'ContentStudio')) {
-        console.warn('[LearnerAI Handler] Using fallback data for Content Studio');
-        const fallback = getFallbackData('ContentStudio', 'learner_specific');
-        contentStudioResponse = {
-          learner_id: data.user_id,
-          learner_name: data.user_name,
-          learner_company: data.company_name || '',
-          topics: fallback.topics || []
-        };
-      } else {
-        throw contentStudioError;
-      }
+      throw contentStudioError;
     }
 
-    // Step 3: Process Content Studio response and create/update lessons
-    // Extract topics from response.course[] (Content Studio returns course[] array with all content)
-    let topicsToProcess = [];
-    
-    if (contentStudioResponse.course && Array.isArray(contentStudioResponse.course)) {
-      // Content Studio returns course[] array, extract topics from each course
-      // IMPORTANT: Ignore any course_id from Content Studio response - we already have our own course_id
-      console.log('[LearnerAI Handler] Extracting topics from response.course[] array');
-      console.log('[LearnerAI Handler] ⚠️ Ignoring any course_id from Content Studio response - using our own course_id:', course?.id);
-      for (const courseData of contentStudioResponse.course) {
-        if (courseData.topics && Array.isArray(courseData.topics)) {
-          topicsToProcess.push(...courseData.topics);
-        }
-        // Explicitly ignore course_id from Content Studio response
-        if (courseData.course_id) {
-          console.log('[LearnerAI Handler] Ignoring course_id from Content Studio:', courseData.course_id);
-        }
-      }
-    } else {
-      console.warn('[LearnerAI Handler] ⚠️ Content Studio response does not have course[] array');
-    }
-    
-    if (topicsToProcess.length > 0) {
-      console.log('[LearnerAI Handler] Step 3: Processing', topicsToProcess.length, 'topics from Content Studio...');
-      
-      const contentStudioResponseTemplate = {
-        learner_id: contentStudioResponse.learner_id || data.user_id,
-        learner_name: contentStudioResponse.learner_name || data.user_name,
-        learner_company: contentStudioResponse.learner_company || data.company_name || '',
-        topics: topicsToProcess
-      };
+    // CS flattens topics in RAW learning_modules[] array order, not module_order sort.
+    const rawLearningModules = Array.isArray(data.learning_path?.learning_modules)
+      ? data.learning_path.learning_modules
+      : null;
 
-      // Update course structure with Content Studio content (creates lessons)
-      // Pass course_id so handler knows to use existing course
-      await handleContentStudioIntegration(
-        {
-          course_id: course?.id, // Pass existing course_id
-          learner_id: contentStudioResponse.learner_id || data.user_id,
-          learner_name: contentStudioResponse.learner_name || data.user_name,
-          learner_company: contentStudioResponse.learner_company || data.company_name || '',
-          skills: data.skills || [],
-          topics: topicsToProcess
-        },
-        contentStudioResponseTemplate
+    if (!rawLearningModules || rawLearningModules.length === 0) {
+      const error = new Error(
+        'Personalized course build failed: learning_path.learning_modules is missing or empty'
       );
-      
-      console.log('[LearnerAI Handler] ✅ Course structure updated with Content Studio lessons');
-    } else {
-      console.warn('[LearnerAI Handler] ⚠️ No topics found in Content Studio response. Course structure created but no lessons added.');
+      error.status = 400;
+      throw error;
     }
 
-    // Learner AI → Course Builder is one-way communication
-    // Course Builder processes the request and creates course, no response needed
-    return {};  // ✅ Empty response for Learner AI (one-way)
+    if (
+      createdModulesByOriginalIndex.length !== rawLearningModules.length ||
+      createdModulesByOriginalIndex.some((cbModule) => !cbModule)
+    ) {
+      const error = new Error(
+        `Personalized course build failed: created module count (${createdModules.length}) does not match learning_modules (${rawLearningModules.length})`
+      );
+      error.status = 500;
+      throw error;
+    }
+
+    const topicsToProcess = extractSinglePathTopics(contentStudioResponse);
+    const moduleSlices = sliceTopicsByModuleSteps(topicsToProcess, rawLearningModules);
+
+    console.log('[LearnerAI Handler] Step 3: Placing Content Studio topics onto modules by raw array order...', {
+      course_id: course?.id,
+      topics_count: topicsToProcess.length,
+      modules_count: rawLearningModules.length
+    });
+
+    for (let i = 0; i < moduleSlices.length; i++) {
+      const cbModule = createdModulesByOriginalIndex[i];
+      const slice = moduleSlices[i];
+
+      for (const topic of slice.topics) {
+        const lessonData = normalizeLessonData(topic);
+        await lessonRepository.create({
+          module_id: cbModule.id,
+          topic_id: cbModule.topic_id,
+          lesson_name: lessonData.lesson_name,
+          lesson_description: lessonData.lesson_description,
+          skills: lessonData.skills,
+          trainer_ids: lessonData.trainer_ids,
+          content_type: lessonData.content_type,
+          content_data: lessonData.content_data,
+          devlab_exercises: lessonData.devlab_exercises,
+          format_order: lessonData.format_order
+        });
+      }
+
+      console.log('[LearnerAI Handler] ✅ Placed lessons on module:', {
+        module_id: cbModule.id,
+        module_name: cbModule.module_name,
+        lesson_count: slice.topics.length
+      });
+    }
+
+    console.log('[LearnerAI Handler] ✅ Course structure updated with Content Studio lessons');
+
+    return {};
   } catch (error) {
-    console.error('[LearnerAI Handler] Error:', error);
-    
-    // Learner AI is one-way communication, return empty response even on error
-    return {};  // ✅ Empty response for Learner AI (one-way)
+    console.error('[LearnerAI Handler] Personalized course build failed:', {
+      message: error.message,
+      status: error.status || null,
+      user_id: payloadObject?.user_id || null,
+      competency_target_name:
+        payloadObject?.competency_target_name || payloadObject?.competency_name || null
+    });
+    throw error;
   }
 }
 
