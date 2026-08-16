@@ -5,9 +5,27 @@
  */
 
 import { generateSignature, verifySignature } from '../../utils/signature.js';
+import { Agent } from 'undici';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+
+/** Explicit AbortController + undici headers/body budget for Coordinator/CS waits. */
+export const CONTENT_STUDIO_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
+
+export const LONG_RUNNING_COORDINATOR_DISPATCHER_OPTIONS = {
+  headersTimeout: CONTENT_STUDIO_TIMEOUT_MS,
+  bodyTimeout: CONTENT_STUDIO_TIMEOUT_MS
+};
+
+let longRunningCoordinatorDispatcher = null;
+
+function getLongRunningCoordinatorDispatcher() {
+  if (!longRunningCoordinatorDispatcher) {
+    longRunningCoordinatorDispatcher = new Agent(LONG_RUNNING_COORDINATOR_DISPATCHER_OPTIONS);
+  }
+  return longRunningCoordinatorDispatcher;
+}
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -151,8 +169,7 @@ async function postToCoordinator(envelope) {
 
   const fetchFn = await getFetch();
   
-  // Create AbortController for timeout (30 minutes = 1800000ms)
-  const CONTENT_STUDIO_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
+  // AbortController remains 30 minutes; undici Agent raises headers/body timeouts to match
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), CONTENT_STUDIO_TIMEOUT_MS);
   
@@ -161,7 +178,8 @@ async function postToCoordinator(envelope) {
       method: 'POST',
       headers,
       body: JSON.stringify(envelope),
-      signal: controller.signal
+      signal: controller.signal,
+      dispatcher: getLongRunningCoordinatorDispatcher()
     });
     
     clearTimeout(timeoutId);
@@ -232,7 +250,8 @@ async function postToCoordinator(envelope) {
 
 export {
   postToCoordinator,
-  SERVICE_NAME
+  SERVICE_NAME,
+  getLongRunningCoordinatorDispatcher
 };
 
 export default {

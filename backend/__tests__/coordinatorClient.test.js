@@ -3,7 +3,7 @@
  */
 
 import { jest, describe, it, expect, beforeAll, beforeEach } from '@jest/globals';
-import { postToCoordinator } from '../services/gateways/coordinatorClient.js';
+import { postToCoordinator, CONTENT_STUDIO_TIMEOUT_MS, LONG_RUNNING_COORDINATOR_DISPATCHER_OPTIONS, getLongRunningCoordinatorDispatcher } from '../services/gateways/coordinatorClient.js';
 import { generateSignature } from '../utils/signature.js';
 import crypto from 'crypto';
 
@@ -120,6 +120,63 @@ describe('Coordinator Client', () => {
       const parsedBody = JSON.parse(body);
       
       expect(parsedBody).toEqual(mockEnvelope);
+    });
+
+    it('applies a 30-minute AbortController and undici headers/body timeouts', async () => {
+      process.env.COORDINATOR_URL = 'https://coordinator.test';
+
+      global.fetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ response: { course: [] } }),
+        headers: {
+          get: jest.fn(() => null)
+        }
+      });
+
+      await postToCoordinator(mockEnvelope);
+
+      expect(CONTENT_STUDIO_TIMEOUT_MS).toBe(30 * 60 * 1000);
+      expect(LONG_RUNNING_COORDINATOR_DISPATCHER_OPTIONS).toEqual({
+        headersTimeout: CONTENT_STUDIO_TIMEOUT_MS,
+        bodyTimeout: CONTENT_STUDIO_TIMEOUT_MS
+      });
+
+      const fetchOptions = global.fetch.mock.calls[0][1];
+      expect(fetchOptions.signal).toBeDefined();
+      expect(fetchOptions.signal.aborted).toBe(false);
+      expect(fetchOptions.dispatcher).toBe(getLongRunningCoordinatorDispatcher());
+
+      const optionsSymbol = Object.getOwnPropertySymbols(fetchOptions.dispatcher).find(
+        (symbol) => String(symbol) === 'Symbol(options)'
+      );
+      expect(fetchOptions.dispatcher[optionsSymbol].headersTimeout).toBe(CONTENT_STUDIO_TIMEOUT_MS);
+      expect(fetchOptions.dispatcher[optionsSymbol].bodyTimeout).toBe(CONTENT_STUDIO_TIMEOUT_MS);
+    });
+
+    it('parses Coordinator JSON via resp.json() without changing the envelope', async () => {
+      process.env.COORDINATOR_URL = 'https://coordinator.test';
+      const responseData = {
+        requester_service: 'course-builder-service',
+        payload: { action: 'generate_course_content' },
+        response: { course: [{ topics: [{ topic_name: 'A' }] }] }
+      };
+      const jsonFn = jest.fn().mockResolvedValue(responseData);
+
+      global.fetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: jsonFn,
+        headers: {
+          get: jest.fn(() => null)
+        }
+      });
+
+      const result = await postToCoordinator(mockEnvelope);
+
+      expect(jsonFn).toHaveBeenCalledTimes(1);
+      expect(result.data).toEqual(responseData);
+      expect(JSON.parse(global.fetch.mock.calls[0][1].body)).toEqual(mockEnvelope);
     });
 
     it('should verify Coordinator response signature when available', async () => {
