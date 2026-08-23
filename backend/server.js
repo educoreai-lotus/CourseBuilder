@@ -10,6 +10,7 @@ import integrationRoutes from './routes/integration.routes.js';
 import enrichmentRoutes from './routes/enrichmentRoutes.js';
 import enrichmentAssetsRoutes from './routes/enrichmentAssetsRoutes.js';
 import authRoutes from './routes/auth.routes.js';
+import diagnosticsRoutes from './routes/diagnostics.routes.js';
 import { authenticateRequest } from './middleware/auth.middleware.js';
 import { apiLimiter } from './middleware/rateLimiter.middleware.js';
 import { startScheduledPublishingJob } from './services/scheduledPublishing.service.js';
@@ -120,6 +121,10 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// TEMPORARY: Railway idle-timeout diagnostic (isolated; remove after experiment).
+// Mounted before auth /api limiter so PUBLIC_ROUTES and business auth are untouched.
+app.use('/diagnostics', diagnosticsRoutes);
 
 // Rate limiting middleware (applied before authentication)
 app.use('/api', apiLimiter);
