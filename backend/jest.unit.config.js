@@ -17,6 +17,12 @@ export default {
     '**/__tests__/postcourseCompletion.test.js',
     '**/__tests__/personalizedLessonPlacement.test.js',
     '**/__tests__/learnerAIHandler.personalized.test.js',
+    '**/__tests__/personalizedAsyncGeneration.accept.test.js',
+    '**/__tests__/personalizedGeneration.fencing.test.js',
+    '**/__tests__/personalizedGeneration.pipeline.test.js',
+    '**/__tests__/personalizedGeneration.readiness.test.js',
+    '**/__tests__/personalizedGeneration.jobRepository.test.js',
+    '**/__tests__/personalizedGeneration.blockers.test.js',
     '**/__tests__/coordinatorClient.test.js',
     '**/__tests__/railwayTimeoutDiagnostic.test.js'
   ],

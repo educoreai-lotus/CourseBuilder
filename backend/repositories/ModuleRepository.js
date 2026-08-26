@@ -7,7 +7,7 @@ import { Module } from '../models/Module.js';
 import { v4 as uuidv4 } from 'uuid';
 
 export class ModuleRepository {
-  async create(moduleData) {
+  async create(moduleData, dbCtx = db) {
     const moduleId = uuidv4();
     const query = `
       INSERT INTO modules (id, topic_id, module_name, module_description)
@@ -20,7 +20,7 @@ export class ModuleRepository {
       moduleData.module_name,
       moduleData.module_description || null
     ];
-    const row = await db.one(query, values);
+    const row = await dbCtx.one(query, values);
     return Module.fromRow(row);
   }
 
@@ -30,9 +30,9 @@ export class ModuleRepository {
     return row ? Module.fromRow(row) : null;
   }
 
-  async findByTopicId(topicId) {
+  async findByTopicId(topicId, dbCtx = db) {
     const query = 'SELECT * FROM modules WHERE topic_id = $1 ORDER BY module_name';
-    const rows = await db.any(query, [topicId]);
+    const rows = await dbCtx.any(query, [topicId]);
     return rows.map(row => Module.fromRow(row));
   }
 

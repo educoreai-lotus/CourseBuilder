@@ -68,7 +68,7 @@ export class VersionRepository {
    * @param {string[]} entityIds - Array of entity IDs
    * @returns {Promise<number>} - Number of deleted versions
    */
-  async deleteByEntityIds(entityType, entityIds) {
+  async deleteByEntityIds(entityType, entityIds, dbCtx = db) {
     if (!Array.isArray(entityIds) || entityIds.length === 0) {
       return 0;
     }
@@ -76,7 +76,7 @@ export class VersionRepository {
       DELETE FROM versions 
       WHERE entity_type = $1 AND entity_id = ANY($2::uuid[])
     `;
-    const result = await db.result(query, [entityType, entityIds]);
+    const result = await dbCtx.result(query, [entityType, entityIds]);
     return result.rowCount || 0;
   }
 }

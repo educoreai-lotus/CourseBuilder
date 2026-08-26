@@ -11,9 +11,11 @@ import enrichmentRoutes from './routes/enrichmentRoutes.js';
 import enrichmentAssetsRoutes from './routes/enrichmentAssetsRoutes.js';
 import authRoutes from './routes/auth.routes.js';
 import diagnosticsRoutes from './routes/diagnostics.routes.js';
+import personalizedGenerationRoutes from './routes/personalizedGeneration.routes.js';
 import { authenticateRequest } from './middleware/auth.middleware.js';
 import { apiLimiter } from './middleware/rateLimiter.middleware.js';
 import { startScheduledPublishingJob } from './services/scheduledPublishing.service.js';
+import { startPersonalizedGenerationWorker } from './services/personalizedGeneration/personalizedGenerationWorker.js';
 import { initCache } from './services/cache.service.js';
 import grpcServer from './src/grpc/server.js';
 
@@ -154,6 +156,7 @@ app.get('/health', (req, res) => {
 app.use('/api/v1', inputRoutes);
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/courses', coursesRoutes);
+app.use('/api/v1/personalized-generation', personalizedGenerationRoutes);
 app.use('/api/v1', feedbackRoutes);
 app.use('/api/v1/lessons', lessonsRoutes);
 // Unified integration endpoint: POST /api/fill-content-metrics
@@ -203,6 +206,7 @@ app.use((err, req, res, next) => {
 // Start server
 let serverInstance;
 let scheduledJobCleanup = null;
+let personalizedGenerationWorkerCleanup = null;
 
 if (process.env.NODE_ENV !== 'test') {
   // Initialize cache and start servers
@@ -226,6 +230,8 @@ if (process.env.NODE_ENV !== 'test') {
 
       // Start scheduled publishing job (will handle missing tables gracefully)
       scheduledJobCleanup = startScheduledPublishingJob();
+      // Additive personalized async worker (no-op unless flag === 'true')
+      personalizedGenerationWorkerCleanup = startPersonalizedGenerationWorker();
     });
   }).catch(async error => {
     console.error('Error initializing cache:', error);
@@ -248,6 +254,7 @@ if (process.env.NODE_ENV !== 'test') {
       }
       
       scheduledJobCleanup = startScheduledPublishingJob();
+      personalizedGenerationWorkerCleanup = startPersonalizedGenerationWorker();
     });
   });
 }
@@ -257,6 +264,9 @@ process.on('SIGTERM', async () => {
   console.log('SIGTERM received, shutting down gracefully...');
   if (scheduledJobCleanup) {
     scheduledJobCleanup();
+  }
+  if (personalizedGenerationWorkerCleanup) {
+    personalizedGenerationWorkerCleanup();
   }
   // Shutdown GRPC server
   await grpcServer.shutdown();
@@ -274,6 +284,9 @@ process.on('SIGINT', async () => {
   console.log('SIGINT received, shutting down gracefully...');
   if (scheduledJobCleanup) {
     scheduledJobCleanup();
+  }
+  if (personalizedGenerationWorkerCleanup) {
+    personalizedGenerationWorkerCleanup();
   }
   // Shutdown GRPC server
   await grpcServer.shutdown();

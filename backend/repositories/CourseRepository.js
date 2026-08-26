@@ -11,7 +11,7 @@ export class CourseRepository {
   /**
    * Create a new course
    */
-  async create(courseData) {
+  async create(courseData, dbCtx = db) {
     const courseId = courseData.id || uuidv4();
     const query = `
       INSERT INTO courses (
@@ -41,7 +41,7 @@ export class CourseRepository {
       JSON.stringify(courseData.ai_assets || {})
     ];
 
-    const row = await db.one(query, values);
+    const row = await dbCtx.one(query, values);
     return Course.fromRow(row);
   }
 
@@ -172,9 +172,9 @@ export class CourseRepository {
   /**
    * Delete course
    */
-  async delete(courseId) {
+  async delete(courseId, dbCtx = db) {
     const query = 'DELETE FROM courses WHERE id = $1 RETURNING *';
-    const row = await db.oneOrNone(query, [courseId]);
+    const row = await dbCtx.oneOrNone(query, [courseId]);
     return row ? Course.fromRow(row) : null;
   }
 
@@ -185,7 +185,7 @@ export class CourseRepository {
    * @param {string} userId - Learner user ID (created_by_user_id)
    * @returns {Promise<Course|null>} - Found course or null
    */
-  async findByCompetencyAndLearner(competencyTargetName, userId) {
+  async findByCompetencyAndLearner(competencyTargetName, userId, dbCtx = db) {
     const query = `
       SELECT * FROM courses 
       WHERE course_type = 'learner_specific'
@@ -194,7 +194,7 @@ export class CourseRepository {
       ORDER BY created_at DESC
       LIMIT 1
     `;
-    const row = await db.oneOrNone(query, [userId, competencyTargetName]);
+    const row = await dbCtx.oneOrNone(query, [userId, competencyTargetName]);
     return row ? Course.fromRow(row) : null;
   }
 

@@ -7,7 +7,7 @@ import { Lesson } from '../models/Lesson.js';
 import { v4 as uuidv4 } from 'uuid';
 
 export class LessonRepository {
-  async create(lessonData) {
+  async create(lessonData, dbCtx = db) {
     const lessonId = uuidv4();
     
     // Normalize Content Studio data - ensure arrays, not objects or strings
@@ -45,7 +45,7 @@ export class LessonRepository {
       JSON.stringify(devlab_exercises),
       JSON.stringify(format_order)
     ];
-    const row = await db.one(query, values);
+    const row = await dbCtx.one(query, values);
     return Lesson.fromRow(row);
   }
 
@@ -55,10 +55,28 @@ export class LessonRepository {
     return row ? Lesson.fromRow(row) : null;
   }
 
-  async findByModuleId(moduleId) {
+  async findByModuleId(moduleId, dbCtx = db) {
     const query = 'SELECT * FROM lessons WHERE module_id = $1 ORDER BY lesson_name';
-    const rows = await db.any(query, [moduleId]);
+    const rows = await dbCtx.any(query, [moduleId]);
     return rows.map(row => Lesson.fromRow(row));
+  }
+
+  /**
+   * Delete all lessons belonging to modules/topics of a single course.
+   * Scoped strictly to course_id — never crosses courses.
+   */
+  async deleteByCourseId(courseId, dbCtx = db) {
+    const result = await dbCtx.result(
+      `DELETE FROM lessons
+       WHERE module_id IN (
+         SELECT m.id
+         FROM modules m
+         INNER JOIN topics t ON t.id = m.topic_id
+         WHERE t.course_id = $1
+       )`,
+      [courseId]
+    );
+    return result.rowCount || 0;
   }
 
   async findByTopicId(topicId) {

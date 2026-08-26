@@ -7,7 +7,7 @@ import { Topic } from '../models/Topic.js';
 import { v4 as uuidv4 } from 'uuid';
 
 export class TopicRepository {
-  async create(topicData) {
+  async create(topicData, dbCtx = db) {
     const topicId = uuidv4();
     const query = `
       INSERT INTO topics (id, course_id, topic_name, topic_description)
@@ -20,7 +20,7 @@ export class TopicRepository {
       topicData.topic_name,
       topicData.topic_description || null
     ];
-    const row = await db.one(query, values);
+    const row = await dbCtx.one(query, values);
     return Topic.fromRow(row);
   }
 
@@ -30,9 +30,9 @@ export class TopicRepository {
     return row ? Topic.fromRow(row) : null;
   }
 
-  async findByCourseId(courseId) {
+  async findByCourseId(courseId, dbCtx = db) {
     const query = 'SELECT * FROM topics WHERE course_id = $1 ORDER BY topic_name';
-    const rows = await db.any(query, [courseId]);
+    const rows = await dbCtx.any(query, [courseId]);
     return rows.map(row => Topic.fromRow(row));
   }
 
