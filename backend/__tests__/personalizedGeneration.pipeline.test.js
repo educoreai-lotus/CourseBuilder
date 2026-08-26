@@ -114,42 +114,82 @@ describe('RESULT validation before mutations', () => {
 });
 
 describe('CS async gateway wrappers', () => {
-  it('START action uses start_personalized_generation', () => {
+  const learnerRequestPayload = {
+    ...requestPayload,
+    action: 'push_learning_path',
+    description: 'from learner',
+    user_name: 'Ada',
+    company_id: 'co-1',
+    company_name: 'Acme',
+    skills_raw_data: ['hooks'],
+    preferred_language: 'en',
+    exam_status: 'pass'
+  };
+
+  it('START uses generate_course_content action and start_personalized_generation discriminator', () => {
     const payload = contentStudioAsyncGateway.buildConservativeCsPayload({
-      requestPayload,
+      requestPayload: learnerRequestPayload,
       courseId: 'c1',
       parentCourseBuilderJobId: 'j1',
       csGenerationAction: 'start_personalized_generation'
     });
+    expect(payload.action).toBe('generate_course_content');
     expect(payload.cs_generation_action).toBe('start_personalized_generation');
+    expect(payload.original_action).toBe('push_learning_path');
     expect(payload.parent_course_builder_job_id).toBe('j1');
+    expect(learnerRequestPayload.action).toBe('push_learning_path');
   });
 
-  it('STATUS action uses get_personalized_generation_status', () => {
+  it('STATUS uses generate_course_content action and get_personalized_generation_status discriminator', () => {
     const payload = contentStudioAsyncGateway.buildConservativeCsPayload({
-      requestPayload,
+      requestPayload: learnerRequestPayload,
       courseId: 'c1',
       parentCourseBuilderJobId: 'j1',
       contentStudioJobId: 'cs1',
       csGenerationAction: 'get_personalized_generation_status'
     });
+    expect(payload.action).toBe('generate_course_content');
     expect(payload.cs_generation_action).toBe(
       'get_personalized_generation_status'
     );
     expect(payload.content_studio_job_id).toBe('cs1');
+    expect(payload.original_action).toBe('push_learning_path');
   });
 
-  it('RESULT action uses get_personalized_generation_result', () => {
+  it('RESULT uses generate_course_content action and get_personalized_generation_result discriminator', () => {
     const payload = contentStudioAsyncGateway.buildConservativeCsPayload({
-      requestPayload,
+      requestPayload: learnerRequestPayload,
       courseId: 'c1',
       parentCourseBuilderJobId: 'j1',
       contentStudioJobId: 'cs1',
       csGenerationAction: 'get_personalized_generation_result'
     });
+    expect(payload.action).toBe('generate_course_content');
     expect(payload.cs_generation_action).toBe(
       'get_personalized_generation_result'
     );
+    expect(payload.original_action).toBe('push_learning_path');
+  });
+
+  it('preserves original business fields and does not mutate stored request payload', () => {
+    const frozen = { ...learnerRequestPayload };
+    const payload = contentStudioAsyncGateway.buildConservativeCsPayload({
+      requestPayload: learnerRequestPayload,
+      courseId: 'c1',
+      parentCourseBuilderJobId: 'j1',
+      csGenerationAction: 'start_personalized_generation'
+    });
+    expect(payload.learning_path).toEqual(frozen.learning_path);
+    expect(payload.skills_raw_data).toEqual(['hooks']);
+    expect(payload.user_id).toBe('learner-1');
+    expect(payload.user_name).toBe('Ada');
+    expect(payload.company_id).toBe('co-1');
+    expect(payload.company_name).toBe('Acme');
+    expect(payload.preferred_language).toBe('en');
+    expect(payload.competency_target_name).toBe('React');
+    expect(payload.exam_status).toBe('pass');
+    expect(learnerRequestPayload).toEqual(frozen);
+    expect(learnerRequestPayload.action).toBe('push_learning_path');
   });
 });
 

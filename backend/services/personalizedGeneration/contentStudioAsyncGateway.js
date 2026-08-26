@@ -6,6 +6,11 @@
 
 import { postToCoordinator } from '../gateways/coordinatorClient.js';
 
+/** Proven Coordinator → Content Studio routing action (same as sync path). */
+export const CS_COORDINATOR_ROUTING_ACTION = 'generate_course_content';
+
+const KNOWN_CS_STATUS = new Set(['pending', 'processing', 'completed', 'failed']);
+
 function safeBusinessError(message) {
   const error = new Error(message || 'Content Studio async call failed');
   error.status = 502;
@@ -15,6 +20,10 @@ function safeBusinessError(message) {
 /**
  * Build conservative routing payload from the original Learner request plus
  * course / job identifiers required for CS async actions.
+ *
+ * Coordinator routes on payload.action — always use generate_course_content.
+ * Content Studio distinguishes async ops via cs_generation_action.
+ * Original Learner action is preserved as original_action (not used for routing).
  */
 export function buildConservativeCsPayload({
   requestPayload,
@@ -23,15 +32,25 @@ export function buildConservativeCsPayload({
   contentStudioJobId,
   csGenerationAction
 }) {
+  const originalAction =
+    requestPayload?.action != null && String(requestPayload.action).trim() !== ''
+      ? requestPayload.action
+      : undefined;
+
   const payload = {
     ...requestPayload,
-    action: requestPayload?.action || 'generate_course_content',
+    // Coordinator-facing routing action (must NOT remain push_learning_path).
+    action: CS_COORDINATOR_ROUTING_ACTION,
     description:
       requestPayload?.description ||
       'Generate course content from learning path',
     cs_generation_action: csGenerationAction,
     parent_course_builder_job_id: parentCourseBuilderJobId
   };
+
+  if (originalAction !== undefined) {
+    payload.original_action = originalAction;
+  }
 
   if (courseId) {
     payload.course_id = courseId;
@@ -72,12 +91,82 @@ export function extractContentStudioJobId(result) {
   if (rawCsJobId === null || rawCsJobId === undefined) {
     return null;
   }
-  return String(rawCsJobId);
+  const asString = String(rawCsJobId).trim();
+  if (asString === '' || asString === 'null' || asString === 'undefined') {
+    return null;
+  }
+  return asString;
+}
+
+export function isValidContentStudioJobId(jobId) {
+  return typeof jobId === 'string' && jobId.trim() !== '';
+}
+
+/**
+ * Extract known CS business status; returns null if missing/unknown.
+ */
+export function extractKnownContentStudioStatus(result) {
+  if (!result || typeof result !== 'object') {
+    return null;
+  }
+  const raw =
+    result?.status ??
+    result?.generation_job?.status ??
+    result?.generation_status ??
+    null;
+  if (raw === null || raw === undefined) {
+    return null;
+  }
+  const normalized = String(raw).toLowerCase().trim();
+  if (!KNOWN_CS_STATUS.has(normalized)) {
+    return null;
+  }
+  return normalized;
+}
+
+/**
+ * Reject empty / Learner-ACK-shaped bodies that lack CS RESULT content.
+ */
+export function assertValidContentStudioResult(result) {
+  if (!result || typeof result !== 'object') {
+    throw safeBusinessError('Content Studio RESULT was empty');
+  }
+
+  // Wrong-service Learner-style ACK: empty object or only routing echo fields.
+  const keys = Object.keys(result);
+  if (keys.length === 0) {
+    throw safeBusinessError('Content Studio RESULT was empty');
+  }
+
+  const hasCourse = Array.isArray(result.course);
+  const hasGenerationJob =
+    result.generation_job != null && typeof result.generation_job === 'object';
+  const hasStatus =
+    result.status != null ||
+    result.generation_job?.status != null ||
+    result.generation_status != null;
+
+  // Accept CS RESULT envelopes used by finalization (course array) or
+  // status-bearing generation envelopes (pending/processing/failed before content).
+  if (!hasCourse && !hasGenerationJob && !hasStatus) {
+    throw safeBusinessError('Content Studio RESULT was not a valid generation result');
+  }
+
+  // Explicitly reject obvious Learner push_learning_path ACK shapes.
+  if (
+    result.action === 'push_learning_path' ||
+    (result.response && typeof result.response === 'object' && !hasCourse && !hasGenerationJob)
+  ) {
+    throw safeBusinessError('Content Studio RESULT was not a valid generation result');
+  }
+
+  return result;
 }
 
 /**
  * START personalized generation on Content Studio.
- * @returns {{ generationJobId: string|null, result: object }}
+ * @returns {{ generationJobId: string, result: object }}
+ * @throws if CS job id is missing (fail-closed; caller retries START)
  */
 export async function startPersonalizedGeneration({
   requestPayload,
@@ -96,6 +185,11 @@ export async function startPersonalizedGeneration({
   });
 
   const generationJobId = extractContentStudioJobId(result);
+  if (!isValidContentStudioJobId(generationJobId)) {
+    throw safeBusinessError(
+      'Content Studio START did not return a valid generation_job.cs_job_id'
+    );
+  }
 
   return { generationJobId, result };
 }
@@ -103,6 +197,7 @@ export async function startPersonalizedGeneration({
 /**
  * STATUS poll for personalized generation.
  * @returns {{ status: string, result: object }}
+ * @throws if status is missing/unknown (not a valid CS business status)
  */
 export async function getPersonalizedGenerationStatus({
   requestPayload,
@@ -123,13 +218,14 @@ export async function getPersonalizedGenerationStatus({
     generation_job: null
   });
 
-  const status =
-    result?.status ||
-    result?.generation_job?.status ||
-    result?.generation_status ||
-    'unknown';
+  const status = extractKnownContentStudioStatus(result);
+  if (!status) {
+    throw safeBusinessError(
+      'Content Studio STATUS did not return a known generation status'
+    );
+  }
 
-  return { status: String(status).toLowerCase(), result };
+  return { status, result };
 }
 
 /**
@@ -154,16 +250,18 @@ export async function getPersonalizedGenerationResult({
     status: null
   });
 
-  if (!result || typeof result !== 'object') {
-    throw safeBusinessError('Content Studio RESULT was empty');
-  }
+  assertValidContentStudioResult(result);
 
   return { result };
 }
 
 export default {
+  CS_COORDINATOR_ROUTING_ACTION,
   buildConservativeCsPayload,
   extractContentStudioJobId,
+  isValidContentStudioJobId,
+  extractKnownContentStudioStatus,
+  assertValidContentStudioResult,
   startPersonalizedGeneration,
   getPersonalizedGenerationStatus,
   getPersonalizedGenerationResult

@@ -149,5 +149,8 @@ describe('conservative CS routing payload', () => {
     expect(payload.parent_course_builder_job_id).toBe('cb-job-1');
     expect(payload.content_studio_job_id).toBe('cs-job-9');
     expect(payload.course_id).toBe('course-1');
+    expect(payload.action).toBe('generate_course_content');
+    expect(payload.original_action).toBe('push_learning_path');
+    expect(requestPayload.action).toBe('push_learning_path');
   });
 });

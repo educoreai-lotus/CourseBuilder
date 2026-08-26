@@ -249,10 +249,102 @@ describe('CS START cs_job_id contract', () => {
     expect(personalizedGenerationJobRepository.markFailed).not.toHaveBeenCalled();
   });
 
+  it('START with null generationJobId does not advance to waiting_for_content', async () => {
+    contentStudioAsyncGateway.startPersonalizedGeneration = jest.fn().mockResolvedValue({
+      generationJobId: null,
+      result: { generation_job: null }
+    });
+
+    personalizedGenerationJobRepository.scheduleAndReleaseClaim = jest.fn().mockResolvedValue({
+      id: 'cb-job-1',
+      status: 'processing',
+      attempt_count: 1,
+      locked_at: null,
+      lease_expires_at: null
+    });
+    personalizedGenerationJobRepository.markFailed = jest.fn();
+
+    const job = {
+      id: 'cb-job-1',
+      course_id: 'course-1',
+      request_payload: { action: 'push_learning_path' },
+      content_studio_job_id: null,
+      stage: PERSONALIZED_JOB_STAGES.STARTING_CONTENT_GENERATION
+    };
+
+    await __processStartingContentForTests(job, 1);
+
+    const releaseCalls = personalizedGenerationJobRepository.scheduleAndReleaseClaim.mock.calls;
+    const advancedToWaiting = releaseCalls.some(
+      (call) => call[2]?.stage === PERSONALIZED_JOB_STAGES.WAITING_FOR_CONTENT
+    );
+    expect(advancedToWaiting).toBe(false);
+    expect(personalizedGenerationJobRepository.markFailed).not.toHaveBeenCalled();
+  });
+
+  it('START missing cs_job_id (gateway throw) does not advance to waiting_for_content', async () => {
+    contentStudioAsyncGateway.startPersonalizedGeneration = jest
+      .fn()
+      .mockRejectedValue(new Error('Content Studio START did not return a valid generation_job.cs_job_id'));
+
+    personalizedGenerationJobRepository.scheduleAndReleaseClaim = jest.fn().mockResolvedValue({
+      id: 'cb-job-1',
+      status: 'processing',
+      attempt_count: 1,
+      locked_at: null,
+      lease_expires_at: null
+    });
+
+    await __processStartingContentForTests(
+      {
+        id: 'cb-job-1',
+        course_id: 'course-1',
+        request_payload: {},
+        content_studio_job_id: null,
+        stage: PERSONALIZED_JOB_STAGES.STARTING_CONTENT_GENERATION
+      },
+      1
+    );
+
+    const advancedToWaiting =
+      personalizedGenerationJobRepository.scheduleAndReleaseClaim.mock.calls.some(
+        (call) => call[2]?.stage === PERSONALIZED_JOB_STAGES.WAITING_FOR_CONTENT
+      );
+    expect(advancedToWaiting).toBe(false);
+  });
+
+  it('waiting_for_content + NULL content_studio_job_id does not call Coordinator and marks failed', async () => {
+    contentStudioAsyncGateway.getPersonalizedGenerationStatus = jest.fn();
+    personalizedGenerationJobRepository.markFailed = jest.fn().mockResolvedValue({
+      id: 'job-1',
+      status: 'failed'
+    });
+    personalizedGenerationJobRepository.scheduleAndReleaseClaim = jest.fn();
+
+    await __processWaitingForContentForTests(
+      {
+        id: 'job-1',
+        course_id: 'c1',
+        request_payload: {},
+        content_studio_job_id: null,
+        stage: PERSONALIZED_JOB_STAGES.WAITING_FOR_CONTENT
+      },
+      1
+    );
+
+    expect(contentStudioAsyncGateway.getPersonalizedGenerationStatus).not.toHaveBeenCalled();
+    expect(personalizedGenerationJobRepository.markFailed).toHaveBeenCalledWith(
+      'job-1',
+      1,
+      'Missing Content Studio generation job id'
+    );
+    expect(personalizedGenerationJobRepository.scheduleAndReleaseClaim).not.toHaveBeenCalled();
+  });
+
   it('STATUS processing defers with lease release so poll is claimable', async () => {
     contentStudioAsyncGateway.getPersonalizedGenerationStatus = jest
       .fn()
-      .mockResolvedValue({ status: 'processing', result: {} });
+      .mockResolvedValue({ status: 'processing', result: { status: 'processing' } });
 
     personalizedGenerationJobRepository.scheduleAndReleaseClaim = jest
       .fn()
@@ -288,5 +380,147 @@ describe('CS START cs_job_id contract', () => {
         new Date()
       )
     ).toBe(true);
+  });
+
+  it('STATUS pending schedules normal polling', async () => {
+    contentStudioAsyncGateway.getPersonalizedGenerationStatus = jest
+      .fn()
+      .mockResolvedValue({ status: 'pending', result: { status: 'pending' } });
+    personalizedGenerationJobRepository.scheduleAndReleaseClaim = jest.fn().mockResolvedValue({
+      id: 'job-1',
+      status: 'processing',
+      attempt_count: 1,
+      locked_at: null,
+      lease_expires_at: null
+    });
+
+    await __processWaitingForContentForTests(
+      {
+        id: 'job-1',
+        course_id: 'c1',
+        request_payload: {},
+        content_studio_job_id: 'cs-1',
+        stage: PERSONALIZED_JOB_STAGES.WAITING_FOR_CONTENT
+      },
+      1
+    );
+
+    expect(personalizedGenerationJobRepository.scheduleAndReleaseClaim).toHaveBeenCalled();
+  });
+
+  it('STATUS failed marks overall job failed', async () => {
+    contentStudioAsyncGateway.getPersonalizedGenerationStatus = jest
+      .fn()
+      .mockResolvedValue({ status: 'failed', result: { status: 'failed' } });
+    personalizedGenerationJobRepository.markFailed = jest.fn().mockResolvedValue({ status: 'failed' });
+    personalizedGenerationJobRepository.scheduleAndReleaseClaim = jest.fn();
+
+    await __processWaitingForContentForTests(
+      {
+        id: 'job-1',
+        course_id: 'c1',
+        request_payload: {},
+        content_studio_job_id: 'cs-1',
+        stage: PERSONALIZED_JOB_STAGES.WAITING_FOR_CONTENT
+      },
+      2
+    );
+
+    expect(personalizedGenerationJobRepository.markFailed).toHaveBeenCalledWith(
+      'job-1',
+      2,
+      'Content generation failed'
+    );
+  });
+
+  it('STATUS completed advances toward finalization stage', async () => {
+    contentStudioAsyncGateway.getPersonalizedGenerationStatus = jest
+      .fn()
+      .mockResolvedValue({ status: 'completed', result: { status: 'completed' } });
+
+    const originalFenced = personalizedGenerationJobRepository.fencedUpdate;
+    const originalFind = personalizedGenerationJobRepository.findById;
+    const originalResult = contentStudioAsyncGateway.getPersonalizedGenerationResult;
+    personalizedGenerationJobRepository.fencedUpdate = jest.fn().mockResolvedValue({
+      id: 'job-1',
+      stage: PERSONALIZED_JOB_STAGES.FINALIZING_COURSE
+    });
+    personalizedGenerationJobRepository.findById = jest.fn().mockResolvedValue({
+      id: 'job-1',
+      course_id: 'c1',
+      request_payload: {},
+      content_studio_job_id: 'cs-1',
+      stage: PERSONALIZED_JOB_STAGES.FINALIZING_COURSE,
+      attempt_count: 1
+    });
+    // Avoid deep RESULT finalization in this unit test.
+    contentStudioAsyncGateway.getPersonalizedGenerationResult = jest
+      .fn()
+      .mockRejectedValue(new Error('stop before finalize'));
+    personalizedGenerationJobRepository.scheduleAndReleaseClaim = jest.fn().mockResolvedValue({
+      id: 'job-1',
+      status: 'processing',
+      attempt_count: 1,
+      locked_at: null,
+      lease_expires_at: null
+    });
+
+    try {
+      await __processWaitingForContentForTests(
+        {
+          id: 'job-1',
+          course_id: 'c1',
+          request_payload: {},
+          content_studio_job_id: 'cs-1',
+          stage: PERSONALIZED_JOB_STAGES.WAITING_FOR_CONTENT
+        },
+        1
+      );
+
+      expect(personalizedGenerationJobRepository.fencedUpdate).toHaveBeenCalledWith(
+        'job-1',
+        1,
+        expect.objectContaining({
+          stage: PERSONALIZED_JOB_STAGES.FINALIZING_COURSE
+        })
+      );
+    } finally {
+      personalizedGenerationJobRepository.fencedUpdate = originalFenced;
+      personalizedGenerationJobRepository.findById = originalFind;
+      contentStudioAsyncGateway.getPersonalizedGenerationResult = originalResult;
+    }
+  });
+
+  it('malformed STATUS (gateway throw) does not advance to finalization', async () => {
+    contentStudioAsyncGateway.getPersonalizedGenerationStatus = jest
+      .fn()
+      .mockRejectedValue(new Error('Content Studio STATUS did not return a known generation status'));
+    const originalFenced = personalizedGenerationJobRepository.fencedUpdate;
+    personalizedGenerationJobRepository.fencedUpdate = jest.fn();
+    personalizedGenerationJobRepository.scheduleAndReleaseClaim = jest.fn().mockResolvedValue({
+      id: 'job-1',
+      status: 'processing',
+      attempt_count: 1,
+      locked_at: null,
+      lease_expires_at: null
+    });
+
+    try {
+      await __processWaitingForContentForTests(
+        {
+          id: 'job-1',
+          course_id: 'c1',
+          request_payload: {},
+          content_studio_job_id: 'cs-1',
+          stage: PERSONALIZED_JOB_STAGES.WAITING_FOR_CONTENT
+        },
+        1
+      );
+
+      expect(personalizedGenerationJobRepository.fencedUpdate).not.toHaveBeenCalled();
+      expect(personalizedGenerationJobRepository.scheduleAndReleaseClaim).toHaveBeenCalled();
+    } finally {
+      personalizedGenerationJobRepository.fencedUpdate = originalFenced;
+    }
   });
 });

@@ -146,6 +146,12 @@ async function processPreparingCourse(job, expectedAttemptCount) {
   await processStartingContent(refreshed, expectedAttemptCount);
 }
 
+function hasValidContentStudioJobId(value) {
+  if (value === null || value === undefined) return false;
+  const asString = String(value).trim();
+  return asString !== '' && asString !== 'null' && asString !== 'undefined';
+}
+
 async function processStartingContent(job, expectedAttemptCount) {
   if (shouldStopClaimWork()) return;
 
@@ -158,11 +164,18 @@ async function processStartingContent(job, expectedAttemptCount) {
 
     if (shouldStopClaimWork()) return;
 
+    // Fail-closed: never advance to waiting_for_content without a real CS job id.
+    if (!hasValidContentStudioJobId(generationJobId)) {
+      throw new Error(
+        'Content Studio START did not return a valid generation_job.cs_job_id'
+      );
+    }
+
     // START success: advance stage, persist CS child id, schedule poll, release lease.
     const updated = await deferAndRelease(job.id, expectedAttemptCount, {
       delayMs: PERSONALIZED_STATUS_POLL_MS,
       stage: PERSONALIZED_JOB_STAGES.WAITING_FOR_CONTENT,
-      contentStudioJobId: generationJobId || undefined
+      contentStudioJobId: String(generationJobId).trim()
     });
     if (!updated) {
       return;
@@ -180,6 +193,19 @@ async function processStartingContent(job, expectedAttemptCount) {
 
 async function processWaitingForContent(job, expectedAttemptCount) {
   if (shouldStopClaimWork()) return;
+
+  // Corrupt / invalid state: never call Coordinator without a CS child id.
+  if (!hasValidContentStudioJobId(job.content_studio_job_id)) {
+    console.error(
+      '[PersonalizedGenerationWorker] waiting_for_content without Content Studio job id — marking failed'
+    );
+    await personalizedGenerationJobRepository.markFailed(
+      job.id,
+      expectedAttemptCount,
+      'Missing Content Studio generation job id'
+    );
+    return;
+  }
 
   try {
     const { status } = await contentStudioAsyncGateway.getPersonalizedGenerationStatus({
