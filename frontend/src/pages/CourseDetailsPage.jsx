@@ -8,6 +8,11 @@ import EnrollModal from '../components/course/EnrollModal.jsx'
 import { useApp } from '../context/AppContext'
 import Container from '../components/Container.jsx'
 import { isPersonalized } from '../utils/courseTypeUtils.js'
+import { usePersonalizedGenerationJobs } from '../hooks/usePersonalizedGenerationJobs.js'
+import {
+  findActiveJobForCourse,
+  findFailedJobForCourse
+} from '../utils/personalizedGenerationJobs.js'
 
 export default function CourseDetailsPage() {
   const { id } = useParams()
@@ -125,6 +130,29 @@ export default function CourseDetailsPage() {
   // Determine if course is personalized (declare once)
   const isPersonalizedCourse = isPersonalizedFlow || metadataPersonalized
 
+  const { jobs } = usePersonalizedGenerationJobs({
+    enabled: Boolean(isPersonalizedCourse)
+  })
+
+  const matchingActiveJob = isPersonalizedCourse
+    ? findActiveJobForCourse(jobs, id)
+    : null
+  const matchingFailedJob = isPersonalizedCourse
+    ? findFailedJobForCourse(jobs, id)
+    : null
+
+  const generationReadiness = matchingActiveJob
+    ? 'generating'
+    : matchingFailedJob
+      ? 'failed'
+      : null
+  const generationCompetencyName =
+    matchingActiveJob?.competency_target_name ||
+    matchingFailedJob?.competency_target_name ||
+    course?.title ||
+    course?.course_name ||
+    null
+
   // Note: isEnrolled is now a state variable, set from backend response
 
   // Get first lesson ID for navigation - MUST be before any early returns
@@ -150,6 +178,9 @@ export default function CourseDetailsPage() {
   const handleEnrollment = async () => {
     // Personalized courses: Navigate directly to first lesson (no enrollment API call)
     if (isPersonalizedCourse) {
+      if (generationReadiness) {
+        return
+      }
       if (firstLessonId) {
         navigate(`/course/${id}/lesson/${firstLessonId}`)
       } else {
@@ -429,9 +460,11 @@ export default function CourseDetailsPage() {
                   onCancelEnrollment={handleCancelEnrollment}
                   isSubmitting={isSubmitting}
                   onContinue={
-                    firstLessonId
-                      ? () => navigate(`/course/${id}/lesson/${firstLessonId}`)
-                      : () => navigate(`/course/${id}/overview`)
+                    generationReadiness
+                      ? () => {}
+                      : firstLessonId
+                        ? () => navigate(`/course/${id}/lesson/${firstLessonId}`)
+                        : () => navigate(`/course/${id}/overview`)
                   }
                   showStructureCta={userRole === 'learner'}
                   learnerProfile={userProfile}
@@ -441,6 +474,8 @@ export default function CourseDetailsPage() {
                   backLink={isPersonalizedFlow ? '/learner/personalized' : '/learner/marketplace'}
                   hasFeedback={hasFeedback}
                   courseId={id}
+                  generationReadiness={generationReadiness}
+                  generationCompetencyName={generationCompetencyName}
                 />
               </div>
             </Container>

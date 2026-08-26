@@ -1,13 +1,19 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { BookOpen, CheckCircle, Zap, Award, Sparkles, ShoppingBag, Play } from 'lucide-react'
 import { getCourses, getLearnerProgress } from '../services/apiService.js'
 import LoadingSpinner from '../components/LoadingSpinner.jsx'
+import PersonalizedGenerationState from '../components/PersonalizedGenerationState.jsx'
 import Container from '../components/Container.jsx'
 import { useApp } from '../context/AppContext'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import { filterPersonalizedCourses, filterMarketplaceCourses } from '../utils/courseTypeUtils.js'
+import { usePersonalizedGenerationJobs } from '../hooks/usePersonalizedGenerationJobs.js'
+import {
+  findActiveJobForCourse,
+  findFailedJobForCourse
+} from '../utils/personalizedGenerationJobs.js'
 
 dayjs.extend(relativeTime)
 
@@ -19,6 +25,29 @@ export default function LearnerDashboard() {
   const [continueLearning, setContinueLearning] = useState([])
   const [trendingTopics, setTrendingTopics] = useState([])
   const [loading, setLoading] = useState(true)
+
+  const loadDashboardQuiet = useCallback(async () => {
+    try {
+      const coursesData = await getCourses({ limit: 12 })
+      const allCourses = coursesData.courses || []
+      const personalized = filterPersonalizedCourses(allCourses)
+      const marketplace = filterMarketplaceCourses(allCourses)
+      setPersonalizedCoursesList(personalized)
+      setMarketplaceCoursesList(marketplace)
+      setRecommended([...personalized.slice(0, 3), ...marketplace.slice(0, 3)])
+    } catch {
+      // Keep existing dashboard data on quiet refresh failure.
+    }
+  }, [])
+
+  const handleActiveJobsBecameInactive = useCallback(() => {
+    loadDashboardQuiet()
+  }, [loadDashboardQuiet])
+
+  const { jobs } = usePersonalizedGenerationJobs({
+    enabled: identityReady,
+    onActiveJobsBecameInactive: handleActiveJobsBecameInactive
+  })
 
   useEffect(() => {
     if (!identityReady) {
@@ -33,15 +62,15 @@ export default function LearnerDashboard() {
       // Load courses and separate personalized from marketplace
       const coursesData = await getCourses({ limit: 12 })
       const allCourses = coursesData.courses || []
-      
+
       // Separate personalized and marketplace courses
       const personalized = filterPersonalizedCourses(allCourses)
       const marketplace = filterMarketplaceCourses(allCourses)
-      
+
       // Store separate lists for display in different sections
       setPersonalizedCoursesList(personalized)
       setMarketplaceCoursesList(marketplace)
-      
+
       // Set recommended: personalized first, then marketplace (for backward compatibility)
       const recommended = [
         ...personalized.slice(0, 3),
@@ -61,7 +90,7 @@ export default function LearnerDashboard() {
             status: course.status,
             level: course.level,
             rating: course.rating,
-            lastTouched: course.enrolled_at 
+            lastTouched: course.enrolled_at
               ? dayjs(course.enrolled_at).fromNow()
               : 'Recently'
           }))
@@ -192,31 +221,61 @@ export default function LearnerDashboard() {
                     </div>
                   </div>
                   <div className="flex flex-col gap-2">
-                    {personalizedCoursesList.slice(0, 3).map((course) => (
-                      <div key={course.id || course.course_id} className="course-card compact">
-                        <div className="flex items-start justify-between gap-4">
-                          <div className="space-y-1">
-                            <h3 className="card-title text-base">{course.title || course.course_name}</h3>
-                            <p className="text-sm text-[var(--text-secondary)]">
-                              {course.description ||
-                                course.course_description ||
-                                'Build practical skills with guided lessons and projects.'}
-                            </p>
+                    {personalizedCoursesList.slice(0, 3).map((course) => {
+                      const courseId = course.id || course.course_id
+                      const activeJob = findActiveJobForCourse(jobs, courseId)
+                      const failedJob = findFailedJobForCourse(jobs, courseId)
+
+                      if (activeJob) {
+                        return (
+                          <PersonalizedGenerationState
+                            key={`dash-gen-${courseId}`}
+                            mode="generating"
+                            competencyName={
+                              activeJob.competency_target_name || course.title || course.course_name
+                            }
+                          />
+                        )
+                      }
+
+                      if (failedJob) {
+                        return (
+                          <PersonalizedGenerationState
+                            key={`dash-fail-${courseId}`}
+                            mode="failed"
+                            competencyName={
+                              failedJob.competency_target_name || course.title || course.course_name
+                            }
+                          />
+                        )
+                      }
+
+                      return (
+                        <div key={courseId} className="course-card compact">
+                          <div className="flex items-start justify-between gap-4">
+                            <div className="space-y-1">
+                              <h3 className="card-title text-base">{course.title || course.course_name}</h3>
+                              <p className="text-sm text-[var(--text-secondary)]">
+                                {course.description ||
+                                  course.course_description ||
+                                  'Build practical skills with guided lessons and projects.'}
+                              </p>
+                            </div>
+                            <span className="badge badge-purple">PERSONALIZED</span>
                           </div>
-                          <span className="badge badge-purple">PERSONALIZED</span>
+                          <div className="flex items-center justify-between text-xs text-[var(--text-muted)]">
+                            <span>{course.duration ? `${course.duration} mins` : 'Approx. 45 mins'}</span>
+                            <Link
+                              to={`/courses/${courseId}?personalized=true`}
+                              className="btn btn-primary flex items-center gap-2 text-xs"
+                            >
+                              <Play size={14} />
+                              Start learning
+                            </Link>
+                          </div>
                         </div>
-                        <div className="flex items-center justify-between text-xs text-[var(--text-muted)]">
-                          <span>{course.duration ? `${course.duration} mins` : 'Approx. 45 mins'}</span>
-                          <Link
-                            to={`/courses/${course.id || course.course_id}?personalized=true`}
-                            className="btn btn-primary flex items-center gap-2 text-xs"
-                          >
-                            <Play size={14} />
-                            Start learning
-                          </Link>
-                        </div>
-                      </div>
-                    ))}
+                      )
+                    })}
                   </div>
                 </article>
 
@@ -350,4 +409,3 @@ export default function LearnerDashboard() {
     </div>
   )
 }
-

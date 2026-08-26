@@ -1,44 +1,95 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { getCourses } from '../services/apiService.js'
 import LoadingSpinner from '../components/LoadingSpinner.jsx'
+import PersonalizedGenerationState from '../components/PersonalizedGenerationState.jsx'
 import { useApp } from '../context/AppContext.jsx'
 import Container from '../components/Container.jsx'
 import CourseCard from '../components/CourseCard.jsx'
 import { filterPersonalizedCourses } from '../utils/courseTypeUtils.js'
-
+import { usePersonalizedGenerationJobs } from '../hooks/usePersonalizedGenerationJobs.js'
+import {
+  COURSE_REFRESH_LAG_MS,
+  filterReadyPersonalizedCourses,
+  getActiveJobs,
+  getFailedJobs
+} from '../utils/personalizedGenerationJobs.js'
 
 export default function LearnerForYou() {
-  const { showToast, userProfile } = useApp()
+  const { showToast } = useApp()
   const [courses, setCourses] = useState([])
   const [loading, setLoading] = useState(true)
+  const mountedRef = useRef(true)
+  const lagTimerRef = useRef(null)
 
-  const loadCourses = async () => {
-    setLoading(true)
+  const loadCourses = useCallback(async ({ quiet = false } = {}) => {
+    if (!quiet) {
+      setLoading(true)
+    }
     try {
       const data = await getCourses({ limit: 100 })
       const allCourses = data.courses || []
-      
-      // Filter: ONLY show personalized courses
-      // Excludes ALL marketplace courses
+
       const personalized = filterPersonalizedCourses(allCourses).sort((a, b) => {
         const first = new Date(b.created_at || b.updated_at || Date.now())
         const second = new Date(a.created_at || a.updated_at || Date.now())
         return first - second
       })
-      
-      setCourses(personalized)
+
+      if (mountedRef.current) {
+        setCourses(personalized)
+      }
     } catch (err) {
-      showToast('Failed to load personalized recommendations', 'error')
+      if (mountedRef.current && !quiet) {
+        showToast('Failed to load personalized recommendations', 'error')
+      }
     } finally {
-      setLoading(false)
+      if (mountedRef.current && !quiet) {
+        setLoading(false)
+      }
     }
-  }
+  }, [showToast])
+
+  const handleActiveJobsBecameInactive = useCallback(() => {
+    loadCourses({ quiet: true })
+    if (lagTimerRef.current) {
+      clearTimeout(lagTimerRef.current)
+    }
+    lagTimerRef.current = setTimeout(() => {
+      if (mountedRef.current) {
+        loadCourses({ quiet: true })
+      }
+    }, COURSE_REFRESH_LAG_MS)
+  }, [loadCourses])
+
+  const { jobs, jobsError, softErrorShownRef } = usePersonalizedGenerationJobs({
+    enabled: true,
+    onActiveJobsBecameInactive: handleActiveJobsBecameInactive
+  })
 
   useEffect(() => {
-    loadCourses()
-  }, [])
+    mountedRef.current = true
+    loadCourses({ quiet: false })
+    return () => {
+      mountedRef.current = false
+      if (lagTimerRef.current) {
+        clearTimeout(lagTimerRef.current)
+      }
+    }
+  }, [loadCourses])
 
+  useEffect(() => {
+    if (!jobsError) return
+    if (softErrorShownRef.current) return
+    softErrorShownRef.current = true
+    showToast('Could not refresh personalized generation status', 'error')
+  }, [jobsError, showToast, softErrorShownRef])
+
+  const readyCourses = filterReadyPersonalizedCourses(courses, jobs)
+  const activeJobs = getActiveJobs(jobs)
+  const failedJobs = getFailedJobs(jobs)
+  const hasGenerationPanels = activeJobs.length > 0 || failedJobs.length > 0
+  const showEmpty = readyCourses.length === 0 && !hasGenerationPanels
 
   if (loading) {
     return (
@@ -69,7 +120,7 @@ export default function LearnerForYou() {
           </section>
 
           <section className="surface-card space-y-4">
-            {courses.length === 0 ? (
+            {showEmpty ? (
               <div className="text-center space-y-4">
                 <i className="fa-solid fa-sparkles text-3xl text-[var(--primary-cyan)]" aria-hidden="true" />
                 <h2 className="text-2xl font-semibold text-[var(--text-primary)]">
@@ -81,7 +132,21 @@ export default function LearnerForYou() {
               </div>
             ) : (
               <div className="course-grid">
-                {courses.map((course) => {
+                {activeJobs.map((job) => (
+                  <PersonalizedGenerationState
+                    key={`gen-active-${job.job_id || job.id}`}
+                    mode="generating"
+                    competencyName={job.competency_target_name}
+                  />
+                ))}
+                {failedJobs.map((job) => (
+                  <PersonalizedGenerationState
+                    key={`gen-failed-${job.job_id || job.id}`}
+                    mode="failed"
+                    competencyName={job.competency_target_name}
+                  />
+                ))}
+                {readyCourses.map((course) => {
                   const courseId = course.id || course.course_id
                   return (
                     <div key={courseId} className="course-card-enhanced">
@@ -109,4 +174,3 @@ export default function LearnerForYou() {
     </div>
   )
 }
-

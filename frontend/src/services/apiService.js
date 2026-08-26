@@ -12,7 +12,7 @@ export const getBaseURL = () => {
   return envURL
 }
 
-const api = axios.create({
+export const api = axios.create({
   baseURL: getBaseURL(),
   headers: { 'Content-Type': 'application/json' }
 })
@@ -225,6 +225,14 @@ export function getLearnerProgress(learnerId) {
   return api.get(`/courses/learners/${learnerId}/progress`).then((r) => r.data)
 }
 
+/**
+ * Learner personalized-generation job readiness (auth-scoped; no manual user id).
+ * Returns backend payload (typically `{ jobs: [...] }`).
+ */
+export function getPersonalizedGenerationJobs() {
+  return api.get('/personalized-generation/jobs').then((r) => r.data)
+}
+
 export function updateCourseProgress(courseId, body) {
   return api.patch(`/courses/${courseId}/progress`, body).then((r) => r.data)
 }
@@ -257,6 +265,7 @@ export default {
   getLessonById,
   getLessonExercises,
   getLearnerProgress,
+  getPersonalizedGenerationJobs,
   updateCourseProgress,
   fetchEnrichmentAssets
 }

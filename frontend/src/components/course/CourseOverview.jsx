@@ -18,6 +18,7 @@ import {
   Trophy
 } from 'lucide-react'
 import Container from '../Container.jsx'
+import PersonalizedGenerationState from '../PersonalizedGenerationState.jsx'
 import { isPersonalized, isMarketplace } from '../../utils/courseTypeUtils.js'
 
 const getMetadataItems = (course) => {
@@ -114,7 +115,9 @@ export default function CourseOverview({
   progressSummary,
   backLink,
   hasFeedback = false,
-  courseId = null
+  courseId = null,
+  generationReadiness = null, // null | 'generating' | 'failed'
+  generationCompetencyName = null
 }) {
   if (!course) {
     return null
@@ -152,78 +155,91 @@ export default function CourseOverview({
   // STATE 1: NOT ENROLLED (!isEnrolled) → Show "Enroll"
   // STATE 2: ENROLLED BUT NOT STARTED (isEnrolled && progress === 0) → Show "Start Learning"
   // STATE 3: IN PROGRESS (isEnrolled && progress > 0) → Show "Continue Learning"
-  
-  const primaryCta = showStructureCta
-    ? personalized
-      ? (
-          // Personalized courses always show "Start Course"
-          <button
-            type="button"
-            className="btn btn-primary flex items-center justify-center gap-2"
-            onClick={onContinue}
-          >
-            <PlayCircle size={18} />
-            Start Course
-          </button>
-        )
-      : !isEnrolled
+  const generationBlocked =
+    personalized && (generationReadiness === 'generating' || generationReadiness === 'failed')
+
+  const primaryCta = generationBlocked
+    ? null
+    : showStructureCta
+      ? personalized
         ? (
-            // STATE 1: NOT ENROLLED → Show "Enroll"
+            // Personalized courses always show "Start Course"
             <button
               type="button"
               className="btn btn-primary flex items-center justify-center gap-2"
-              onClick={onEnrollClick}
+              onClick={onContinue}
             >
-              <Target size={18} />
-              Enroll
+              <PlayCircle size={18} />
+              Start Course
             </button>
           )
-        : progress === 0
+        : !isEnrolled
           ? (
-              // STATE 2: ENROLLED BUT NOT STARTED → Show "Start Learning"
+              // STATE 1: NOT ENROLLED → Show "Enroll"
               <button
                 type="button"
                 className="btn btn-primary flex items-center justify-center gap-2"
-                onClick={onContinue}
-                disabled={isSubmitting}
+                onClick={onEnrollClick}
               >
-                <PlayCircle size={18} />
-                Start Learning
+                <Target size={18} />
+                Enroll
               </button>
             )
-          : (
-              // STATE 3: IN PROGRESS → Show "Continue Learning"
-              <button
-                type="button"
-                className="btn btn-primary flex items-center justify-center gap-2"
-                onClick={onContinue}
-                disabled={isSubmitting}
-              >
-                <PlayCircle size={18} />
-                Continue Learning
-              </button>
-            )
-    : null
+          : progress === 0
+            ? (
+                // STATE 2: ENROLLED BUT NOT STARTED → Show "Start Learning"
+                <button
+                  type="button"
+                  className="btn btn-primary flex items-center justify-center gap-2"
+                  onClick={onContinue}
+                  disabled={isSubmitting}
+                >
+                  <PlayCircle size={18} />
+                  Start Learning
+                </button>
+              )
+            : (
+                // STATE 3: IN PROGRESS → Show "Continue Learning"
+                <button
+                  type="button"
+                  className="btn btn-primary flex items-center justify-center gap-2"
+                  onClick={onContinue}
+                  disabled={isSubmitting}
+                >
+                  <PlayCircle size={18} />
+                  Continue Learning
+                </button>
+              )
+      : null
 
   // Secondary CTA based on 3-state system
-  const secondaryCta = showStructureCta
-    ? personalized
-      ? (
-          <Link to="/learner/marketplace" className="btn btn-secondary flex items-center justify-center gap-2">
-            <BookOpen size={18} />
-            Explore marketplace
-          </Link>
-        )
-      : isEnrolled && progress > 0
+  const secondaryCta = generationBlocked
+    ? null
+    : showStructureCta
+      ? personalized
         ? (
-            // STATE 3: IN PROGRESS → Show "View Progress"
-            <Link to="/learner/enrolled" className="btn btn-secondary flex items-center justify-center gap-2">
-              <CheckCircle2 size={18} />
-              View Progress
+            <Link to="/learner/marketplace" className="btn btn-secondary flex items-center justify-center gap-2">
+              <BookOpen size={18} />
+              Explore marketplace
             </Link>
           )
-        : null // STATE 1 and STATE 2: No secondary CTA
-    : null
+        : isEnrolled && progress > 0
+          ? (
+              // STATE 3: IN PROGRESS → Show "View Progress"
+              <Link to="/learner/enrolled" className="btn btn-secondary flex items-center justify-center gap-2">
+                <CheckCircle2 size={18} />
+                View Progress
+              </Link>
+            )
+          : null // STATE 1 and STATE 2: No secondary CTA
+      : null
+
+  const generationPanel = generationBlocked ? (
+    <PersonalizedGenerationState
+      mode={generationReadiness === 'failed' ? 'failed' : 'generating'}
+      competencyName={generationCompetencyName || course?.title || course?.course_name}
+    />
+  ) : null
 
   return (
     <div className="page-surface bg-[var(--bg-primary)] transition-colors">
@@ -383,16 +399,17 @@ export default function CourseOverview({
                   </button>
                 )}
                 
-                {!personalized && !isEnrolled && showStructureCta && (
+                {!personalized && !isEnrolled && showStructureCta && !generationBlocked && (
                   <p className="text-center text-xs" style={{ color: 'var(--text-muted)' }}>
                     Secure access in one click. Cancel anytime during preview.
                   </p>
                 )}
-                {personalized && showStructureCta && (
+                {personalized && showStructureCta && !generationBlocked && (
                   <p className="text-center text-xs" style={{ color: 'var(--text-muted)' }}>
                     Your personalized learning path is ready. Start learning now!
                   </p>
                 )}
+                {generationPanel}
               </div>
 
               {/* Progress box - Only show in STATE 3 (IN PROGRESS: enrolled && progress > 0) */}
