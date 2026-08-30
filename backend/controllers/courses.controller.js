@@ -21,6 +21,7 @@ export const browseCourses = async (req, res, next) => {
       page = 1,
       limit = 10
     } = req.query;
+    const learnerId = getAuthenticatedLearnerId(req);
 
     const result = await coursesService.browseCourses({
       search,
@@ -29,11 +30,15 @@ export const browseCourses = async (req, res, next) => {
       sort,
       page: parseInt(page, 10),
       limit: parseInt(limit, 10),
-      role: 'learner'
+      role: 'learner',
+      learnerId
     });
 
     res.status(200).json(result);
   } catch (error) {
+    if (sendAuthIdentityError(res, error)) {
+      return;
+    }
     next(error);
   }
 };
@@ -52,6 +57,12 @@ export const getEnrollmentStatus = async (req, res, next) => {
   } catch (error) {
     if (sendAuthIdentityError(res, error)) {
       return;
+    }
+    if (error.status === 404) {
+      return res.status(404).json({
+        error: 'Not Found',
+        message: error.message || 'Course not found'
+      });
     }
     next(error);
   }
@@ -122,6 +133,12 @@ export const registerForCourse = async (req, res, next) => {
   } catch (error) {
     if (sendAuthIdentityError(res, error)) {
       return;
+    }
+    if (error.status === 404) {
+      return res.status(404).json({
+        error: 'Not Found',
+        message: error.message || 'Course not found'
+      });
     }
     if (error.code === '23505') { // PostgreSQL unique violation
       return res.status(409).json({
@@ -434,6 +451,7 @@ export const getCourseFilters = async (req, res, next) => {
 export const getLessonExercises = async (req, res, next) => {
   try {
     const { id: lessonId } = req.params;
+    const learnerId = getAuthenticatedLearnerId(req);
 
     if (!lessonId) {
       return res.status(400).json({
@@ -442,7 +460,7 @@ export const getLessonExercises = async (req, res, next) => {
       });
     }
 
-    const lesson = await coursesService.getLessonDetails(lessonId);
+    const lesson = await coursesService.getLessonDetails(lessonId, { learnerId });
 
     if (!lesson) {
       return res.status(404).json({
@@ -480,6 +498,9 @@ export const getLessonExercises = async (req, res, next) => {
     res.set('Content-Type', 'text/html; charset=utf-8');
     res.status(200).send(exercisesHTML);
   } catch (error) {
+    if (sendAuthIdentityError(res, error)) {
+      return;
+    }
     next(error);
   }
 };
@@ -491,6 +512,7 @@ export const getLessonExercises = async (req, res, next) => {
 export const getLessonDetails = async (req, res, next) => {
   try {
     const { id: lessonId } = req.params;
+    const learnerId = getAuthenticatedLearnerId(req);
 
     if (!lessonId) {
       return res.status(400).json({
@@ -499,7 +521,7 @@ export const getLessonDetails = async (req, res, next) => {
       });
     }
 
-    const lesson = await coursesService.getLessonDetails(lessonId);
+    const lesson = await coursesService.getLessonDetails(lessonId, { learnerId });
 
     if (!lesson) {
       return res.status(404).json({
@@ -510,6 +532,9 @@ export const getLessonDetails = async (req, res, next) => {
 
     res.status(200).json(lesson);
   } catch (error) {
+    if (sendAuthIdentityError(res, error)) {
+      return;
+    }
     next(error);
   }
 };

@@ -8,7 +8,7 @@ import Container from '../components/Container.jsx'
 import { useApp } from '../context/AppContext'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
-import { filterPersonalizedCourses, filterMarketplaceCourses } from '../utils/courseTypeUtils.js'
+import { filterMarketplaceCourses, filterPersonalizedCoursesForLearner } from '../utils/courseTypeUtils.js'
 import { usePersonalizedGenerationJobs } from '../hooks/usePersonalizedGenerationJobs.js'
 import {
   findActiveJobForCourse,
@@ -26,11 +26,13 @@ export default function LearnerDashboard() {
   const [trendingTopics, setTrendingTopics] = useState([])
   const [loading, setLoading] = useState(true)
 
+  const learnerId = userProfile?.directoryUserId || userProfile?.id || null
+
   const loadDashboardQuiet = useCallback(async () => {
     try {
       const coursesData = await getCourses({ limit: 12 })
       const allCourses = coursesData.courses || []
-      const personalized = filterPersonalizedCourses(allCourses)
+      const personalized = filterPersonalizedCoursesForLearner(allCourses, learnerId)
       const marketplace = filterMarketplaceCourses(allCourses)
       setPersonalizedCoursesList(personalized)
       setMarketplaceCoursesList(marketplace)
@@ -38,7 +40,7 @@ export default function LearnerDashboard() {
     } catch {
       // Keep existing dashboard data on quiet refresh failure.
     }
-  }, [])
+  }, [learnerId])
 
   const handleActiveJobsBecameInactive = useCallback(() => {
     loadDashboardQuiet()
@@ -46,6 +48,7 @@ export default function LearnerDashboard() {
 
   const { jobs } = usePersonalizedGenerationJobs({
     enabled: identityReady,
+    identityKey: learnerId,
     onActiveJobsBecameInactive: handleActiveJobsBecameInactive
   })
 
@@ -53,6 +56,8 @@ export default function LearnerDashboard() {
     if (!identityReady) {
       return
     }
+    setPersonalizedCoursesList([])
+    setRecommended([])
     loadDashboard()
   }, [userProfile?.id, identityReady])
 
@@ -64,7 +69,7 @@ export default function LearnerDashboard() {
       const allCourses = coursesData.courses || []
 
       // Separate personalized and marketplace courses
-      const personalized = filterPersonalizedCourses(allCourses)
+      const personalized = filterPersonalizedCoursesForLearner(allCourses, learnerId)
       const marketplace = filterMarketplaceCourses(allCourses)
 
       // Store separate lists for display in different sections

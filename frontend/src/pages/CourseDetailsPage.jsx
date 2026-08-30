@@ -7,7 +7,7 @@ import CourseStructureSidebar from '../components/course/CourseStructureSidebar.
 import EnrollModal from '../components/course/EnrollModal.jsx'
 import { useApp } from '../context/AppContext'
 import Container from '../components/Container.jsx'
-import { isPersonalized } from '../utils/courseTypeUtils.js'
+import { isPersonalized, isPersonalizedForLearner } from '../utils/courseTypeUtils.js'
 import { usePersonalizedGenerationJobs } from '../hooks/usePersonalizedGenerationJobs.js'
 import {
   findActiveJobForCourse,
@@ -66,6 +66,7 @@ export default function CourseDetailsPage() {
       const params = learnerId ? { learner_id: learnerId } : undefined
       const data = await getCourseById(id, params)
       const courseIsPersonalized = isPersonalizedFlow || isPersonalized(data)
+      const ownedPersonalized = isPersonalizedForLearner(data, learnerId)
       const enrichedCourse = courseIsPersonalized
         ? {
             ...data,
@@ -77,8 +78,8 @@ export default function CourseDetailsPage() {
           }
         : data
 
-      // For personalized courses: Auto-enroll silently in background if not enrolled
-      if (courseIsPersonalized && !enrollmentData.enrolled && learnerId) {
+      // For owned personalized courses: Auto-enroll silently in background if not enrolled
+      if (ownedPersonalized && !enrollmentData.enrolled && learnerId) {
         registerLearner(id, {
           learner_id: learnerId,
           learner_name: userProfile?.name,
@@ -131,7 +132,8 @@ export default function CourseDetailsPage() {
   const isPersonalizedCourse = isPersonalizedFlow || metadataPersonalized
 
   const { jobs } = usePersonalizedGenerationJobs({
-    enabled: Boolean(isPersonalizedCourse)
+    enabled: Boolean(isPersonalizedCourse),
+    identityKey: learnerId
   })
 
   const matchingActiveJob = isPersonalizedCourse

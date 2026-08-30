@@ -26,6 +26,7 @@ function completionTransitionSignature(prevJobs, nextJobs) {
  */
 export function usePersonalizedGenerationJobs({
   enabled = true,
+  identityKey = null,
   onActiveJobsBecameInactive = null,
   pollIntervalMs = PERSONALIZED_JOBS_POLL_MS
 } = {}) {
@@ -105,13 +106,15 @@ export function usePersonalizedGenerationJobs({
       return undefined
     }
 
+    jobsRef.current = []
+    setJobs([])
     setJobsLoading(true)
     fetchJobs({ silent: false })
 
     return () => {
       mountedRef.current = false
     }
-  }, [enabled, fetchJobs])
+  }, [enabled, fetchJobs, identityKey])
 
   useEffect(() => {
     if (!enabled) return undefined

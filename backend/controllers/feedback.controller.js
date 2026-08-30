@@ -76,6 +76,7 @@ export const submitFeedback = async (req, res, next) => {
 export const getAggregatedFeedback = async (req, res, next) => {
   try {
     const { courseId } = req.params;
+    const learnerId = getAuthenticatedLearnerId(req);
 
     if (!courseId) {
       return res.status(400).json({
@@ -84,7 +85,7 @@ export const getAggregatedFeedback = async (req, res, next) => {
       });
     }
 
-    const result = await feedbackService.getAggregatedFeedback(courseId);
+    const result = await feedbackService.getAggregatedFeedback(courseId, learnerId);
 
     if (!result) {
       return res.status(404).json({
@@ -95,6 +96,12 @@ export const getAggregatedFeedback = async (req, res, next) => {
 
     res.status(200).json(result);
   } catch (error) {
+    if (sendAuthIdentityError(res, error)) {
+      return;
+    }
+    if (sendKnownError(res, error)) {
+      return;
+    }
     next(error);
   }
 };
@@ -107,6 +114,7 @@ export const getFeedbackAnalytics = async (req, res, next) => {
   try {
     const { id: courseId } = req.params;
     const { from, to, version } = req.query;
+    const learnerId = getAuthenticatedLearnerId(req);
 
     if (!courseId) {
       return res.status(400).json({
@@ -115,9 +123,17 @@ export const getFeedbackAnalytics = async (req, res, next) => {
       });
     }
 
-    const result = await feedbackService.getFeedbackAnalytics(courseId, { from, to, version });
+    const result = await feedbackService.getFeedbackAnalytics(courseId, {
+      from,
+      to,
+      version,
+      learnerId
+    });
     res.status(200).json(result);
   } catch (error) {
+    if (sendAuthIdentityError(res, error)) {
+      return;
+    }
     if (error.status === 404) {
       return res.status(404).json({
         error: 'Not Found',

@@ -9,11 +9,12 @@ import assessmentRepository from '../repositories/AssessmentRepository.js';
 import { v4 as uuidv4 } from 'uuid';
 import { cache, cached } from './cache.service.js';
 import { resolveLearnerCourseProgress } from '../utils/postcourseCompletion.js';
+import { isPersonalizedCourseOwnedByLearner } from '../utils/personalizedCourseAccess.js';
 
 /**
  * Browse courses with filters (internal, no cache)
  */
-const _browseCoursesInternal = async ({ search, category, level, sort, page, limit, role }) => {
+const _browseCoursesInternal = async ({ search, category, level, sort, page, limit, role, learnerId }) => {
   try {
     const normalizedRole = typeof role === 'string' ? role.toLowerCase() : null;
     const isPrivilegedViewer = normalizedRole === 'trainer' || normalizedRole === 'admin';
@@ -24,6 +25,13 @@ const _browseCoursesInternal = async ({ search, category, level, sort, page, lim
     if (!isPrivilegedViewer) {
       filters.push(`c.status = 'active'`);
     }
+
+    params.push(learnerId ?? null);
+    const learnerIdx = params.length;
+    // NULL owner never matches (= is unknown); foreign personalized rows are excluded.
+    filters.push(
+      `(c.course_type <> 'learner_specific' OR c.created_by_user_id = $${learnerIdx})`
+    );
 
     if (search) {
       params.push(`%${search}%`);
@@ -154,6 +162,10 @@ const _getCourseDetailsInternal = async (courseId, options = {}) => {
     }
 
     if (!isPrivilegedViewer && course.status !== 'active') {
+      return null;
+    }
+
+    if (!isPersonalizedCourseOwnedByLearner(course, learnerId)) {
       return null;
     }
 
@@ -442,6 +454,12 @@ export const registerLearner = async (courseId, { learner_id, learner_name, lear
       throw error;
     }
 
+    if (!isPersonalizedCourseOwnedByLearner(course, normalizedLearnerId)) {
+      const error = new Error('Course not found');
+      error.status = 404;
+      throw error;
+    }
+
     // Check if already registered (with normalized IDs)
     const existing = await registrationRepository.findByLearnerAndCourse(normalizedLearnerId, normalizedCourseId);
     if (existing) {
@@ -499,7 +517,13 @@ export const getEnrollmentStatus = async (courseId, learnerId) => {
 
   try {
     const normalizedLearnerId = learnerId?.trim();
-    
+    const courseRecord = await courseRepository.findById(courseId);
+    if (courseRecord && !isPersonalizedCourseOwnedByLearner(courseRecord, normalizedLearnerId)) {
+      const error = new Error('Course not found');
+      error.status = 404;
+      throw error;
+    }
+
     // Check registration table (primary source)
     const registration = await registrationRepository.findByLearnerAndCourse(normalizedLearnerId, courseId);
     
@@ -566,6 +590,9 @@ export const getEnrollmentStatus = async (courseId, learnerId) => {
       completedLessons: completedLessons.length
     };
   } catch (error) {
+    if (error.status === 404) {
+      throw error;
+    }
     console.error('[Enrollment Status] Error:', error);
     return {
       enrolled: false,
@@ -632,6 +659,12 @@ export const updateLessonProgress = async (courseId, { learner_id, lesson_id, co
     return await db.tx(async (t) => {
       const course = await courseRepository.findById(courseId);
       if (!course) {
+        const error = new Error('Course not found');
+        error.status = 404;
+        throw error;
+      }
+
+      if (!isPersonalizedCourseOwnedByLearner(course, learner_id)) {
         const error = new Error('Course not found');
         error.status = 404;
         throw error;
@@ -1073,16 +1106,26 @@ export const getCourseVersions = async (courseId) => {
 /**
  * Get lesson details with full content
  */
-export const getLessonDetails = async (lessonId) => {
+export const getLessonDetails = async (lessonId, options = {}) => {
   try {
+    const { learnerId } = options;
     const lesson = await lessonRepository.findById(lessonId);
     if (!lesson) {
       return null;
     }
 
     const module = await moduleRepository.findById(lesson.module_id);
+    if (!module) {
+      return null;
+    }
     const topic = await topicRepository.findById(module.topic_id);
+    if (!topic) {
+      return null;
+    }
     const course = await courseRepository.findById(topic.course_id);
+    if (!course || !isPersonalizedCourseOwnedByLearner(course, learnerId)) {
+      return null;
+    }
 
     return {
       id: lesson.id,
@@ -1121,6 +1164,7 @@ export const getLearnerProgress = async (learnerId) => {
       registrations.map(async (reg) => {
         const course = await courseRepository.findById(reg.course_id);
         if (!course) return null;
+        if (!isPersonalizedCourseOwnedByLearner(course, learnerId)) return null;
 
         // Calculate rating from feedback
         const ratingResult = await db.oneOrNone(
@@ -1186,8 +1230,8 @@ export const browseCourses = cached(
   {
     keyPrefix: 'courses',
     ttl: 300, // 5 minutes cache
-    keyGenerator: ({ search, category, level, sort, page, limit, role }) => {
-      return `courses:browse:${JSON.stringify({ search, category, level, sort, page, limit, role })}`;
+    keyGenerator: ({ search, category, level, sort, page, limit, role, learnerId }) => {
+      return `courses:browse:${JSON.stringify({ search, category, level, sort, page, limit, role, learnerId })}`;
     }
   }
 );

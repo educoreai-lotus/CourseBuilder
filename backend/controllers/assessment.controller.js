@@ -9,6 +9,7 @@ import {
   getAuthenticatedLearnerId,
   sendAuthIdentityError
 } from '../utils/authHelpers.js';
+import { isPersonalizedCourseOwnedByLearner } from '../utils/personalizedCourseAccess.js';
 
 /**
  * Start assessment for a learner
@@ -42,7 +43,7 @@ export const startAssessment = async (req, res, next) => {
 
     // Get course
     const course = await courseRepository.findById(courseId);
-    if (!course) {
+    if (!course || !isPersonalizedCourseOwnedByLearner(course, learnerId)) {
       return res.status(404).json({
         error: 'Not Found',
         message: 'Course not found'

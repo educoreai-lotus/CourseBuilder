@@ -6,7 +6,8 @@ import {
   getCourseById,
   fetchEnrollmentStatus,
   getPersonalizedGenerationJobs,
-  getMyFeedback
+  getMyFeedback,
+  registerLearner
 } from '../../services/apiService.js'
 import {
   FAILED_GENERATION_MESSAGE,
@@ -34,6 +35,7 @@ const personalizedCourse = {
   id: 'course-1',
   title: 'Overview Personalized',
   course_type: 'learner_specific',
+  created_by_user_id: 'learner-1',
   description: 'Desc',
   topics: [
     {
@@ -60,6 +62,8 @@ describe('CourseDetailsPage overview generation guard', () => {
     fetchEnrollmentStatus.mockResolvedValue({ enrolled: true, progress: 0, completedLessons: 0 })
     getMyFeedback.mockResolvedValue(null)
     getPersonalizedGenerationJobs.mockResolvedValue({ jobs: [] })
+    registerLearner.mockReset()
+    registerLearner.mockResolvedValue({ status: 'registered' })
   })
 
   test('active matching job → generating state without Start Course', async () => {
@@ -126,6 +130,31 @@ describe('CourseDetailsPage overview generation guard', () => {
     expect(await screen.findByRole('button', { name: /enroll/i })).toBeInTheDocument()
     await waitFor(() => {
       expect(screen.queryByText(GENERATING_MESSAGE)).not.toBeInTheDocument()
+    })
+    expect(registerLearner).not.toHaveBeenCalled()
+  })
+
+  test('does not auto-enroll a foreign personalized course', async () => {
+    fetchEnrollmentStatus.mockResolvedValue({ enrolled: false, progress: 0, completedLessons: 0 })
+    getCourseById.mockResolvedValue({
+      ...personalizedCourse,
+      created_by_user_id: 'other-learner'
+    })
+    renderDetails()
+    await waitFor(() => {
+      expect(getCourseById).toHaveBeenCalled()
+    })
+    expect(registerLearner).not.toHaveBeenCalled()
+  })
+
+  test('auto-enrolls owned personalized course when not enrolled', async () => {
+    fetchEnrollmentStatus.mockResolvedValue({ enrolled: false, progress: 0, completedLessons: 0 })
+    renderDetails()
+    await waitFor(() => {
+      expect(registerLearner).toHaveBeenCalledWith(
+        'course-1',
+        expect.objectContaining({ learner_id: 'learner-1' })
+      )
     })
   })
 })

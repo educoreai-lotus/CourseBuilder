@@ -35,11 +35,10 @@ jest.mock('../../hooks/usePersonalizedGenerationJobs.js', () => ({
 }))
 
 jest.mock('../../context/AppContext.jsx', () => ({
-  useApp: () => ({
-    showToast: jest.fn(),
-    userProfile: { id: 'learner-1', name: 'Test' }
-  })
+  useApp: jest.fn()
 }))
+
+import { useApp } from '../../context/AppContext.jsx'
 
 jest.mock('../../components/CourseCard.jsx', () => ({
   __esModule: true,
@@ -50,6 +49,7 @@ const legacyCourse = {
   id: 'legacy-1',
   title: 'Legacy Personalized',
   course_type: 'learner_specific',
+  created_by_user_id: 'learner-1',
   created_at: '2024-01-01T00:00:00.000Z'
 }
 
@@ -57,6 +57,7 @@ const incompleteCourse = {
   id: 'course-active',
   title: 'Still Generating Course',
   course_type: 'learner_specific',
+  created_by_user_id: 'learner-1',
   created_at: '2024-06-01T00:00:00.000Z'
 }
 
@@ -76,6 +77,10 @@ describe('LearnerForYou personalized generation readiness', () => {
     getPersonalizedGenerationJobs.mockReset()
     getCourses.mockResolvedValue({ courses: [legacyCourse] })
     getPersonalizedGenerationJobs.mockResolvedValue({ jobs: [] })
+    useApp.mockReturnValue({
+      showToast: jest.fn(),
+      userProfile: { id: 'learner-1', directoryUserId: 'learner-1', name: 'Test' }
+    })
   })
 
   test('no jobs → existing ready cards unchanged', async () => {
@@ -211,5 +216,58 @@ describe('LearnerForYou personalized generation readiness', () => {
     })
 
     timeoutSpy.mockRestore()
+  })
+
+  test('renders own personalized course and hides foreign personalized course', async () => {
+    getCourses.mockResolvedValue({
+      courses: [
+        legacyCourse,
+        {
+          id: 'foreign-1',
+          title: 'Someone Else Path',
+          course_type: 'learner_specific',
+          created_by_user_id: 'learner-2',
+          created_at: '2024-07-01T00:00:00.000Z'
+        }
+      ]
+    })
+    renderForYou()
+    expect(await screen.findByTestId('course-card-legacy-1')).toBeInTheDocument()
+    expect(screen.queryByTestId('course-card-foreign-1')).not.toBeInTheDocument()
+    expect(screen.queryByText('Someone Else Path')).not.toBeInTheDocument()
+  })
+
+  test('identity change resets and refilters personalized list', async () => {
+    getCourses.mockResolvedValue({
+      courses: [
+        legacyCourse,
+        {
+          id: 'b-owned',
+          title: 'User B Path',
+          course_type: 'learner_specific',
+          created_by_user_id: 'learner-2',
+          created_at: '2024-08-01T00:00:00.000Z'
+        }
+      ]
+    })
+    const { rerender } = renderForYou()
+    expect(await screen.findByTestId('course-card-legacy-1')).toBeInTheDocument()
+    const callsAfterFirst = getCourses.mock.calls.length
+
+    useApp.mockReturnValue({
+      showToast: jest.fn(),
+      userProfile: { id: 'learner-2', directoryUserId: 'learner-2', name: 'Other' }
+    })
+    rerender(
+      <MemoryRouter>
+        <LearnerForYou />
+      </MemoryRouter>
+    )
+
+    await waitFor(() => {
+      expect(getCourses.mock.calls.length).toBeGreaterThan(callsAfterFirst)
+    })
+    expect(await screen.findByTestId('course-card-b-owned')).toBeInTheDocument()
+    expect(screen.queryByTestId('course-card-legacy-1')).not.toBeInTheDocument()
   })
 })

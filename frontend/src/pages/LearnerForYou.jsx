@@ -6,7 +6,7 @@ import PersonalizedGenerationState from '../components/PersonalizedGenerationSta
 import { useApp } from '../context/AppContext.jsx'
 import Container from '../components/Container.jsx'
 import CourseCard from '../components/CourseCard.jsx'
-import { filterPersonalizedCourses } from '../utils/courseTypeUtils.js'
+import { filterPersonalizedCoursesForLearner } from '../utils/courseTypeUtils.js'
 import { usePersonalizedGenerationJobs } from '../hooks/usePersonalizedGenerationJobs.js'
 import {
   COURSE_REFRESH_LAG_MS,
@@ -16,7 +16,8 @@ import {
 } from '../utils/personalizedGenerationJobs.js'
 
 export default function LearnerForYou() {
-  const { showToast } = useApp()
+  const { showToast, userProfile } = useApp()
+  const learnerId = userProfile?.directoryUserId || userProfile?.id || null
   const [courses, setCourses] = useState([])
   const [loading, setLoading] = useState(true)
   const mountedRef = useRef(true)
@@ -30,7 +31,7 @@ export default function LearnerForYou() {
       const data = await getCourses({ limit: 100 })
       const allCourses = data.courses || []
 
-      const personalized = filterPersonalizedCourses(allCourses).sort((a, b) => {
+      const personalized = filterPersonalizedCoursesForLearner(allCourses, learnerId).sort((a, b) => {
         const first = new Date(b.created_at || b.updated_at || Date.now())
         const second = new Date(a.created_at || a.updated_at || Date.now())
         return first - second
@@ -48,7 +49,7 @@ export default function LearnerForYou() {
         setLoading(false)
       }
     }
-  }, [showToast])
+  }, [showToast, learnerId])
 
   const handleActiveJobsBecameInactive = useCallback(() => {
     loadCourses({ quiet: true })
@@ -64,11 +65,13 @@ export default function LearnerForYou() {
 
   const { jobs, jobsError, softErrorShownRef } = usePersonalizedGenerationJobs({
     enabled: true,
+    identityKey: learnerId,
     onActiveJobsBecameInactive: handleActiveJobsBecameInactive
   })
 
   useEffect(() => {
     mountedRef.current = true
+    setCourses([])
     loadCourses({ quiet: false })
     return () => {
       mountedRef.current = false

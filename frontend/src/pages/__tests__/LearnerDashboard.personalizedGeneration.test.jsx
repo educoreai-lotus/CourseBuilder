@@ -24,6 +24,7 @@ const personalized = {
   id: 'p1',
   title: 'Personalized Ready',
   course_type: 'learner_specific',
+  created_by_user_id: 'learner-1',
   description: 'Ready path'
 }
 
@@ -111,5 +112,25 @@ describe('LearnerDashboard personalized generation guard', () => {
     renderDash()
     expect(await screen.findByText('Marketplace Course')).toBeInTheDocument()
     expect(screen.getByText('View details')).toBeInTheDocument()
+  })
+
+  test('does not render a foreign personalized course', async () => {
+    getCourses.mockResolvedValue({
+      courses: [
+        personalized,
+        {
+          id: 'p-foreign',
+          title: 'Foreign Personalized',
+          course_type: 'learner_specific',
+          created_by_user_id: 'other-learner',
+          description: 'Not yours'
+        },
+        marketplace
+      ]
+    })
+    renderDash()
+    expect(await screen.findByText('Personalized Ready')).toBeInTheDocument()
+    expect(screen.queryByText('Foreign Personalized')).not.toBeInTheDocument()
+    expect(screen.getByText('Marketplace Course')).toBeInTheDocument()
   })
 })

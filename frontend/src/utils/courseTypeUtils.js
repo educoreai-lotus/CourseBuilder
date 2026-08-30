@@ -79,6 +79,23 @@ export function belongsToTrainer(course, trainerId) {
 }
 
 /**
+ * Personalized course that belongs to this authenticated learner.
+ * Distinct from isPersonalized(), which only means "this is a personalized course".
+ */
+export function isPersonalizedForLearner(course, learnerId) {
+  if (!course || learnerId == null || String(learnerId).trim() === '') {
+    return false
+  }
+  if (course.course_type !== 'learner_specific') {
+    return false
+  }
+  if (course.created_by_user_id == null || String(course.created_by_user_id).trim() === '') {
+    return false
+  }
+  return String(course.created_by_user_id) === String(learnerId)
+}
+
+/**
  * Filter courses to show only marketplace courses
  * 
  * @param {Array} courses - Array of course objects
@@ -98,6 +115,14 @@ export function filterMarketplaceCourses(courses) {
 export function filterPersonalizedCourses(courses) {
   if (!Array.isArray(courses)) return []
   return courses.filter(course => isPersonalized(course))
+}
+
+/**
+ * Filter to personalized courses owned by the current learner (defense in depth).
+ */
+export function filterPersonalizedCoursesForLearner(courses, learnerId) {
+  if (!Array.isArray(courses)) return []
+  return courses.filter(course => isPersonalizedForLearner(course, learnerId))
 }
 
 /**

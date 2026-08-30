@@ -4,6 +4,15 @@ import courseRepository from '../repositories/CourseRepository.js';
 import { sendToDirectory } from './gateways/directoryGateway.js';
 import { sendCourseAnalytics } from '../integration/clients/learningAnalyticsClient.js';
 import { v4 as uuidv4 } from 'uuid';
+import { isPersonalizedCourseOwnedByLearner } from '../utils/personalizedCourseAccess.js';
+
+const assertLearnerFeedbackAccess = (course, learnerId) => {
+  if (!course || !isPersonalizedCourseOwnedByLearner(course, learnerId)) {
+    const error = new Error('Course not found');
+    error.status = 404;
+    throw error;
+  }
+};
 
 const validateRating = (rating) => {
   const ratingNum = parseFloat(rating);
@@ -45,13 +54,13 @@ export const submitFeedback = async (courseId, { learner_id, rating, comment }) 
     // Validate rating (1-5)
     const normalizedRating = validateRating(rating);
 
-    // Check if course exists
     const course = await courseRepository.findById(courseId);
     if (!course) {
       const error = new Error('Course not found');
       error.status = 404;
       throw error;
     }
+    assertLearnerFeedbackAccess(course, learner_id);
 
     // Check if feedback already submitted (one feedback per learner per course)
     const existing = await feedbackRepository.findByLearnerAndCourse(learner_id, courseId);
@@ -124,13 +133,14 @@ export const submitFeedback = async (courseId, { learner_id, rating, comment }) 
 /**
  * Get aggregated feedback for a course
  */
-export const getAggregatedFeedback = async (courseId) => {
+export const getAggregatedFeedback = async (courseId, learnerId) => {
   try {
     // Check if course exists
     const course = await courseRepository.findById(courseId);
     if (!course) {
       return null;
     }
+    assertLearnerFeedbackAccess(course, learnerId);
 
     // Get aggregated stats from feedback table
     const stats = await db.oneOrNone(
@@ -186,11 +196,14 @@ export const getAggregatedFeedback = async (courseId) => {
 /**
  * Get feedback summary (alias for getAggregatedFeedback)
  */
-export const getFeedbackSummary = async (courseId) => {
-  return getAggregatedFeedback(courseId);
+export const getFeedbackSummary = async (courseId, learnerId) => {
+  return getAggregatedFeedback(courseId, learnerId);
 };
 
 export const getLearnerFeedback = async (courseId, learnerId) => {
+  const course = await courseRepository.findById(courseId);
+  assertLearnerFeedbackAccess(course, learnerId);
+
   const feedback = await feedbackRepository.findByLearnerAndCourse(learnerId, courseId);
   if (!feedback) {
     return null;
@@ -209,6 +222,9 @@ export const getLearnerFeedback = async (courseId, learnerId) => {
 
 export const updateFeedback = async (courseId, learnerId, { rating, comment }) => {
   const normalizedRating = validateRating(rating);
+
+  const course = await courseRepository.findById(courseId);
+  assertLearnerFeedbackAccess(course, learnerId);
 
   const existing = await feedbackRepository.findByLearnerAndCourse(learnerId, courseId);
   if (!existing) {
@@ -261,6 +277,9 @@ export const updateFeedback = async (courseId, learnerId, { rating, comment }) =
 };
 
 export const deleteFeedback = async (courseId, learnerId) => {
+  const course = await courseRepository.findById(courseId);
+  assertLearnerFeedbackAccess(course, learnerId);
+
   const existing = await feedbackRepository.findByLearnerAndCourse(learnerId, courseId);
   if (!existing) {
     const error = new Error('Feedback not found for this course');
@@ -271,7 +290,6 @@ export const deleteFeedback = async (courseId, learnerId) => {
   await feedbackRepository.delete(existing.id);
 
   // Update course feedbackDictionary
-  const course = await courseRepository.findById(courseId);
   if (course) {
     const feedbackDict = course.feedbackDictionary || {};
     delete feedbackDict[learnerId];
@@ -288,7 +306,7 @@ export const deleteFeedback = async (courseId, learnerId) => {
  * Get feedback analytics for trainers
  * Returns detailed analytics with rating trends and date filtering
  */
-export const getFeedbackAnalytics = async (courseId, { from, to } = {}) => {
+export const getFeedbackAnalytics = async (courseId, { from, to, learnerId } = {}) => {
   try {
     // Check if course exists
     const course = await courseRepository.findById(courseId);
@@ -297,6 +315,7 @@ export const getFeedbackAnalytics = async (courseId, { from, to } = {}) => {
       error.status = 404;
       throw error;
     }
+    assertLearnerFeedbackAccess(course, learnerId);
 
     // Build date filter
     let dateFilter = '';

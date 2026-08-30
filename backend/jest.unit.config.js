@@ -24,6 +24,8 @@ export default {
     '**/__tests__/personalizedGeneration.jobRepository.test.js',
     '**/__tests__/personalizedGeneration.blockers.test.js',
     '**/__tests__/personalizedGeneration.routingFix.test.js',
+    '**/__tests__/personalizedCourseAccess.test.js',
+    '**/__tests__/personalizedCourseOwnership.isolation.test.js',
     '**/__tests__/coordinatorClient.test.js',
     '**/__tests__/railwayTimeoutDiagnostic.test.js'
   ],
