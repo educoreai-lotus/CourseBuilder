@@ -6,6 +6,7 @@
 
 import { dispatchIntegrationRequest } from '../integration/dispatcher.js';
 import { PendingCourseCreationError } from '../utils/PendingCourseCreationError.js';
+import { expandCompressedTrainerPublishIfNeeded } from '../utils/compressedTrainerPublish.js';
 
 /**
  * Check if response template has fields to fill
@@ -362,7 +363,27 @@ export async function handleFillContentMetrics(req, res) {
 
     // Payload and response are already objects (NOT stringified)
     // Response can be undefined for one-way communications (Learner AI, Directory, etc.)
-    const payloadObject = envelope.payload;
+    // Narrow Trainer Publish decompression (gzip+base64) — before routing only.
+    // Uncompressed / Full AI Generation envelopes are returned unchanged.
+    let payloadObject;
+    try {
+      payloadObject = expandCompressedTrainerPublishIfNeeded(
+        requesterService,
+        envelope.payload
+      );
+    } catch (expandError) {
+      const status = expandError.status || 400;
+      const errorPayload = {
+        error: status === 500 ? 'Internal Server Error' : 'Bad Request',
+        message:
+          expandError.message ||
+          'Failed to expand compressed trainer publish payload'
+      };
+      res.setHeader('Content-Type', 'application/json');
+      return res.status(status).send(JSON.stringify(errorPayload));
+    }
+    // Keep envelope.payload aligned with the restored object for the response echo.
+    envelope.payload = payloadObject;
     const responseObject = envelope.response || {};  // Default to {} if response is missing
 
     // Extract action from payload.action (action is inside payload, not top-level)

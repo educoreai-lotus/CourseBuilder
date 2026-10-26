@@ -1,3 +1,4 @@
+// Trigger Vercel frontend redeployment - Trainer Publish support
 import { Routes, Route, Navigate, useParams } from 'react-router-dom'
 import { useEffect } from 'react'
 import { AppProvider, useApp } from './context/AppContext.jsx'
