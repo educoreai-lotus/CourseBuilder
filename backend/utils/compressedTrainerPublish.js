@@ -4,6 +4,7 @@
  */
 
 import zlib from 'node:zlib';
+import { LEGACY_MAX_DECOMPRESSED_BYTES } from './trainerPublishSizeLimits.js';
 
 export const COMPRESSED_TRAINER_PUBLISH_REQUESTER = 'content-studio';
 export const COMPRESSED_TRAINER_PUBLISH_ACTION =
@@ -11,8 +12,11 @@ export const COMPRESSED_TRAINER_PUBLISH_ACTION =
 export const COMPRESSED_TRAINER_PUBLISH_TARGET = 'course-builder-service';
 export const COMPRESSED_TRAINER_PUBLISH_ENCODING = 'gzip+base64';
 
-/** Hard cap on decompressed UTF-8 byte length (zip-bomb protection). */
-export const MAX_DECOMPRESSED_TRAINER_COURSE_BYTES = 5 * 1024 * 1024;
+/**
+ * Legacy / single-shot compressed Trainer Publish decompress cap (zip-bomb protection).
+ * Chunked FINALIZE uses getChunkedMaxDecompressedBytes() instead.
+ */
+export const MAX_DECOMPRESSED_TRAINER_COURSE_BYTES = LEGACY_MAX_DECOMPRESSED_BYTES;
 
 function badRequest(message) {
   const error = new Error(message);
@@ -161,19 +165,29 @@ export function assertValidRestoredTrainerCourse(course) {
 
 /**
  * Gunzip + JSON.parse a compressed trainer course buffer (exact GZIP bytes).
- * Shared by compressed Trainer Publish expand and chunked FINALIZE reassembly.
+ * Shared by legacy compressed Trainer Publish and chunked FINALIZE reassembly.
+ *
  * @param {Buffer} compressedBuf
+ * @param {Object} [options]
+ * @param {number} [options.maxOutputLength] - zip-bomb bound (defaults to legacy 5 MiB)
  * @returns {Object}
  */
-export function decodeCompressedTrainerCourseBuffer(compressedBuf) {
+export function decodeCompressedTrainerCourseBuffer(compressedBuf, options = {}) {
   if (!Buffer.isBuffer(compressedBuf) || compressedBuf.length === 0) {
     throw badRequest('Compressed trainer course GZIP buffer is empty');
   }
 
+  const maxOutputLength =
+    typeof options.maxOutputLength === 'number' &&
+    Number.isFinite(options.maxOutputLength) &&
+    options.maxOutputLength > 0
+      ? Math.floor(options.maxOutputLength)
+      : MAX_DECOMPRESSED_TRAINER_COURSE_BYTES;
+
   let decompressedBuf;
   try {
     decompressedBuf = zlib.gunzipSync(compressedBuf, {
-      maxOutputLength: MAX_DECOMPRESSED_TRAINER_COURSE_BYTES
+      maxOutputLength
     });
   } catch (err) {
     const msg = String(err?.message || err);
@@ -183,7 +197,7 @@ export function decodeCompressedTrainerCourseBuffer(compressedBuf) {
       /maxOutputLength|exceeds|too large|larger than/i.test(msg)
     ) {
       throw badRequest(
-        `Compressed trainer course exceeds maximum decompressed size of ${MAX_DECOMPRESSED_TRAINER_COURSE_BYTES} bytes`
+        `Compressed trainer course exceeds maximum decompressed size of ${maxOutputLength} bytes`
       );
     }
     throw badRequest('Compressed trainer course GZIP decompression failed');
@@ -192,10 +206,10 @@ export function decodeCompressedTrainerCourseBuffer(compressedBuf) {
   if (
     !decompressedBuf ||
     decompressedBuf.length === 0 ||
-    decompressedBuf.length > MAX_DECOMPRESSED_TRAINER_COURSE_BYTES
+    decompressedBuf.length > maxOutputLength
   ) {
     throw badRequest(
-      `Compressed trainer course exceeds maximum decompressed size of ${MAX_DECOMPRESSED_TRAINER_COURSE_BYTES} bytes`
+      `Compressed trainer course exceeds maximum decompressed size of ${maxOutputLength} bytes`
     );
   }
 

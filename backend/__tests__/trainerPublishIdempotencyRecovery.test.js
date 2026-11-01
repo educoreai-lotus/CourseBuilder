@@ -123,8 +123,9 @@ function measureCourse(lessonCount) {
     json_utf8_bytes: jsonUtf8,
     gzip_bytes: gzipBytes.length,
     expected_chunk_count: chunks,
-    fits_5mib_decompress: jsonUtf8 <= MAX_DECOMPRESSED_TRAINER_COURSE_BYTES,
-    fits_8mib_compressed: gzipBytes.length <= MAX_TRANSFER_DECODED_BYTES,
+    fits_legacy_5mib_decompress: jsonUtf8 <= MAX_DECOMPRESSED_TRAINER_COURSE_BYTES,
+    fits_chunked_decompress_default: jsonUtf8 <= MAX_TRANSFER_DECODED_BYTES, // synthetic fixtures ≪ 32 MiB
+    fits_32mib_compressed: gzipBytes.length <= MAX_TRANSFER_DECODED_BYTES,
     fits_512_chunks: chunks <= MAX_MEMORY_CHUNK_COUNT,
     // Synthetic only — not production content sizes.
     synthetic: true
@@ -870,15 +871,15 @@ describe('Phase 6F idempotency & lost-ack (MOCKED — no live PostgreSQL)', () =
         // Log for report consumption
         // eslint-disable-next-line no-console
         console.log(
-          `[6F-SIZE] lessons=${m.lessons} json=${m.json_utf8_bytes} gzip=${m.gzip_bytes} chunks=${m.expected_chunk_count} fit5=${m.fits_5mib_decompress} fit8=${m.fits_8mib_compressed} fit512=${m.fits_512_chunks}`
+          `[6F-SIZE] lessons=${m.lessons} json=${m.json_utf8_bytes} gzip=${m.gzip_bytes} chunks=${m.expected_chunk_count} fitLegacy5=${m.fits_legacy_5mib_decompress} fitChunked=${m.fits_chunked_decompress_default} fit32c=${m.fits_32mib_compressed} fit512=${m.fits_512_chunks}`
         );
       }
     );
 
     it('all synthetic fixtures fit current caps', () => {
       for (const m of fixtures) {
-        expect(m.fits_5mib_decompress).toBe(true);
-        expect(m.fits_8mib_compressed).toBe(true);
+        expect(m.fits_chunked_decompress_default).toBe(true);
+        expect(m.fits_32mib_compressed).toBe(true);
         expect(m.fits_512_chunks).toBe(true);
       }
     });

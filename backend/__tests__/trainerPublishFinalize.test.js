@@ -42,6 +42,7 @@ import {
   COMPRESSED_TRAINER_PUBLISH_TARGET,
   MAX_DECOMPRESSED_TRAINER_COURSE_BYTES
 } from '../utils/compressedTrainerPublish.js';
+import { getChunkedMaxDecompressedBytes } from '../utils/trainerPublishSizeLimits.js';
 import { normalizeContentStudioPayload } from '../services/contentStudioNormalizer.js';
 
 const TRAINER_A = '11111111-1111-4111-8111-111111111111';
@@ -428,14 +429,35 @@ describe('trainerPublishFinalize', () => {
     ).rejects.toMatchObject({ status: 400 });
   });
 
-  it('rejects oversized decompression', () => {
-    // Craft a small gzip that expands large — use maxOutputLength path via verify helper
-    const huge = Buffer.alloc(MAX_DECOMPRESSED_TRAINER_COURSE_BYTES + 1024, 0x61);
-    const compressed = zlib.gzipSync(huge);
-    const transferSha = sha256(compressed);
-    expect(() =>
-      verifyAndDecodeReassembledCourse(compressed, transferSha)
-    ).toThrow(/maximum decompressed size/i);
+  it('rejects oversized decompression above chunked cap', () => {
+    // Use the 5 MiB floor via env so the test does not allocate the 32 MiB default.
+    const prev = process.env.TRAINER_PUBLISH_CHUNKED_MAX_DECOMPRESSED_BYTES;
+    process.env.TRAINER_PUBLISH_CHUNKED_MAX_DECOMPRESSED_BYTES = String(
+      5 * 1024 * 1024
+    );
+    try {
+      const chunkedCap = getChunkedMaxDecompressedBytes();
+      expect(chunkedCap).toBe(5 * 1024 * 1024);
+      const huge = Buffer.alloc(chunkedCap + 1024, 0x61);
+      const compressed = zlib.gzipSync(huge);
+      const transferSha = sha256(compressed);
+      expect(() =>
+        verifyAndDecodeReassembledCourse(compressed, transferSha)
+      ).toThrow(/maximum decompressed size/i);
+    } finally {
+      if (prev === undefined) {
+        delete process.env.TRAINER_PUBLISH_CHUNKED_MAX_DECOMPRESSED_BYTES;
+      } else {
+        process.env.TRAINER_PUBLISH_CHUNKED_MAX_DECOMPRESSED_BYTES = prev;
+      }
+    }
+  });
+
+  it('legacy 5 MiB decompress constant remains unchanged for non-chunked path', () => {
+    expect(MAX_DECOMPRESSED_TRAINER_COURSE_BYTES).toBe(5 * 1024 * 1024);
+    expect(getChunkedMaxDecompressedBytes()).toBeGreaterThanOrEqual(
+      MAX_DECOMPRESSED_TRAINER_COURSE_BYTES
+    );
   });
 
   it('rejects missing Coordinator signature', async () => {

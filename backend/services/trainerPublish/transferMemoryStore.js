@@ -7,18 +7,29 @@ import {
   TRAINER_PUBLISH_ERROR_CODES,
   trainerPublishError
 } from '../../utils/trainerPublishErrors.js';
+import {
+  getMaxConcurrentTransfers,
+  getMaxTransferDecodedBytes,
+  MAX_TRANSFER_DECODED_BYTES_DEFAULT,
+  MAX_CONCURRENT_TRANSFERS_DEFAULT
+} from '../../utils/trainerPublishSizeLimits.js';
 
 /** Max Base64 characters per chunk_data field. */
 export const MAX_CHUNK_BASE64_CHARS = 72_000;
 
-/** Max total decoded bytes retained per transfer. */
-export const MAX_TRANSFER_DECODED_BYTES = 8 * 1024 * 1024;
+/**
+ * Default max total decoded gzip bytes per transfer (see getMaxTransferDecodedBytes).
+ * Kept as a named export for tests / docs; enforcement uses the getter.
+ */
+export const MAX_TRANSFER_DECODED_BYTES = MAX_TRANSFER_DECODED_BYTES_DEFAULT;
 
-/** Max concurrent non-expired transfers in this process. */
-export const MAX_CONCURRENT_TRANSFERS = 32;
+/** Default max concurrent transfers; enforcement uses getMaxConcurrentTransfers(). */
+export const MAX_CONCURRENT_TRANSFERS = MAX_CONCURRENT_TRANSFERS_DEFAULT;
 
 /** Max chunk count accepted for in-memory buffering (stricter than INIT metadata max). */
 export const MAX_MEMORY_CHUNK_COUNT = 512;
+
+export { getMaxTransferDecodedBytes, getMaxConcurrentTransfers };
 
 /**
  * @typedef {Object} TransferSession
@@ -87,11 +98,12 @@ export function createTransferSession({
     sessions.delete(transfer_id);
   }
 
-  if (sessions.size >= MAX_CONCURRENT_TRANSFERS) {
+  const maxConcurrent = getMaxConcurrentTransfers();
+  if (sessions.size >= maxConcurrent) {
     throw httpError(
       503,
       TRAINER_PUBLISH_ERROR_CODES.TRANSFER_SIZE_EXCEEDED,
-      `Trainer Publish transfer capacity exceeded (max ${MAX_CONCURRENT_TRANSFERS} concurrent)`
+      `Trainer Publish transfer capacity exceeded (max ${maxConcurrent} concurrent)`
     );
   }
 
@@ -183,12 +195,13 @@ export function storeChunk(transferId, chunkIndex, decodedBuf) {
     );
   }
 
+  const maxTransferBytes = getMaxTransferDecodedBytes();
   const nextTotal = session.totalDecodedBytes + decodedBuf.length;
-  if (nextTotal > MAX_TRANSFER_DECODED_BYTES) {
+  if (nextTotal > maxTransferBytes) {
     throw httpError(
       413,
       TRAINER_PUBLISH_ERROR_CODES.TRANSFER_SIZE_EXCEEDED,
-      `Trainer Publish transfer exceeds maximum decoded size of ${MAX_TRANSFER_DECODED_BYTES} bytes`
+      `Trainer Publish transfer exceeds maximum decoded size of ${maxTransferBytes} bytes`
     );
   }
 

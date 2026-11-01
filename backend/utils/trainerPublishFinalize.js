@@ -22,8 +22,11 @@ import {
   validateNormalizedLesson
 } from '../services/contentStudioNormalizer.js';
 import {
-  MAX_TRANSFER_DECODED_BYTES
+  getMaxTransferDecodedBytes
 } from '../services/trainerPublish/transferMemoryStore.js';
+import {
+  getChunkedMaxDecompressedBytes
+} from './trainerPublishSizeLimits.js';
 import {
   TRAINER_PUBLISH_ERROR_CODES,
   trainerPublishError
@@ -286,11 +289,12 @@ export function verifyAndDecodeReassembledCourse(gzipBytes, transferSha256) {
     );
   }
 
-  if (gzipBytes.length > MAX_TRANSFER_DECODED_BYTES) {
+  const maxTransferBytes = getMaxTransferDecodedBytes();
+  if (gzipBytes.length > maxTransferBytes) {
     throw httpError(
       413,
       TRAINER_PUBLISH_ERROR_CODES.TRANSFER_SIZE_EXCEEDED,
-      `Reassembled Trainer Publish transfer exceeds maximum size of ${MAX_TRANSFER_DECODED_BYTES} bytes`
+      `Reassembled Trainer Publish transfer exceeds maximum size of ${maxTransferBytes} bytes`
     );
   }
 
@@ -307,7 +311,10 @@ export function verifyAndDecodeReassembledCourse(gzipBytes, transferSha256) {
   }
 
   try {
-    return decodeCompressedTrainerCourseBuffer(gzipBytes);
+    // Chunked FINALIZE only — higher configurable bound; legacy expand keeps 5 MiB.
+    return decodeCompressedTrainerCourseBuffer(gzipBytes, {
+      maxOutputLength: getChunkedMaxDecompressedBytes()
+    });
   } catch (err) {
     rethrowDecodeError(err);
   }

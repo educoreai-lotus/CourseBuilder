@@ -16,6 +16,7 @@ export default {
     '**/__tests__/trainerPublishChunk.test.js',
     '**/__tests__/trainerPublishIdempotencyRecovery.test.js',
     '**/__tests__/trainerPublishIntegrationHardening.test.js',
+    '**/__tests__/trainerPublishSizeLimits.test.js',
     '**/__tests__/compressedTrainerPublish.test.js'
   ],
   setupFilesAfterEnv: [path.join(__dirname, 'jest.setup.js')],
