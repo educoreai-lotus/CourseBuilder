@@ -16,6 +16,10 @@ import {
   TRAINER_PUBLISH_ERROR_CODES,
   trainerPublishError
 } from '../../utils/trainerPublishErrors.js';
+import {
+  TRAINER_PUBLISH_LESSON_ORDER_KEY,
+  mergeTrainerPublishLessonOrder
+} from '../../utils/trainerPublishLessonOrder.js';
 
 function httpError(status, errorCode, message) {
   return trainerPublishError(status, errorCode, message);
@@ -140,10 +144,10 @@ export async function insertTrainerCourseInTransaction({
     t
   );
 
-  let lessonsCreated = 0;
+  const lessonIdsInOrder = [];
   for (let i = 0; i < normalized.lessons.length; i++) {
     const lessonData = normalized.lessons[i];
-    await lessons.create(
+    const created = await lessons.create(
       {
         module_id: module.id,
         topic_id: topic.id,
@@ -158,10 +162,49 @@ export async function insertTrainerCourseInTransaction({
       },
       t
     );
-    lessonsCreated += 1;
+    if (!created?.id) {
+      throw httpError(
+        500,
+        TRAINER_PUBLISH_ERROR_CODES.TRAINER_PUBLISH_INTERNAL_ERROR,
+        'Trainer Publish FINALIZE failed to obtain persisted lesson id'
+      );
+    }
+    lessonIdsInOrder.push(created.id);
   }
 
-  return { lessons_created: lessonsCreated };
+  // Merge opt-in order metadata into learning_path_designation inside the same tx.
+  // jsonb || merges top-level keys without wiping unrelated designation fields.
+  const orderPatch = mergeTrainerPublishLessonOrder(
+    {},
+    lessonIdsInOrder
+  );
+  await t.none(
+    `UPDATE courses
+     SET learning_path_designation =
+           COALESCE(learning_path_designation, '{}'::jsonb) || $2::jsonb,
+         updated_at = CURRENT_TIMESTAMP
+     WHERE id = $1`,
+    [courseId, JSON.stringify(orderPatch)]
+  );
+
+  // Ensure the namespaced key was written (guards against silent no-op updates).
+  const verify = await t.oneOrNone(
+    `SELECT learning_path_designation->$2 AS ord
+     FROM courses WHERE id = $1`,
+    [courseId, TRAINER_PUBLISH_LESSON_ORDER_KEY]
+  );
+  if (!verify || !Array.isArray(verify.ord) || verify.ord.length !== lessonIdsInOrder.length) {
+    throw httpError(
+      500,
+      TRAINER_PUBLISH_ERROR_CODES.TRAINER_PUBLISH_INTERNAL_ERROR,
+      'Trainer Publish FINALIZE failed to persist lesson order metadata'
+    );
+  }
+
+  return {
+    lessons_created: lessonIdsInOrder.length,
+    trainer_publish_lesson_order: lessonIdsInOrder
+  };
 }
 
 /**

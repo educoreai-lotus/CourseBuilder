@@ -411,7 +411,8 @@ describe('Phase 6D Trainer Publish integration hardening', () => {
       return {
         loadCoordinatorPublicKey: () => coordinatorKeys.publicKey,
         loadCourseBuilderPrivateKey: () => courseBuilderKeys.privateKey,
-        now: () => new Date('2026-11-01T12:00:00.000Z')
+        // Live clock so ticket/session exp stays ahead of CHUNK/FINALIZE Date.now() checks
+        now: () => new Date()
       };
     }
 

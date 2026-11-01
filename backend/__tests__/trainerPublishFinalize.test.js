@@ -133,7 +133,8 @@ describe('trainerPublishFinalize', () => {
     return {
       loadCoordinatorPublicKey: () => coordinatorKeys.publicKey,
       loadCourseBuilderPrivateKey: () => courseBuilderKeys.privateKey,
-      now: () => new Date('2026-11-01T12:00:00.000Z')
+      // Live clock so ticket/session exp stays ahead of CHUNK/FINALIZE Date.now() checks
+      now: () => new Date()
     };
   }
 
@@ -569,9 +570,16 @@ describe('trainerPublishFinalize', () => {
   it('successful database transaction path via mock tx', async () => {
     const { initResponse, course } = await seedTransfer();
     const created = [];
+    let persistedOrder = null;
     const mockDb = {
       tx: async (fn) => {
-        const t = { __tx: true };
+        const t = {
+          __tx: true,
+          none: async (_sql, params) => {
+            persistedOrder = JSON.parse(params[1]).trainer_publish_lesson_order;
+          },
+          oneOrNone: async () => ({ ord: persistedOrder })
+        };
         return fn(t);
       }
     };
@@ -630,13 +638,19 @@ describe('trainerPublishFinalize', () => {
       course.topics.length
     );
     expect(created[0][0]).toBe('course');
+    expect(persistedOrder).toHaveLength(course.topics.length);
   });
 
   it('rolls back when lesson creation fails halfway', async () => {
     const { initResponse } = await seedTransfer();
     let lessonAttempts = 0;
     const mockDb = {
-      tx: async (fn) => fn({ __tx: true })
+      tx: async (fn) =>
+        fn({
+          __tx: true,
+          none: async () => {},
+          oneOrNone: async () => ({ ord: [] })
+        })
     };
     const mockRepos = {
       courseRepository: {
@@ -769,8 +783,14 @@ describe('trainerPublishFinalize', () => {
     };
 
     let findCalls = 0;
+    // Idempotent path never enters insert; stub tx context for safety.
     const mockDb = {
-      tx: async (fn) => fn({ __tx: true })
+      tx: async (fn) =>
+        fn({
+          __tx: true,
+          none: async () => {},
+          oneOrNone: async () => ({ ord: [] })
+        })
     };
 
     const envelope = buildFinalizeEnvelope(initResponse);

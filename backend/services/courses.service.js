@@ -10,6 +10,10 @@ import { v4 as uuidv4 } from 'uuid';
 import { cache, cached } from './cache.service.js';
 import { resolveLearnerCourseProgress } from '../utils/postcourseCompletion.js';
 import { isPersonalizedCourseOwnedByLearner } from '../utils/personalizedCourseAccess.js';
+import {
+  TRAINER_PUBLISH_LESSON_ORDER_KEY,
+  applyTrainerPublishLessonOrderToTopicsTree
+} from '../utils/trainerPublishLessonOrder.js';
 
 /**
  * Browse courses with filters (internal, no cache)
@@ -218,6 +222,21 @@ const _getCourseDetailsInternal = async (courseId, options = {}) => {
         // ⚠️ Topics are structural only - no content, skills computed dynamically
         modules: modulesData
       });
+    }
+
+    // Opt-in Chunked Trainer Publish lesson order (namespaced LPD key only).
+    // Does not change LessonRepository ORDER BY lesson_name; fails closed to alphabetical.
+    const orderResult = applyTrainerPublishLessonOrderToTopicsTree(
+      topicsData,
+      course.learning_path_designation
+    );
+    if (orderResult.applied) {
+      topicsData.length = 0;
+      topicsData.push(...orderResult.topicsData);
+    } else if (orderResult.reason && orderResult.reason !== 'missing') {
+      console.warn(
+        `[CourseDetails] Ignoring invalid ${TRAINER_PUBLISH_LESSON_ORDER_KEY} for course ${courseId} (reason=${orderResult.reason})`
+      );
     }
 
     // Get latest version

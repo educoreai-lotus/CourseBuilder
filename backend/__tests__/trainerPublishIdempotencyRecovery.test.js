@@ -152,7 +152,8 @@ describe('Phase 6F idempotency & lost-ack (MOCKED — no live PostgreSQL)', () =
     return {
       loadCoordinatorPublicKey: () => coordinatorKeys.publicKey,
       loadCourseBuilderPrivateKey: () => courseBuilderKeys.privateKey,
-      now: () => new Date('2026-11-01T12:00:00.000Z')
+      // Live clock so ticket/session exp stays ahead of CHUNK/FINALIZE Date.now() checks
+      now: () => new Date()
     };
   }
 
@@ -264,7 +265,22 @@ describe('Phase 6F idempotency & lost-ack (MOCKED — no live PostgreSQL)', () =
         };
         const t = {
           __tx: true,
-          _staging: staging
+          _staging: staging,
+          none: async (_sql, params) => {
+            const patch = JSON.parse(params[1]);
+            staging.course = {
+              ...(staging.course || {}),
+              learning_path_designation: {
+                ...((staging.course && staging.course.learning_path_designation) || {}),
+                ...patch
+              }
+            };
+          },
+          oneOrNone: async () => ({
+            ord:
+              staging.course?.learning_path_designation?.trainer_publish_lesson_order ||
+              null
+          })
         };
         try {
           const result = await fn(t);
