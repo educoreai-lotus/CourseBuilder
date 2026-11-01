@@ -160,26 +160,14 @@ export function assertValidRestoredTrainerCourse(course) {
 }
 
 /**
- * Base64-decode + gunzip + JSON.parse a compressed trainer course blob.
- * @param {string} courseCompressed
+ * Gunzip + JSON.parse a compressed trainer course buffer (exact GZIP bytes).
+ * Shared by compressed Trainer Publish expand and chunked FINALIZE reassembly.
+ * @param {Buffer} compressedBuf
  * @returns {Object}
  */
-export function decodeCompressedTrainerCourse(courseCompressed) {
-  let compressedBuf;
-  try {
-    compressedBuf = Buffer.from(courseCompressed, 'base64');
-  } catch {
-    throw badRequest('Compressed trainer course Base64 decoding failed');
-  }
-
-  if (!compressedBuf || compressedBuf.length === 0) {
-    throw badRequest('Compressed trainer course Base64 decoding produced empty data');
-  }
-
-  // Reject strings that are not valid Base64 (Node's Buffer.from is permissive).
-  const compact = String(courseCompressed).replace(/\s+/g, '');
-  if (!/^[A-Za-z0-9+/]*={0,2}$/.test(compact) || compact.length % 4 !== 0) {
-    throw badRequest('Compressed trainer course Base64 decoding failed');
+export function decodeCompressedTrainerCourseBuffer(compressedBuf) {
+  if (!Buffer.isBuffer(compressedBuf) || compressedBuf.length === 0) {
+    throw badRequest('Compressed trainer course GZIP buffer is empty');
   }
 
   let decompressedBuf;
@@ -220,6 +208,32 @@ export function decodeCompressedTrainerCourse(courseCompressed) {
 
   assertValidRestoredTrainerCourse(course);
   return course;
+}
+
+/**
+ * Base64-decode + gunzip + JSON.parse a compressed trainer course blob.
+ * @param {string} courseCompressed
+ * @returns {Object}
+ */
+export function decodeCompressedTrainerCourse(courseCompressed) {
+  let compressedBuf;
+  try {
+    compressedBuf = Buffer.from(courseCompressed, 'base64');
+  } catch {
+    throw badRequest('Compressed trainer course Base64 decoding failed');
+  }
+
+  if (!compressedBuf || compressedBuf.length === 0) {
+    throw badRequest('Compressed trainer course Base64 decoding produced empty data');
+  }
+
+  // Reject strings that are not valid Base64 (Node's Buffer.from is permissive).
+  const compact = String(courseCompressed).replace(/\s+/g, '');
+  if (!/^[A-Za-z0-9+/]*={0,2}$/.test(compact) || compact.length % 4 !== 0) {
+    throw badRequest('Compressed trainer course Base64 decoding failed');
+  }
+
+  return decodeCompressedTrainerCourseBuffer(compressedBuf);
 }
 
 /**
@@ -269,6 +283,7 @@ export default {
   isCompressedTrainerPublishRequest,
   assertValidCompressedTrainerPublishMetadata,
   assertValidRestoredTrainerCourse,
+  decodeCompressedTrainerCourseBuffer,
   decodeCompressedTrainerCourse,
   expandCompressedTrainerPublishIfNeeded,
   MAX_DECOMPRESSED_TRAINER_COURSE_BYTES,

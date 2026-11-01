@@ -121,7 +121,10 @@ const corsOptions = {
   exposedHeaders: ['X-New-Access-Token']
 };
 app.use(cors(corsOptions));
-app.use(express.json());
+// Route-specific JSON limit for Chunked Trainer Publish envelopes (max chunk ~72KB Base64
+// + ticket/metadata). Registered before the default parser so only this path is raised.
+app.use('/api/fill-content-metrics', express.json({ limit: '256kb' }));
+app.use(express.json({ limit: '100kb' }));
 app.use(express.urlencoded({ extended: true }));
 
 // TEMPORARY: Railway idle-timeout diagnostic (isolated; remove after experiment).

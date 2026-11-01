@@ -47,10 +47,12 @@ export class CourseRepository {
 
   /**
    * Find course by ID
+   * @param {string} courseId
+   * @param {Object} [dbCtx=db] - Optional pg-promise tx/context
    */
-  async findById(courseId) {
+  async findById(courseId, dbCtx = db) {
     const query = 'SELECT * FROM courses WHERE id = $1';
-    const row = await db.oneOrNone(query, [courseId]);
+    const row = await dbCtx.oneOrNone(query, [courseId]);
     return row ? Course.fromRow(row) : null;
   }
 

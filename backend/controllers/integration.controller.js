@@ -7,6 +7,13 @@
 import { dispatchIntegrationRequest } from '../integration/dispatcher.js';
 import { PendingCourseCreationError } from '../utils/PendingCourseCreationError.js';
 import { expandCompressedTrainerPublishIfNeeded } from '../utils/compressedTrainerPublish.js';
+import { isTrainerPublishInitRequest } from '../utils/trainerPublishInit.js';
+import { handleTrainerPublishInit } from '../services/trainerPublish/initService.js';
+import { isTrainerPublishChunkRequest } from '../utils/trainerPublishChunk.js';
+import { handleTrainerPublishChunk } from '../services/trainerPublish/chunkService.js';
+import { isTrainerPublishFinalizeRequest } from '../utils/trainerPublishFinalize.js';
+import { handleTrainerPublishFinalize } from '../services/trainerPublish/finalizeService.js';
+import { buildTrainerPublishErrorResponse } from '../utils/trainerPublishErrors.js';
 
 /**
  * Check if response template has fields to fill
@@ -363,6 +370,72 @@ export async function handleFillContentMetrics(req, res) {
 
     // Payload and response are already objects (NOT stringified)
     // Response can be undefined for one-way communications (Learner AI, Directory, etc.)
+    //
+    // Isolated Chunked Trainer Publish INIT — before compress expand / routing.
+    // Verifies Coordinator signature over the unmodified envelope (fail-closed).
+    // Non-INIT requests are completely unaffected.
+    if (isTrainerPublishInitRequest(requesterService, envelope.payload)) {
+      try {
+        const initResponse = await handleTrainerPublishInit(req, envelope);
+        const responseEnvelope = {
+          requester_service: envelope.requester_service,
+          payload: envelope.payload,
+          response: initResponse
+        };
+        res.setHeader('Content-Type', 'application/json');
+        return res.status(200).send(JSON.stringify(responseEnvelope));
+      } catch (initError) {
+        const { status, body } = buildTrainerPublishErrorResponse(
+          initError,
+          'Trainer Publish INIT failed'
+        );
+        res.setHeader('Content-Type', 'application/json');
+        return res.status(status).send(JSON.stringify(body));
+      }
+    }
+
+    // Isolated Chunked Trainer Publish CHUNK — before compress expand / routing.
+    if (isTrainerPublishChunkRequest(requesterService, envelope.payload)) {
+      try {
+        const chunkResponse = await handleTrainerPublishChunk(req, envelope);
+        const responseEnvelope = {
+          requester_service: envelope.requester_service,
+          payload: envelope.payload,
+          response: chunkResponse
+        };
+        res.setHeader('Content-Type', 'application/json');
+        return res.status(200).send(JSON.stringify(responseEnvelope));
+      } catch (chunkError) {
+        const { status, body } = buildTrainerPublishErrorResponse(
+          chunkError,
+          'Trainer Publish CHUNK failed'
+        );
+        res.setHeader('Content-Type', 'application/json');
+        return res.status(status).send(JSON.stringify(body));
+      }
+    }
+
+    // Isolated Chunked Trainer Publish FINALIZE — before compress expand / routing.
+    if (isTrainerPublishFinalizeRequest(requesterService, envelope.payload)) {
+      try {
+        const finalizeResponse = await handleTrainerPublishFinalize(req, envelope);
+        const responseEnvelope = {
+          requester_service: envelope.requester_service,
+          payload: envelope.payload,
+          response: finalizeResponse
+        };
+        res.setHeader('Content-Type', 'application/json');
+        return res.status(200).send(JSON.stringify(responseEnvelope));
+      } catch (finalizeError) {
+        const { status, body } = buildTrainerPublishErrorResponse(
+          finalizeError,
+          'Trainer Publish FINALIZE failed'
+        );
+        res.setHeader('Content-Type', 'application/json');
+        return res.status(status).send(JSON.stringify(body));
+      }
+    }
+
     // Narrow Trainer Publish decompression (gzip+base64) — before routing only.
     // Uncompressed / Full AI Generation envelopes are returned unchanged.
     let payloadObject;

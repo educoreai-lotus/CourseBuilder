@@ -9,9 +9,13 @@ import rateLimit from 'express-rate-limit';
  * General API rate limiter
  * 100 requests per 15 minutes per IP
  */
+/** Unchanged global policy for all /api routes except fill-content-metrics (see skip). */
+export const API_RATE_LIMIT_MAX = 100;
+export const API_RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000;
+
 export const apiLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Limit each IP to 100 requests per windowMs
+  windowMs: API_RATE_LIMIT_WINDOW_MS,
+  max: API_RATE_LIMIT_MAX,
   message: {
     error: 'Too many requests',
     message: 'Too many requests from this IP, please try again later.'
@@ -23,8 +27,18 @@ export const apiLimiter = rateLimit({
     trustProxy: false // Disable trust proxy validation warning
   },
   skip: (req) => {
-    // Skip rate limiting for health checks
-    return req.path === '/health';
+    // Health is outside /api; kept for safety if mount changes.
+    if (req.path === '/health') {
+      return true;
+    }
+    // POST /api/fill-content-metrics is rate-limited by fillContentMetricsRateGate
+    // (path-only skip — never based on payload action). That gate applies the
+    // standard 100/15min policy unless Coordinator ECDSA proves Trainer Publish.
+    const path = req.path || '';
+    return (
+      path === '/fill-content-metrics' ||
+      path.endsWith('/fill-content-metrics')
+    );
   }
 });
 
